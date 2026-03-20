@@ -1,108 +1,118 @@
 # Claw4All — MVP Specification
 
-_Free OpenClaw Setup Wizard + Skill Marketplace_
+_Managed AI assistants you talk to via chat. We handle everything._
 
 ## Vision
-Make OpenClaw accessible to everyone by automating the entire setup process. Users bring their own VPS, we handle the rest. Free to start, premium to enhance.
+
+Claw4All gives everyone a personal AI assistant that lives in their favorite chat app. Users click a button, connect WhatsApp or Telegram, and start talking. We provision and manage the infrastructure invisibly — the user never sees a server, terminal, or config file.
+
+Think "Superhuman for AI assistants." Simple signup, instant value, zero technical knowledge required.
 
 ---
 
 ## User Stories
 
-### US-01: Provider-Guided Onboarding
-**As a** non-technical user,
-**I want to** follow a step-by-step wizard that helps me create a VPS account and get OpenClaw running,
-**So that** I can have my own AI assistant without touching a terminal.
+### US-01: One-Click Launch
+**As a** new user,
+**I want to** click "Launch my assistant" and have it ready within 60 seconds,
+**So that** I can start using my AI assistant immediately without any technical setup.
 
 **Acceptance Criteria:**
-- Wizard walks through: pick provider → create account (via referral link) → generate API key → paste it in → we do the rest
-- Supported providers: Hetzner (primary), DigitalOcean, Vultr
-- User sees real-time progress ("Creating server… Installing OpenClaw… Connecting messaging…")
-- Total time from start to working agent: < 15 minutes
-- User receives credentials and a "your agent is ready" confirmation
+- User signs up with email or Google
+- Clicks "Launch my assistant"
+- We provision an OpenClaw VM on our Hetzner account via API (invisible to user)
+- User sees a friendly progress indicator ("Setting things up…" → "Almost ready…" → "Done!")
+- Total time: < 90 seconds
+- User is prompted to connect a messaging app
 
 ### US-02: Messaging Connection
-**As a** user who just set up their server,
-**I want to** connect my AI assistant to WhatsApp, Telegram, or Signal,
-**So that** I can talk to my agent from my phone.
+**As a** user with a launched assistant,
+**I want to** connect WhatsApp, Telegram, or another chat app,
+**So that** I can talk to my assistant from my phone like texting a friend.
 
 **Acceptance Criteria:**
-- Wizard presents QR code or bot token flow for each platform
-- WhatsApp: QR code scan (via OpenClaw's WhatsApp bridge)
-- Telegram: guided BotFather setup + token entry
+- WhatsApp: scan QR code
+- Telegram: guided BotFather flow or QR link
 - Signal: linked device flow
-- At least one messaging platform connected before wizard completes
-- Test message sent and confirmed working
+- Discord/Slack: bot invite link
+- At least one messaging platform connected before onboarding completes
+- Test message exchange confirmed working
 
-### US-03: Skill Marketplace Browse & Install
-**As a** user with a running OpenClaw instance,
-**I want to** browse and one-click install skills from a marketplace,
-**So that** I can extend my agent's capabilities without coding.
-
-**Acceptance Criteria:**
-- Marketplace page with categories (productivity, smart home, social, finance)
-- Each skill has: description, rating, install count, "Install" button
-- Free skills available to all users
-- Premium skills require Claw4All account upgrade
-- Installation happens via API call to user's sidecar agent
-- Installed skills visible in "My Skills" dashboard
-
-### US-04: Server Health Dashboard
-**As a** user who owns their VPS,
-**I want to** see my server's status, uptime, and resource usage,
-**So that** I know my agent is running and healthy.
+### US-03: Chat with My Assistant
+**As a** connected user,
+**I want to** text my assistant and have it do things for me,
+**So that** I get real value from day one.
 
 **Acceptance Criteria:**
-- Dashboard shows: server status (online/offline), uptime, CPU/RAM usage
-- Alert if server goes down or OpenClaw crashes
-- One-click restart button
-- Shows current OpenClaw version + available updates
-- "Update OpenClaw" button that runs the update remotely
+- Assistant responds within seconds
+- Can handle: email summary, calendar check, web research, reminders, general Q&A
+- Personality is warm and helpful (powered by OpenClaw's SOUL.md)
+- Works 24/7 on paid plan, limited hours on free plan
 
-### US-05: Premium Support & Custom Setup
-**As a** user who wants help beyond the basics,
-**I want to** purchase premium support or custom configuration,
-**So that** I can get expert help with advanced setups.
+### US-04: Usage Dashboard
+**As a** user,
+**I want to** see how I'm using my assistant and manage my account,
+**So that** I understand my usage and can upgrade if I want more.
 
 **Acceptance Criteria:**
-- Support tiers: Free (community forum), Basic ($10/mo — email support), Pro ($25/mo — priority + custom skills)
-- Custom setup requests via form (e.g., "connect to my smart home", "set up voice assistant")
-- Stripe checkout for paid tiers
-- Support ticket system or calendar booking for Pro tier
+- Dashboard shows: assistant status (online/offline), messages today, uptime
+- Usage meter for free tier (hours used / hours remaining)
+- One-click upgrade to paid plan
+- Connected messaging platforms with reconnect option
+- No technical details exposed (no CPU, RAM, server info)
+
+### US-05: Skill Library
+**As a** user,
+**I want to** browse and enable capabilities for my assistant,
+**So that** I can customize what it can do.
+
+**Acceptance Criteria:**
+- Library of toggleable skills (email, calendar, web browsing, smart home, etc.)
+- One-click enable/disable
+- Premium skills gated behind paid tier
+- Skills described in plain language ("Manages your email" not "IMAP/SMTP integration")
 
 ---
 
 ## Revenue Model
 
-### Free (always)
-- Setup wizard for any supported provider
-- Basic skill marketplace
-- Community forum access
-- Server health dashboard
+### Free Tier
+- Assistant runs 8 hours/day (e.g., 9am–5pm user's timezone)
+- 100 messages/day limit
+- Basic skills (chat, reminders, web search)
+- Single messaging platform
 
-### Referral Revenue (passive)
-- Hetzner: partner/affiliate commission on signups
-- DigitalOcean: $200 credit referral program
-- Vultr: 10% recurring commission
-- Estimated: $0.50-1.50/mo per active user (recurring)
+### Starter ($12/mo)
+- 24/7 assistant
+- Unlimited messages
+- All standard skills (email, calendar, web browsing)
+- Multiple messaging platforms
+- Priority response times
 
-### Premium ($10-25/mo)
-- Premium skill packs (curated, tested, maintained)
-- Priority email/chat support
-- Custom integrations & setup
-- Advanced monitoring & alerts
-- Automatic updates & backup management
+### Pro ($25/mo)
+- Everything in Starter
+- Premium skills (smart home, social media management, custom workflows)
+- Priority support (4h response)
+- Custom personality & behavior tuning
+- API access for power users
 
-### Marketplace Revenue (future)
-- Skill creators list premium skills
-- Claw4All takes 20-30% commission
-- Creates ecosystem flywheel
+### Unit Economics (per user)
+- Hetzner CX22 VM: ~€4.50/mo ($5/mo)
+- AI API usage (Anthropic/OpenAI): ~$3-8/mo avg
+- Our margin at $12/mo Starter: ~$0-4/mo (break-even to slight margin)
+- Our margin at $25/mo Pro: ~$12-17/mo (healthy margin)
+- Free tier cost: $5/mo subsidized (offset by conversion to paid)
+
+### Revenue Targets
+- 100 paid users = ~$1,500/mo revenue, ~$700/mo margin
+- 1,000 paid users = ~$15,000/mo revenue, ~$7,000/mo margin
+- Free tier converts at ~10-20% assumed
 
 ---
 
 ## Out of Scope for MVP
-- Hosting user servers ourselves (we NEVER do this)
-- Local LLM support (users bring their own API keys)
-- Mobile app (web-only for now)
+- Mobile app (web dashboard + chat apps only)
 - Multi-agent setups
-- Enterprise features
+- Enterprise / team features
+- Custom LLM / local model support
+- Self-hosting option (future: open-source the setup for power users)
