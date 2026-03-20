@@ -3,133 +3,147 @@
 ## Architecture Overview
 
 ```
-┌─────────────────────────────────────────────┐
-│              Claw4All Portal                 │
-│         (Next.js on Vercel — FREE)           │
-│                                              │
-│  ┌──────────┐ ┌───────────┐ ┌────────────┐  │
-│  │  Setup    │ │   Skill   │ │  Health    │  │
-│  │  Wizard   │ │Marketplace│ │ Dashboard  │  │
-│  └────┬─────┘ └─────┬─────┘ └─────┬──────┘  │
-│       │              │             │          │
-│  ┌────┴──────────────┴─────────────┴──────┐  │
-│  │        Provisioning Engine             │  │
-│  │  (Serverless Functions on Vercel)      │  │
-│  └────┬──────────────┬─────────────┬──────┘  │
-└───────┼──────────────┼─────────────┼─────────┘
-        │              │             │
-   ┌────▼────┐   ┌─────▼────┐  ┌────▼─────┐
-   │ Hetzner │   │ Digital  │  │  Vultr   │
-   │   API   │   │ Ocean API│  │   API    │
-   └────┬────┘   └─────┬────┘  └────┬─────┘
-        │              │             │
-   ┌────▼──────────────▼─────────────▼──────┐
-   │         User's Own VPS                 │
-   │  ┌─────────────────────────────────┐   │
-   │  │  OpenClaw + Sidecar Agent       │   │
-   │  │  (installed via cloud-init)     │   │
-   │  └─────────────────────────────────┘   │
-   └────────────────────────────────────────┘
+┌──────────────────────────────────────────────────┐
+│              Claw4All Portal                      │
+│         (Next.js on Vercel — FREE tier)           │
+│                                                   │
+│  ┌───────────┐ ┌────────────┐ ┌───────────────┐  │
+│  │  Signup +  │ │   User     │ │   Skill       │  │
+│  │  Onboard   │ │ Dashboard  │ │  Library      │  │
+│  └─────┬─────┘ └──────┬─────┘ └──────┬────────┘  │
+│        │               │              │           │
+│  ┌─────┴───────────────┴──────────────┴────────┐  │
+│  │         VM Orchestration Layer              │  │
+│  │    (Vercel Serverless + Background Jobs)    │  │
+│  └─────┬──────────────────────────┬────────────┘  │
+└────────┼──────────────────────────┼───────────────┘
+         │                          │
+    ┌────▼─────┐             ┌──────▼───────┐
+    │ Hetzner  │             │   Stripe     │
+    │ API      │             │   Billing    │
+    │ (our     │             └──────────────┘
+    │ account) │
+    └────┬─────┘
+         │
+    ┌────▼──────────────────────────────────┐
+    │    Claw4All-Managed VM Pool           │
+    │                                        │
+    │  ┌──────────┐ ┌──────────┐ ┌────────┐ │
+    │  │ User A's │ │ User B's │ │User C's│ │
+    │  │ OpenClaw │ │ OpenClaw │ │OpenClaw│ │
+    │  └──────────┘ └──────────┘ └────────┘ │
+    └───────────────────────────────────────┘
 ```
 
-## Key Insight: Zero Backend Costs
+## Key Architecture Decisions
 
-Because we don't host anything, the entire portal can run on:
-- **Vercel Free Tier** — Next.js frontend + serverless API routes
-- **Supabase Free Tier** — Auth + database (50K monthly active users)
-- **No servers to manage** — all provisioning is API calls to user's provider
+### We Own the Infrastructure
+- Single Hetzner account, provisioned via API with our credentials
+- Each user gets a dedicated VM (isolation, security, simplicity)
+- We manage lifecycle: create, monitor, update, suspend, destroy
+- User never sees or accesses the VM directly
 
-Total infrastructure cost to run Claw4All: **$0/mo** until significant scale.
+### Why Dedicated VMs (Not Shared/Containers)
+- OpenClaw expects a full Linux environment (browser, system tools)
+- Full isolation between users — no noisy neighbor, no data leaks
+- Simple ops: one VM = one user = one OpenClaw instance
+- Can migrate to containers later if economics demand it
 
 ## Tech Stack
 
 | Component | Technology | Cost |
 |---|---|---|
 | Frontend | Next.js 15 + Tailwind | Free (Vercel) |
-| Auth | Clerk or Supabase Auth | Free tier |
+| Auth | Supabase Auth | Free tier |
 | Database | Supabase (PostgreSQL) | Free tier |
-| Payments | Stripe | 2.9% + $0.30/txn |
-| Provisioning | Vercel Serverless Functions | Free tier (100K/mo) |
-| VPS APIs | Hetzner/DO/Vultr REST APIs | Free |
-| Sidecar Agent | Lightweight HTTP agent on user VPS | Bundled |
-| Monitoring | Sidecar heartbeat → Supabase | Free |
+| Payments | Stripe Subscriptions | 2.9% + $0.30/txn |
+| VM Provisioning | Hetzner Cloud API | ~$5/user/mo |
+| VM Management | Sidecar agent on each VM | Bundled |
+| Background Jobs | Vercel Cron or Inngest | Free tier |
+| AI API Keys | Our keys, metered per user | ~$3-8/user/mo |
 
-## Provisioning Flow (Technical)
+## Provisioning Flow
 
-1. User pastes VPS provider API key into wizard
-2. Vercel serverless function calls provider API:
-   - Create SSH key pair (ephemeral, for setup only)
-   - Create VPS (smallest plan, user's chosen region)
-   - Inject cloud-init script that:
-     - Installs Node.js + OpenClaw
-     - Installs sidecar agent (for remote management)
-     - Generates secure credentials
-     - Opens only required ports
-3. Poll VPS until cloud-init completes (~3-5 min)
-4. Return credentials to user
-5. **Delete SSH key** — we never retain server access
-6. All future management goes through sidecar agent (HTTPS, bearer token)
+1. User clicks "Launch my assistant"
+2. Serverless function calls Hetzner API:
+   - Create CX22 VM (2 vCPU, 4GB RAM, 40GB disk)
+   - Inject cloud-init script that installs OpenClaw + sidecar agent
+   - Tag VM with user ID
+3. Sidecar agent phones home when ready (~60-90 sec)
+4. Portal marks assistant as "online"
+5. User connects messaging app via guided flow
+6. Assistant is live
 
-## Sidecar Agent
+## Sidecar Agent (on each user VM)
 
-Lightweight HTTP service running on user's VPS:
-- **Port:** 8787 (HTTPS, self-signed or Let's Encrypt)
-- **Auth:** Bearer token (generated during setup, stored in user's dashboard)
-- **Endpoints:**
-  - `GET /health` — server status, CPU, RAM, uptime
-  - `GET /openclaw/status` — OpenClaw version, running state
+Internal management agent — user never interacts with it directly.
+
+- **Phones home** to Claw4All API on startup and via heartbeat
+- **Endpoints** (called by our orchestration layer only):
+  - `GET /health` — VM and OpenClaw status
   - `POST /openclaw/restart` — restart OpenClaw
-  - `POST /openclaw/update` — pull latest OpenClaw + restart
-  - `POST /skills/install` — install a skill from marketplace
-  - `GET /skills/list` — list installed skills
+  - `POST /openclaw/update` — update to latest version
+  - `POST /skills/install` — install/enable a skill
+  - `POST /skills/remove` — remove a skill
+  - `POST /messaging/setup` — configure messaging bridge
+- **Auth:** mTLS or shared secret (internal only, not user-facing)
+
+## Billing Integration
+
+- **Stripe Subscriptions** for recurring billing
+- **Free tier:** VM runs on schedule (8h/day), suspended outside hours
+- **Paid tier:** VM runs 24/7
+- **Overdue payments:** assistant suspended after grace period, VM kept for 30 days, then destroyed
+- **Metering:** track message count and AI API usage per user for future usage-based billing
+
+## VM Lifecycle
+
+| State | Description |
+|---|---|
+| `provisioning` | VM being created, cloud-init running |
+| `active` | Online and serving the user |
+| `suspended` | Paused (free tier off-hours, or overdue payment) |
+| `destroying` | Being torn down (user cancelled, account deleted) |
 
 ## Project Structure
 
 ```
 apps/
-  web/              # Next.js portal (Vercel)
+  web/                    # Next.js portal (Vercel)
     src/
       app/
-        page.tsx              # Landing page
-        spec/                 # Spec viewer
-        wizard/               # Setup wizard pages
-        dashboard/            # User dashboard
-        marketplace/          # Skill marketplace
+        page.tsx                # Landing page
+        dashboard/              # User dashboard
+        onboarding/             # Post-signup messaging setup
+        skills/                 # Skill library
       lib/
-        providers/            # Hetzner, DO, Vultr API clients
-        provisioning/         # Cloud-init templates, setup logic
-        sidecar/              # Sidecar API client
-  sidecar/            # Sidecar agent (deployed to user VPS)
-    src/
-      index.ts
-      routes/
+        hetzner/                # Hetzner API client
+        orchestration/          # VM lifecycle management
+        sidecar-client/         # Talk to sidecar agents
+        billing/                # Stripe integration
+  sidecar/                # Sidecar agent (deployed to every VM)
 infra/
-  cloud-init/         # Cloud-init templates per provider
-  packer/             # (optional) Pre-built images
+  cloud-init/             # Cloud-init templates
 specs/
   mvp/
-    spec.md
-    plan.md
-    tasks.md
 ```
 
 ## Security Model
 
-- **We never store VPS API keys** — used once during setup, then discarded
-- **We never retain SSH access** — keys deleted after provisioning
-- **Sidecar token** — stored encrypted in Supabase, only accessible by the user
-- **All sidecar communication** — HTTPS with bearer auth
-- **Provisioning scripts are open source** — users can audit exactly what gets installed
-- **User can revoke access anytime** — just change the sidecar token or shut it down
+- **User data isolation:** one VM per user, no shared resources
+- **No user SSH access:** users never see or touch their VM
+- **Sidecar auth:** mTLS or rotating secrets, not user-facing
+- **AI API keys:** our keys stored encrypted, never exposed to users
+- **Hetzner API key:** single admin key, stored in Vercel env vars, never exposed
+- **Data retention:** user cancels → VM destroyed after 30-day grace → data gone
+- **Compliance:** no user data stored on our portal beyond account info; all personal data lives on their isolated VM
 
-## Competitive Advantages
+## Competitive Positioning
 
-| Us (Claw4All) | EZClaw / OpenClawd.ai | Emergent / Moltbot |
-|---|---|---|
-| User owns server | They own server | They own everything |
-| $0 to run the platform | Infrastructure costs | VC-funded burn |
-| Free core product | Paid hosting | Paid platform |
-| Open source scripts | Black box | Black box |
-| Provider agnostic | Single provider | Proprietary |
-| Community-driven | Company-driven | Company-driven |
-| Privacy by architecture | Trust-based privacy | Trust-based privacy |
+| | Claw4All | Self-hosted OpenClaw | Competitor SaaS |
+|---|---|---|---|
+| Setup time | 60 seconds | 30+ minutes | Varies |
+| Technical skill needed | None | Moderate | Low-Moderate |
+| Data isolation | Dedicated VM | Full control | Shared infra |
+| Cost | $12-25/mo | $5-10/mo + your time | $20-50/mo |
+| Maintenance | We handle it | You handle it | They handle it |
