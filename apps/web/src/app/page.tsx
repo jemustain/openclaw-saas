@@ -5,11 +5,14 @@ export default function Home() {
       <nav className="mx-auto flex max-w-6xl items-center justify-between px-6 py-6">
         <div className="flex items-center gap-2 text-xl font-bold">
           <span className="text-3xl">🐾</span>
-          <span>OpenClaw</span>
+          <span>Claw4All</span>
         </div>
         <div className="flex items-center gap-6 text-sm text-slate-300">
           <a href="#how-it-works" className="hover:text-white transition">
             How it Works
+          </a>
+          <a href="/spec" className="hover:text-white transition">
+            Spec
           </a>
           <a href="#features" className="hover:text-white transition">
             Features
@@ -275,7 +278,7 @@ export default function Home() {
       <footer className="border-t border-slate-800 py-12 text-center text-sm text-slate-500">
         <div className="mx-auto max-w-6xl px-6">
           <div className="flex items-center justify-center gap-2 text-lg font-bold text-slate-300">
-            <span className="text-2xl">🐾</span> OpenClaw
+            <span className="text-2xl">🐾</span> Claw4All
           </div>
           <p className="mt-2">
             Your personal AI assistant, running on your own server.
