@@ -1,5 +1,14 @@
 import { createClient } from '@/lib/supabase/server';
 import { NextResponse } from 'next/server';
+import { Resend } from 'resend';
+import { generateToken } from '@/lib/waitlist-token';
+import { waitlistWelcomeEmail } from '@/lib/emails/waitlist-welcome';
+
+let _resend: Resend | null = null;
+function getResend() {
+  if (!_resend) _resend = new Resend(process.env.RESEND_API_KEY);
+  return _resend;
+}
 
 export async function POST(request: Request) {
   try {
@@ -20,11 +29,28 @@ export async function POST(request: Request) {
 
     if (error) {
       if (error.code === '23505') {
-        // unique constraint violation — already on list
         return NextResponse.json({ message: "You're already on the list!" });
       }
       console.error('Waitlist insert error:', error);
       return NextResponse.json({ error: 'Something went wrong. Please try again.' }, { status: 500 });
+    }
+
+    // Send welcome email
+    try {
+      const token = await generateToken(trimmed);
+      const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://claw4all-app.vercel.app';
+      const unsubscribeUrl = `${baseUrl}/api/waitlist/unsubscribe?email=${encodeURIComponent(trimmed)}&token=${token}`;
+
+      const welcomeEmail = waitlistWelcomeEmail({ unsubscribeUrl });
+      await getResend().emails.send({
+        from: 'HandsOff <onboarding@resend.dev>',
+        to: trimmed,
+        subject: welcomeEmail.subject,
+        html: welcomeEmail.html,
+      });
+    } catch (emailError) {
+      // Don't fail the signup if email fails — they're still on the list
+      console.error('Welcome email failed:', emailError);
     }
 
     return NextResponse.json({ message: "You're on the list!" });
