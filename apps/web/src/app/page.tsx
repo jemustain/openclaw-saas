@@ -1,4 +1,5 @@
 import { FAQ } from "@/components/faq";
+import { WaitlistForm } from "@/components/waitlist-form";
 
 export default function Home() {
   return (
@@ -298,16 +299,7 @@ export default function Home() {
         <p className="text-slate-400 max-w-xl mx-auto mb-8">
           Join the waitlist and be first in line when we launch.
         </p>
-        <div className="flex flex-col sm:flex-row items-center justify-center gap-4 max-w-md mx-auto">
-          <input
-            type="email"
-            placeholder="your@email.com"
-            className="w-full rounded-full border border-slate-700 bg-slate-900 px-6 py-3 text-white placeholder:text-slate-500 focus:border-violet-500 focus:outline-none"
-          />
-          <button className="w-full sm:w-auto rounded-full bg-violet-600 px-8 py-3 font-medium hover:bg-violet-500 transition whitespace-nowrap">
-            Join Waitlist
-          </button>
-        </div>
+        <WaitlistForm />
         <p className="text-xs text-slate-600 mt-3">No spam. We&apos;ll email you once when it&apos;s ready.</p>
       </section>
 
