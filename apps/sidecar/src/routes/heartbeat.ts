@@ -1,4 +1,5 @@
 import { Router, Request, Response } from 'express';
+import { getTodayUsageSummary } from './usage';
 
 const router = Router();
 
@@ -39,10 +40,12 @@ async function sendHeartbeat() {
 
   try {
     const health = await collectHealthData();
+    let usage = { messages_sent: 0, hours_active: 0, api_tokens_used: 0 };
+    try { usage = await getTodayUsageSummary(); } catch {}
     await fetch(`${portalUrl}/api/heartbeat`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ vmId, ...health }),
+      body: JSON.stringify({ vmId, ...health, usage }),
     });
   } catch (err) {
     console.error('[heartbeat] Failed to phone home:', (err as Error).message);
