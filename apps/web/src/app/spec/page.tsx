@@ -24,8 +24,8 @@ export default function SpecPage() {
     <div className="min-h-screen bg-gradient-to-b from-slate-950 via-slate-900 to-slate-950 text-white">
       <nav className="mx-auto flex max-w-6xl items-center justify-between px-6 py-6">
         <a href="/" className="flex items-center gap-2 text-xl font-bold">
-          <span className="text-3xl">🐾</span>
-          <span>Claw4All</span>
+          <span className="text-3xl"></span>
+          <span>HandsOff</span>
         </a>
         <div className="flex items-center gap-6 text-sm text-slate-300">
           <a href="/" className="hover:text-white transition">Home</a>
@@ -36,7 +36,7 @@ export default function SpecPage() {
       <section className="mx-auto max-w-4xl px-6 pt-16 pb-12 text-center">
         <h1 className="text-4xl font-bold sm:text-5xl">Project Spec &amp; Plan</h1>
         <p className="mt-4 text-slate-400 max-w-2xl mx-auto">
-          The full specification for Claw4All — constitution, requirements, architecture, and task breakdown.
+          The full specification for HandsOff — constitution, requirements, architecture, and task breakdown.
           Built with{" "}
           <a href="https://github.com/github/spec-kit" className="text-violet-400 hover:text-violet-300 underline">
             GitHub Spec Kit
@@ -52,7 +52,7 @@ export default function SpecPage() {
       </section>
 
       <footer className="border-t border-slate-800 py-8 text-center text-sm text-slate-500">
-        <p>Claw4All — OpenClaw for Everyone</p>
+        <p>HandsOff — OpenClaw for Everyone</p>
       </footer>
     </div>
   );

@@ -4,8 +4,7 @@ export default function Home() {
       {/* Nav */}
       <nav className="mx-auto flex max-w-6xl items-center justify-between px-4 py-4 sm:px-6 sm:py-6">
         <div className="flex items-center gap-2 text-lg sm:text-xl font-bold shrink-0">
-          <span className="text-2xl sm:text-3xl">🐾</span>
-          <span>Claw4All</span>
+          <span>HandsOff</span>
         </div>
         <div className="hidden sm:flex items-center gap-6 text-sm text-slate-300">
           <a href="#how-it-works" className="hover:text-white transition">
@@ -63,8 +62,6 @@ export default function Home() {
       <section className="mx-auto max-w-4xl px-6 py-8 text-center">
         <p className="text-sm text-slate-500 uppercase tracking-wider mb-4">Powered by</p>
         <div className="flex items-center justify-center gap-8 text-slate-400">
-          <span className="text-lg font-semibold">OpenClaw</span>
-          <span className="text-slate-700">•</span>
           <span className="text-lg font-semibold">Claude / GPT</span>
           <span className="text-slate-700">•</span>
           <span className="text-lg font-semibold">WhatsApp & Telegram</span>
@@ -77,7 +74,7 @@ export default function Home() {
           Not a chatbot. An assistant that <em>acts</em>.
         </h2>
         <p className="text-center text-slate-400 max-w-2xl mx-auto mb-16">
-          Most AI tools just answer questions. Your Claw4All assistant can use apps,
+          Most AI tools just answer questions. Your HandsOff assistant can use apps,
           browse the web, and take action on your behalf.
         </p>
         <div className="grid gap-8 sm:grid-cols-2 lg:grid-cols-3">
@@ -315,16 +312,13 @@ export default function Home() {
       <footer className="border-t border-slate-800 py-12">
         <div className="mx-auto max-w-6xl px-6 flex flex-col sm:flex-row items-center justify-between gap-4">
           <div className="flex items-center gap-2">
-            <span className="text-2xl">🐾</span>
-            <span className="font-bold">Claw4All</span>
+            <span className="font-bold">HandsOff</span>
           </div>
           <div className="flex gap-6 text-sm text-slate-400">
             <a href="/spec" className="hover:text-white transition">Spec</a>
-            <a href="https://github.com/jemustain/openclaw-saas" className="hover:text-white transition">GitHub</a>
-            <a href="https://discord.com/invite/clawd" className="hover:text-white transition">Community</a>
           </div>
           <p className="text-sm text-slate-500">
-            Built with ❤️ on OpenClaw
+            © {new Date().getFullYear()} HandsOff
           </p>
         </div>
       </footer>
