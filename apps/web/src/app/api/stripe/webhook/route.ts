@@ -66,7 +66,7 @@ export async function POST(req: NextRequest) {
 }
 
 // ---------------------------------------------------------------------------
-// Event handlers — replace TODO stubs with actual DB/notification logic
+// Event handlers — wire these to your DB when ready
 // ---------------------------------------------------------------------------
 
 async function handleCheckoutCompleted(session: Stripe.Checkout.Session) {
