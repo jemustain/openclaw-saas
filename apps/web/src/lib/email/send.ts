@@ -4,7 +4,7 @@ import { Resend } from 'resend';
 const resend = new Proxy({} as Resend, {
   get(_, prop) {
     const instance = new Resend(process.env.RESEND_API_KEY);
-    return (instance as Record<string | symbol, unknown>)[prop];
+    return (instance as unknown as Record<string | symbol, unknown>)[prop];
   },
 });
 
