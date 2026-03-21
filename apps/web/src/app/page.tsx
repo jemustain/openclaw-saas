@@ -2,12 +2,12 @@ export default function Home() {
   return (
     <div className="min-h-screen bg-gradient-to-b from-slate-950 via-slate-900 to-slate-950 text-white">
       {/* Nav */}
-      <nav className="mx-auto flex max-w-6xl items-center justify-between px-6 py-6">
-        <div className="flex items-center gap-2 text-xl font-bold">
-          <span className="text-3xl">🐾</span>
+      <nav className="mx-auto flex max-w-6xl items-center justify-between px-4 py-4 sm:px-6 sm:py-6">
+        <div className="flex items-center gap-2 text-lg sm:text-xl font-bold shrink-0">
+          <span className="text-2xl sm:text-3xl">🐾</span>
           <span>Claw4All</span>
         </div>
-        <div className="flex items-center gap-6 text-sm text-slate-300">
+        <div className="hidden sm:flex items-center gap-6 text-sm text-slate-300">
           <a href="#how-it-works" className="hover:text-white transition">
             How it Works
           </a>
@@ -17,13 +17,13 @@ export default function Home() {
           <a href="#pricing" className="hover:text-white transition">
             Pricing
           </a>
-          <a
-            href="#get-started"
-            className="rounded-full bg-violet-600 px-4 py-2 text-sm font-medium text-white hover:bg-violet-500 transition"
-          >
-            Get Started Free
-          </a>
         </div>
+        <a
+          href="#get-started"
+          className="rounded-full bg-violet-600 px-4 py-2 text-xs sm:text-sm font-medium text-white hover:bg-violet-500 transition shrink-0"
+        >
+          Get Started
+        </a>
       </nav>
 
       {/* Hero */}
