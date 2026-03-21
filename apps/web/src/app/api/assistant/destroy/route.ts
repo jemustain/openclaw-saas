@@ -4,7 +4,7 @@ import { destroyAssistant } from '@/lib/vm/lifecycle';
 
 export async function POST() {
   try {
-    const supabase = await createClient();
+    const supabase: any = await createClient();
     const { data: { user }, error: authError } = await supabase.auth.getUser();
 
     if (authError || !user) {
@@ -15,9 +15,9 @@ export async function POST() {
       .from('assistants')
       .select('id')
       .eq('user_id', user.id)
-      .in('status', ['provisioning', 'active', 'suspended'])
+      .neq('status', 'destroyed')
       .limit(1)
-      .single();
+      .single() as any;
 
     if (!existing) {
       return NextResponse.json({ error: 'No assistant to destroy' }, { status: 404 });

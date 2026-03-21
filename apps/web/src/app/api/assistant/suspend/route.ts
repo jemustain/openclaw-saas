@@ -4,7 +4,7 @@ import { suspendAssistant } from '@/lib/vm/lifecycle';
 
 export async function POST() {
   try {
-    const supabase = await createClient();
+    const supabase: any = await createClient();
     const { data: { user }, error: authError } = await supabase.auth.getUser();
 
     if (authError || !user) {
@@ -17,7 +17,7 @@ export async function POST() {
       .eq('user_id', user.id)
       .eq('status', 'active')
       .limit(1)
-      .single();
+      .single() as any;
 
     if (!existing) {
       return NextResponse.json({ error: 'No active assistant to suspend' }, { status: 404 });

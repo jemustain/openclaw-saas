@@ -28,12 +28,13 @@ function assertTransition(current: AssistantStatus, next: AssistantStatus) {
 async function updateAssistantStatus(
   assistantId: string,
   status: AssistantStatus,
-  extra: Record<string, unknown> = {},
+  extra: Partial<Assistant> = {},
 ): Promise<Assistant> {
-  const supabase = await createClient();
+  const supabase: any = await createClient();
+  const updatePayload: Partial<Assistant> = { status, ...extra, updated_at: new Date().toISOString() };
   const { data, error } = await supabase
     .from('assistants')
-    .update({ status, ...extra, updated_at: new Date().toISOString() })
+    .update(updatePayload)
     .eq('id', assistantId)
     .select()
     .single();
@@ -46,7 +47,7 @@ async function updateAssistantStatus(
  * Launch a new assistant VM for the given user.
  */
 export async function launchAssistant(userId: string): Promise<Assistant> {
-  const supabase = await createClient();
+  const supabase: any = await createClient();
 
   const assistantId = randomUUID();
   const sidecarToken = randomUUID();
@@ -96,7 +97,7 @@ export async function launchAssistant(userId: string): Promise<Assistant> {
  * Suspend (power off) an assistant's VM.
  */
 export async function suspendAssistant(assistantId: string): Promise<Assistant> {
-  const supabase = await createClient();
+  const supabase: any = await createClient();
   const { data, error } = await supabase
     .from('assistants')
     .select()
@@ -117,7 +118,7 @@ export async function suspendAssistant(assistantId: string): Promise<Assistant> 
  * Resume (power on) a suspended assistant's VM.
  */
 export async function resumeAssistant(assistantId: string): Promise<Assistant> {
-  const supabase = await createClient();
+  const supabase: any = await createClient();
   const { data, error } = await supabase
     .from('assistants')
     .select()
@@ -138,7 +139,7 @@ export async function resumeAssistant(assistantId: string): Promise<Assistant> {
  * Destroy an assistant's VM permanently.
  */
 export async function destroyAssistant(assistantId: string): Promise<Assistant> {
-  const supabase = await createClient();
+  const supabase: any = await createClient();
   const { data, error } = await supabase
     .from('assistants')
     .select()

@@ -3,7 +3,7 @@ import { createClient } from '@/lib/supabase/server';
 
 export async function GET() {
   try {
-    const supabase = await createClient();
+    const supabase: any = await createClient();
     const { data: { user }, error: authError } = await supabase.auth.getUser();
 
     if (authError || !user) {
@@ -17,7 +17,7 @@ export async function GET() {
       .neq('status', 'destroyed')
       .order('created_at', { ascending: false })
       .limit(1)
-      .single();
+      .single() as any;
 
     if (error || !assistant) {
       return NextResponse.json({ assistant: null });

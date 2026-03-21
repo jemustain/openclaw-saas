@@ -4,21 +4,20 @@ import { launchAssistant } from '@/lib/vm/lifecycle';
 
 export async function POST() {
   try {
-    const supabase = await createClient();
+    const supabase: any = await createClient();
     const { data: { user }, error: authError } = await supabase.auth.getUser();
 
     if (authError || !user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    // Check for existing active assistant
     const { data: existing } = await supabase
       .from('assistants')
-      .select()
+      .select('id')
       .eq('user_id', user.id)
-      .in('status', ['provisioning', 'active', 'suspended'])
+      .neq('status', 'destroyed')
       .limit(1)
-      .single();
+      .single() as any;
 
     if (existing) {
       return NextResponse.json(
