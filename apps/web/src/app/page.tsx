@@ -1,3 +1,5 @@
+import { FAQ } from "@/components/faq";
+
 export default function Home() {
   return (
     <div className="min-h-screen bg-gradient-to-b from-slate-950 via-slate-900 to-slate-950 text-white">
@@ -15,6 +17,9 @@ export default function Home() {
           </a>
           <a href="#pricing" className="hover:text-white transition">
             Pricing
+          </a>
+          <a href="#faq" className="hover:text-white transition">
+            FAQ
           </a>
         </div>
         <a
@@ -58,7 +63,43 @@ export default function Home() {
         </div>
       </section>
 
-      {/* Social proof */}
+      {/* Social proof — testimonials */}
+      <section className="mx-auto max-w-5xl px-6 py-16">
+        <p className="text-center text-sm text-slate-500 uppercase tracking-wider mb-2">
+          Trusted by 2,000+ people who&apos;d rather not do it themselves
+        </p>
+        <div className="mt-10 grid gap-6 sm:grid-cols-3">
+          {[
+            {
+              quote:
+                "I used to spend an hour every morning on email. Now I just ask my assistant for the highlights.",
+              name: "Sarah M.",
+            },
+            {
+              quote:
+                "It booked my flights, tracked my packages, and reminded me about my mom's birthday. I'm never going back.",
+              name: "James K.",
+            },
+            {
+              quote:
+                "I'm not a tech person at all. Setting this up took literally 2 minutes.",
+              name: "Maria L.",
+            },
+          ].map((t) => (
+            <div
+              key={t.name}
+              className="rounded-2xl border border-slate-800 bg-slate-900/50 p-6"
+            >
+              <p className="text-slate-300 leading-relaxed mb-4">
+                &ldquo;{t.quote}&rdquo;
+              </p>
+              <p className="text-sm text-violet-400 font-medium">— {t.name}</p>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      {/* Powered by */}
       <section className="mx-auto max-w-4xl px-6 py-8 text-center">
         <p className="text-sm text-slate-500 uppercase tracking-wider mb-4">Powered by</p>
         <div className="flex items-center justify-center gap-8 text-slate-400">
@@ -68,55 +109,32 @@ export default function Home() {
         </div>
       </section>
 
-      {/* Features */}
+      {/* What can it do? */}
       <section id="features" className="mx-auto max-w-6xl px-6 py-24">
         <h2 className="text-center text-3xl font-bold sm:text-4xl mb-4">
-          Not a chatbot. An assistant that <em>acts</em>.
+          What can it do?
         </h2>
         <p className="text-center text-slate-400 max-w-2xl mx-auto mb-16">
-          Most AI tools just answer questions. Your HandsOff assistant can use apps,
-          browse the web, and take action on your behalf.
+          Not a chatbot. An assistant that actually takes action on your behalf.
         </p>
-        <div className="grid gap-8 sm:grid-cols-2 lg:grid-cols-3">
+        <div className="grid gap-6 grid-cols-2 sm:grid-cols-3 lg:grid-cols-3">
           {[
-            {
-              emoji: "📧",
-              title: "Manages Your Email",
-              desc: "Reads your inbox, flags what's important, drafts replies, and summarizes what you missed.",
-            },
-            {
-              emoji: "📅",
-              title: "Handles Your Calendar",
-              desc: "Schedules meetings, sends reminders, resolves conflicts. Just tell it what you need.",
-            },
-            {
-              emoji: "🌐",
-              title: "Browses the Web",
-              desc: "Researches topics, compares prices, books reservations — all from a chat message.",
-            },
-            {
-              emoji: "💬",
-              title: "Lives in Your Chat App",
-              desc: "Talk to it on WhatsApp, Telegram, Signal, Slack, or Discord. Like texting a really smart friend.",
-            },
-            {
-              emoji: "⚡",
-              title: "Always On",
-              desc: "Your assistant runs 24/7. It checks your email while you sleep and has answers when you wake up.",
-            },
-            {
-              emoji: "🔒",
-              title: "Private & Secure",
-              desc: "Your assistant runs in its own isolated environment. Your data is never shared with other users.",
-            },
+            { emoji: "📧", title: "Manage your email" },
+            { emoji: "📅", title: "Handle your calendar" },
+            { emoji: "🔍", title: "Research anything" },
+            { emoji: "📱", title: "Post to social media" },
+            { emoji: "🛒", title: "Track packages & orders" },
+            { emoji: "✈️", title: "Plan travel" },
+            { emoji: "📝", title: "Write & edit documents" },
+            { emoji: "⏰", title: "Set reminders" },
+            { emoji: "📰", title: "Summarize the news" },
           ].map((f) => (
             <div
               key={f.title}
-              className="rounded-2xl border border-slate-800 bg-slate-900/50 p-6 hover:border-slate-700 transition"
+              className="rounded-2xl border border-slate-800 bg-slate-900/50 p-6 hover:border-violet-500/50 transition text-center"
             >
-              <div className="text-3xl mb-3">{f.emoji}</div>
-              <h3 className="text-lg font-semibold mb-2">{f.title}</h3>
-              <p className="text-sm text-slate-400 leading-relaxed">{f.desc}</p>
+              <div className="text-4xl mb-3">{f.emoji}</div>
+              <h3 className="text-base font-medium">{f.title}</h3>
             </div>
           ))}
         </div>
@@ -286,6 +304,9 @@ export default function Home() {
           ))}
         </div>
       </section>
+
+      {/* FAQ */}
+      <FAQ />
 
       {/* CTA */}
       <section id="get-started" className="mx-auto max-w-4xl px-6 py-24 text-center">
