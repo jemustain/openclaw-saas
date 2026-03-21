@@ -2,9 +2,9 @@ import Link from "next/link";
 import { PLANS, type PlanKey } from "@/lib/stripe/config";
 
 const planLimits: Record<PlanKey, string[]> = {
-  free: ["100 messages / day", "Daytime hours only", "Shared infrastructure"],
-  starter: ["Unlimited messages", "24/7 access", "Dedicated assistant"],
-  pro: ["Unlimited messages", "24/7 access", "Priority support", "Custom integrations"],
+  free: ["100 messages / day", "1 cloud account", "Basic skills", "Community support"],
+  plus: ["Unlimited messages", "2 cloud accounts", "All skills", "Priority support"],
+  pro: ["Unlimited messages", "5 cloud accounts", "Custom skills + API access", "White-glove setup"],
 };
 
 export function PlanCard({ plan }: { plan: PlanKey }) {
@@ -31,10 +31,14 @@ export function PlanCard({ plan }: { plan: PlanKey }) {
         ))}
       </ul>
 
+      <p className="text-xs text-slate-500 mb-4">
+        Cloud hosting billed separately by your provider (~$6-12/mo).
+      </p>
+
       {plan === "free" && (
         <div className="pt-2 border-t border-slate-800">
           <p className="text-sm text-slate-400 mb-3">
-            Upgrade to get 24/7 access and unlimited messages
+            Upgrade for unlimited messages and more cloud accounts
           </p>
           <Link
             href="/api/stripe/checkout"
