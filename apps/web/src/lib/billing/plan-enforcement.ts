@@ -3,16 +3,19 @@ import type { PlanKey } from "@/lib/stripe/config";
 
 /**
  * Plan limits by tier.
+ *
+ * Users pay their own cloud provider for the VM — no reason to restrict hours.
+ * Free tier is limited by messages per day and cloud accounts.
  */
-export const FREE_LIMITS = { messagesPerDay: 100, hoursPerDay: 8, platforms: 1 } as const;
-export const STARTER_LIMITS = { messagesPerDay: Infinity, hoursPerDay: 24, platforms: 3 } as const;
-export const PRO_LIMITS = { messagesPerDay: Infinity, hoursPerDay: 24, platforms: Infinity } as const;
+export const FREE_LIMITS = { messagesPerDay: 100, hoursPerDay: 24, platforms: 1, cloudAccounts: 1 } as const;
+export const PLUS_LIMITS = { messagesPerDay: Infinity, hoursPerDay: 24, platforms: 3, cloudAccounts: 2 } as const;
+export const PRO_LIMITS = { messagesPerDay: Infinity, hoursPerDay: 24, platforms: Infinity, cloudAccounts: 5 } as const;
 
-export type PlanLimits = { messagesPerDay: number; hoursPerDay: number; platforms: number };
+export type PlanLimits = { messagesPerDay: number; hoursPerDay: number; platforms: number; cloudAccounts: number };
 
 const LIMITS_BY_PLAN: Record<string, PlanLimits> = {
   free: FREE_LIMITS,
-  starter: STARTER_LIMITS,
+  plus: PLUS_LIMITS,
   pro: PRO_LIMITS,
 };
 
@@ -95,6 +98,37 @@ export async function checkPlatformLimit(
     allowed: used < limits.platforms,
     used,
     limit: limits.platforms,
+  };
+}
+
+/**
+ * Check whether a user can connect more cloud accounts.
+ */
+export async function checkCloudAccountLimit(
+  userId: string,
+): Promise<{ allowed: boolean; used: number; limit: number }> {
+  const supabase: any = await createClient();
+
+  const { data: sub } = await supabase
+    .from("subscriptions")
+    .select("plan")
+    .eq("user_id", userId)
+    .single();
+
+  const plan = sub?.plan ?? "free";
+  const limits = getLimitsForPlan(plan);
+
+  const { count } = await supabase
+    .from("cloud_accounts")
+    .select("*", { count: "exact", head: true })
+    .eq("user_id", userId);
+
+  const used = count ?? 0;
+
+  return {
+    allowed: used < limits.cloudAccounts,
+    used,
+    limit: limits.cloudAccounts,
   };
 }
 

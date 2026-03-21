@@ -33,19 +33,18 @@ export default function Home() {
       {/* Hero */}
       <section className="mx-auto max-w-4xl px-6 pt-24 pb-16 text-center">
         <div className="inline-block rounded-full bg-violet-500/10 border border-violet-500/20 px-4 py-1.5 text-sm text-violet-300 mb-8">
-          No setup. No installs. Just chat.
+          Runs on your own cloud. You stay in control.
         </div>
         <h1 className="text-5xl font-bold leading-tight sm:text-6xl lg:text-7xl">
-          Your own AI assistant
+          Your personal AI assistant
           <br />
           <span className="bg-gradient-to-r from-violet-400 to-fuchsia-400 bg-clip-text text-transparent">
-            in 60 seconds
+            Runs on your cloud
           </span>
         </h1>
         <p className="mx-auto mt-6 max-w-2xl text-lg text-slate-400 leading-relaxed">
-          An AI assistant that actually <em>does things</em> — reads your email,
-          manages your calendar, browses the web, and runs 24/7.
-          Connect WhatsApp or Telegram and start talking.
+          Your personal AI assistant. Runs on your cloud. Does the work so you don&apos;t have to.
+          Connect your own DigitalOcean account, link WhatsApp or Telegram, and start talking.
         </p>
         <div className="mt-10 flex flex-col sm:flex-row items-center justify-center gap-4">
           <a
@@ -224,48 +223,46 @@ export default function Home() {
             {
               name: "Free",
               price: "$0",
-              period: "forever",
-              desc: "Try it out, no commitment",
+              period: "",
+              desc: "Free forever — no credit card required",
               features: [
-                "Assistant available 8 hours/day",
+                "1 assistant",
                 "100 messages per day",
-                "Web search & general Q&A",
-                "One chat platform",
+                "Basic skills",
+                "1 cloud account",
                 "Community support",
               ],
-              cta: "Get Started Free",
+              cta: "Get Started",
               highlight: false,
             },
             {
-              name: "Starter",
-              price: "$12",
+              name: "Plus",
+              price: "$9",
               period: "/month",
-              desc: "Your full-time assistant",
+              desc: "Unlimited power for your assistant",
               features: [
-                "24/7 availability",
                 "Unlimited messages",
-                "Email + calendar integration",
-                "Web browsing & research",
+                "All skills included",
+                "2 cloud accounts",
                 "Multiple chat platforms",
-                "Email support",
+                "Priority support",
               ],
-              cta: "Start Free Trial",
+              cta: "Start Free, Upgrade Later",
               highlight: true,
             },
             {
               name: "Pro",
-              price: "$25",
+              price: "$19",
               period: "/month",
-              desc: "Maximum capability",
+              desc: "For power users and teams",
               features: [
-                "Everything in Starter",
-                "Smart home control",
-                "Social media management",
-                "Custom workflows",
-                "Priority support (4h)",
+                "Everything in Plus",
+                "Custom skills",
                 "API access",
+                "5 cloud accounts",
+                "White-glove setup",
               ],
-              cta: "Start Free Trial",
+              cta: "Go Pro",
               highlight: false,
             },
           ].map((p) => (
@@ -303,6 +300,9 @@ export default function Home() {
             </div>
           ))}
         </div>
+        <p className="text-center text-sm text-slate-500 mt-8">
+          Plus your cloud hosting (~$6/mo on DigitalOcean). You pay them directly — we never touch your server bill.
+        </p>
       </section>
 
       {/* FAQ */}
