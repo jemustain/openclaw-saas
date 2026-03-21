@@ -76,7 +76,7 @@ async function handleCheckoutCompleted(session: Stripe.Checkout.Session) {
   const userId = session.metadata?.userId;
   const subscriptionId = session.subscription as string;
   const customerId = session.customer as string;
-  const plan = session.metadata?.plan ?? "starter";
+  const plan = session.metadata?.plan ?? "pro";
 
   if (!userId) {
     console.error("Checkout session missing userId in metadata");

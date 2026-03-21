@@ -1,21 +1,15 @@
 import { createClient } from "@/lib/supabase/server";
-import type { PlanKey } from "@/lib/stripe/config";
 
 /**
- * Plan limits by tier.
- *
- * Users pay their own cloud provider for the VM — no reason to restrict hours.
- * Free tier is limited by messages per day and cloud accounts.
+ * Plan limits — two tiers: Free and Pro.
  */
-export const FREE_LIMITS = { messagesPerDay: 100, hoursPerDay: 24, platforms: 1, cloudAccounts: 1 } as const;
-export const PLUS_LIMITS = { messagesPerDay: Infinity, hoursPerDay: 24, platforms: 3, cloudAccounts: 2 } as const;
-export const PRO_LIMITS = { messagesPerDay: Infinity, hoursPerDay: 24, platforms: Infinity, cloudAccounts: 5 } as const;
+export const FREE_LIMITS = { messagesPerDay: 100, hoursPerDay: 8, platforms: 1 } as const;
+export const PRO_LIMITS = { messagesPerDay: Infinity, hoursPerDay: 24, platforms: Infinity } as const;
 
-export type PlanLimits = { messagesPerDay: number; hoursPerDay: number; platforms: number; cloudAccounts: number };
+export type PlanLimits = { messagesPerDay: number; hoursPerDay: number; platforms: number };
 
 const LIMITS_BY_PLAN: Record<string, PlanLimits> = {
   free: FREE_LIMITS,
-  plus: PLUS_LIMITS,
   pro: PRO_LIMITS,
 };
 
@@ -30,28 +24,24 @@ export async function checkMessageLimit(
   assistantId: string,
 ): Promise<{ allowed: boolean; used: number; limit: number; plan: string }> {
   const supabase: any = await createClient();
+  const today = new Date().toISOString().slice(0, 10);
 
-  // Get assistant's user and plan
   const { data: assistant } = await supabase
     .from("assistants")
     .select("user_id")
     .eq("id", assistantId)
     .single();
 
-  if (!assistant) {
-    return { allowed: false, used: 0, limit: 0, plan: "free" };
-  }
+  if (!assistant) return { allowed: false, used: 0, limit: 0, plan: "free" };
 
-  const { data: sub } = await supabase
-    .from("subscriptions")
+  const { data: user } = await supabase
+    .from("users")
     .select("plan")
-    .eq("user_id", assistant.user_id)
+    .eq("id", assistant.user_id)
     .single();
 
-  const plan = sub?.plan ?? "free";
+  const plan = user?.plan ?? "free";
   const limits = getLimitsForPlan(plan);
-
-  const today = new Date().toISOString().slice(0, 10);
 
   const { data: usage } = await supabase
     .from("usage_logs")
@@ -61,92 +51,49 @@ export async function checkMessageLimit(
     .single();
 
   const used = usage?.messages_sent ?? 0;
-
   return {
     allowed: used < limits.messagesPerDay,
     used,
-    limit: limits.messagesPerDay,
+    limit: limits.messagesPerDay === Infinity ? -1 : limits.messagesPerDay,
     plan,
   };
 }
 
 /**
- * Check whether a user can connect more platforms.
+ * Check connected platforms against plan limit.
  */
 export async function checkPlatformLimit(
   userId: string,
-): Promise<{ allowed: boolean; used: number; limit: number }> {
+): Promise<{ allowed: boolean; connected: number; limit: number }> {
   const supabase: any = await createClient();
 
-  const { data: sub } = await supabase
-    .from("subscriptions")
+  const { data: user } = await supabase
+    .from("users")
     .select("plan")
-    .eq("user_id", userId)
+    .eq("id", userId)
     .single();
 
-  const plan = sub?.plan ?? "free";
+  const plan = user?.plan ?? "free";
   const limits = getLimitsForPlan(plan);
 
-  const { count } = await supabase
-    .from("connected_platforms")
-    .select("*", { count: "exact", head: true })
-    .eq("user_id", userId);
-
-  const used = count ?? 0;
-
+  // Placeholder: count connected platforms from provider_tokens or config
+  const connected = 0;
   return {
-    allowed: used < limits.platforms,
-    used,
-    limit: limits.platforms,
+    allowed: connected < limits.platforms,
+    connected,
+    limit: limits.platforms === Infinity ? -1 : limits.platforms,
   };
 }
 
 /**
- * Check whether a user can connect more cloud accounts.
- */
-export async function checkCloudAccountLimit(
-  userId: string,
-): Promise<{ allowed: boolean; used: number; limit: number }> {
-  const supabase: any = await createClient();
-
-  const { data: sub } = await supabase
-    .from("subscriptions")
-    .select("plan")
-    .eq("user_id", userId)
-    .single();
-
-  const plan = sub?.plan ?? "free";
-  const limits = getLimitsForPlan(plan);
-
-  const { count } = await supabase
-    .from("cloud_accounts")
-    .select("*", { count: "exact", head: true })
-    .eq("user_id", userId);
-
-  const used = count ?? 0;
-
-  return {
-    allowed: used < limits.cloudAccounts,
-    used,
-    limit: limits.cloudAccounts,
-  };
-}
-
-/**
- * Middleware-style function for the sidecar to call before processing a message.
- * Returns { allowed, reason? } — sidecar should drop the message if not allowed.
+ * Full enforcement check for the sidecar to call.
  */
 export async function enforceFreeTierLimits(
   assistantId: string,
 ): Promise<{ allowed: boolean; reason?: string }> {
-  const result = await checkMessageLimit(assistantId);
-
-  if (!result.allowed) {
-    return {
-      allowed: false,
-      reason: `Daily message limit reached (${result.used}/${result.limit}). Upgrade to send more.`,
-    };
+  const msgCheck = await checkMessageLimit(assistantId);
+  if (!msgCheck.allowed) {
+    return { allowed: false, reason: "Daily message limit reached. Upgrade to Pro for unlimited messages." };
   }
-
   return { allowed: true };
 }
