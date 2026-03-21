@@ -3,6 +3,9 @@ import { authMiddleware } from './middleware/auth';
 import healthRouter from './routes/health';
 import openclawRouter from './routes/openclaw';
 import heartbeatRouter from './routes/heartbeat';
+import skillsRouter from './routes/skills';
+import messagingRouter from './routes/messaging';
+import usageRouter from './routes/usage';
 
 const app = express();
 const PORT = parseInt(process.env.PORT || '8787', 10);
@@ -16,6 +19,9 @@ app.use(authMiddleware);
 app.use(healthRouter);
 app.use(openclawRouter);
 app.use(heartbeatRouter);
+app.use(skillsRouter);
+app.use(messagingRouter);
+app.use(usageRouter);
 
 app.listen(PORT, '0.0.0.0', () => {
   console.log(`[sidecar] listening on port ${PORT}`);
