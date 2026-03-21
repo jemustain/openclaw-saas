@@ -85,6 +85,12 @@ export type Database = {
         Update: Partial<UsageLog>;
         Relationships: [];
       };
+      waitlist: {
+        Row: { id: string; email: string; created_at: string };
+        Insert: { email: string; id?: string; created_at?: string };
+        Update: Partial<{ id: string; email: string; created_at: string }>;
+        Relationships: [];
+      };
     };
     Views: Record<string, never>;
     Functions: Record<string, never>;

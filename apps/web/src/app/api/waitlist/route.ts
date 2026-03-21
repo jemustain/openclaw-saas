@@ -15,7 +15,8 @@ export async function POST(request: Request) {
     }
 
     const supabase = await createClient();
-    const { error } = await supabase.from('waitlist').insert({ email: trimmed });
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { error } = await (supabase as any).from('waitlist').insert({ email: trimmed });
 
     if (error) {
       if (error.code === '23505') {
