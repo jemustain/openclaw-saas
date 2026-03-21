@@ -79,18 +79,18 @@ if [[ -n "${STRIPE_SECRET_KEY:-}" ]]; then
 fi
 echo
 
-# --- Hetzner ---
-echo -e "${BOLD}Hetzner${NC}"
-check_var HETZNER_API_TOKEN
+# --- DigitalOcean ---
+echo -e "${BOLD}DigitalOcean${NC}"
+check_var DO_API_TOKEN
 
-if [[ -n "${HETZNER_API_TOKEN:-}" ]]; then
+if [[ -n "${DO_API_TOKEN:-}" ]]; then
   status=$(curl -s -o /dev/null -w "%{http_code}" \
-    -H "Authorization: Bearer $HETZNER_API_TOKEN" \
-    "https://api.hetzner.cloud/v1/servers" 2>/dev/null || echo "000")
+    -H "Authorization: Bearer $DO_API_TOKEN" \
+    "https://api.digitalocean.com/v2/account" 2>/dev/null || echo "000")
   if [[ "$status" == "200" ]]; then
-    ok "Hetzner API connection OK"
+    ok "DigitalOcean API connection OK"
   else
-    fail "Hetzner API connection failed (HTTP $status)"
+    fail "DigitalOcean API connection failed (HTTP $status)"
   fi
 fi
 echo

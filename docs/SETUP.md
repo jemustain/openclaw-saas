@@ -2,7 +2,7 @@
 
 Complete step-by-step instructions for setting up all external services needed to run HandsOff.
 
-> **Prerequisites:** A GitHub account, a credit card for Stripe/Hetzner, and ~30 minutes.
+> **Prerequisites:** A GitHub account, a credit card for Stripe/DigitalOcean, and ~30 minutes.
 
 ---
 
@@ -98,23 +98,26 @@ Stripe handles subscriptions and billing.
 
 ---
 
-## 3. Hetzner (VM Hosting)
+## 3. DigitalOcean (VM Hosting)
 
-Hetzner Cloud provides the virtual machines where user OpenClaw instances run.
+DigitalOcean provides the virtual machines (Droplets) where user OpenClaw instances run.
 
-1. Go to [console.hetzner.cloud](https://console.hetzner.cloud) → create an account
+1. Go to [cloud.digitalocean.com](https://cloud.digitalocean.com) → create an account
 2. Create a new project called **HandsOff** (or similar)
-3. Inside the project, go to **Security → API Tokens**
-4. Click **Generate API Token**
-   - Description: `handsoff-api`
-   - Permissions: **Read & Write**
-5. Copy the token immediately (it's only shown once) → `HETZNER_API_TOKEN`
+3. Go to **API** in the left sidebar
+4. Click **Generate New Token**
+   - Name: `handsoff-api`
+   - Expiration: No expiry (or set as needed)
+   - Scopes: **Read & Write**
+5. Copy the token immediately (it's only shown once) → `DO_API_TOKEN`
 
 ### Env vars from this step
 
 | Variable | Value |
 |----------|-------|
-| `HETZNER_API_TOKEN` | Your Hetzner API token |
+| `DO_API_TOKEN` | Your DigitalOcean API token |
+
+> **Note:** Hetzner support is planned for a future release.
 
 ---
 
@@ -170,7 +173,7 @@ Resend handles transactional emails (welcome emails, notifications, etc.).
 
 - [ ] Supabase project created, migration run, auth configured
 - [ ] Stripe products created, API keys copied, webhook set up
-- [ ] Hetzner project created, API token generated
+- [ ] DigitalOcean project created, API token generated
 - [ ] Resend account created, API key generated
 - [ ] All env vars added to Vercel
 - [ ] Domain configured and DNS propagated

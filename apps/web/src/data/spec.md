@@ -16,7 +16,7 @@ Make OpenClaw accessible to everyone by automating the entire setup process. Use
 
 **Acceptance Criteria:**
 - Wizard walks through: pick provider → create account (via referral link) → generate API key → paste it in → we do the rest
-- Supported providers: Hetzner (primary), DigitalOcean, Vultr
+- Supported providers: DigitalOcean (primary). Hetzner and Vultr planned for future.
 - User sees real-time progress ("Creating server… Installing OpenClaw… Connecting messaging…")
 - Total time from start to working agent: < 15 minutes
 - User receives credentials and a "your agent is ready" confirmation
@@ -81,7 +81,7 @@ Make OpenClaw accessible to everyone by automating the entire setup process. Use
 - Server health dashboard
 
 ### Referral Revenue (passive)
-- Hetzner: partner/affiliate commission on signups
+- DigitalOcean: $200 credit referral program
 - DigitalOcean: $200 credit referral program
 - Vultr: 10% recurring commission
 - Estimated: $0.50-1.50/mo per active user (recurring)
