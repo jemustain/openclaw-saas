@@ -7,7 +7,6 @@ import { planKeyFromPriceId } from "@/lib/stripe/config";
  * POST /api/stripe/webhook
  *
  * Handles Stripe webhook events for subscription lifecycle management.
- * Configure your Stripe dashboard to send events to this endpoint.
  */
 export async function POST(req: NextRequest) {
   const body = await req.text();
