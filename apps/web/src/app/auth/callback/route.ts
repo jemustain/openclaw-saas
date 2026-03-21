@@ -6,6 +6,13 @@ export async function GET(request: Request) {
   const code = searchParams.get('code');
   const redirect = searchParams.get('redirect') ?? '/dashboard';
 
+  // Handle OAuth error responses (e.g. user denied consent)
+  const oauthError = searchParams.get('error');
+  if (oauthError) {
+    const errorParam = oauthError === 'access_denied' ? 'access_denied' : 'auth_callback_failed';
+    return NextResponse.redirect(`${origin}/auth/signin?error=${errorParam}`);
+  }
+
   if (code) {
     const supabase = await createClient();
     const { error } = await supabase.auth.exchangeCodeForSession(code);
