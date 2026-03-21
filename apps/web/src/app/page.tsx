@@ -219,7 +219,7 @@ export default function Home() {
         <p className="text-center text-slate-400 mb-16">
           Start free. Upgrade when your assistant becomes indispensable.
         </p>
-        <div className="grid gap-8 sm:grid-cols-3">
+        <div className="grid gap-8 sm:grid-cols-2 max-w-3xl mx-auto">
           {[
             {
               name: "Free",
@@ -229,44 +229,26 @@ export default function Home() {
               features: [
                 "Assistant available 8 hours/day",
                 "100 messages per day",
-                "Web search & general Q&A",
+                "Basic skills (search, Q&A)",
                 "One chat platform",
-                "Community support",
               ],
               cta: "Get Started Free",
               highlight: false,
             },
             {
-              name: "Starter",
+              name: "Pro",
               price: "$12",
               period: "/month",
               desc: "Your full-time assistant",
               features: [
-                "24/7 availability",
+                "24/7 — assistant never sleeps",
                 "Unlimited messages",
-                "Email + calendar integration",
-                "Web browsing & research",
-                "Multiple chat platforms",
-                "Email support",
+                "All skills unlocked",
+                "All chat platforms",
+                "Priority support",
               ],
-              cta: "Start Free Trial",
+              cta: "Go Pro",
               highlight: true,
-            },
-            {
-              name: "Pro",
-              price: "$25",
-              period: "/month",
-              desc: "Maximum capability",
-              features: [
-                "Everything in Starter",
-                "Smart home control",
-                "Social media management",
-                "Custom workflows",
-                "Priority support (4h)",
-                "API access",
-              ],
-              cta: "Start Free Trial",
-              highlight: false,
             },
           ].map((p) => (
             <div

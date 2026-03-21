@@ -1,0 +1,51 @@
+import { NextRequest, NextResponse } from 'next/server';
+import { createClient } from '@/lib/supabase/server';
+import { saveProviderToken } from '@/lib/providers/token-store';
+
+export async function GET(request: NextRequest) {
+  const code = request.nextUrl.searchParams.get('code');
+  if (!code) {
+    return NextResponse.redirect(new URL('/onboarding/connect?error=missing_code', request.url));
+  }
+
+  // Exchange code for tokens
+  const tokenRes = await fetch('https://cloud.digitalocean.com/v1/oauth/token', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    body: new URLSearchParams({
+      grant_type: 'authorization_code',
+      code,
+      client_id: process.env.DO_CLIENT_ID!,
+      client_secret: process.env.DO_CLIENT_SECRET!,
+      redirect_uri: process.env.DO_REDIRECT_URI!,
+    }),
+  });
+
+  if (!tokenRes.ok) {
+    return NextResponse.redirect(new URL('/onboarding/connect?error=token_exchange', request.url));
+  }
+
+  const tokenData = await tokenRes.json();
+
+  // Get current user
+  const supabase: any = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) {
+    return NextResponse.redirect(new URL('/auth/signin', request.url));
+  }
+
+  // Store encrypted tokens
+  const expiresAt = tokenData.expires_in
+    ? new Date(Date.now() + tokenData.expires_in * 1000)
+    : null;
+
+  await saveProviderToken(
+    user.id,
+    'digitalocean',
+    tokenData.access_token,
+    tokenData.refresh_token,
+    expiresAt,
+  );
+
+  return NextResponse.redirect(new URL('/onboarding/connect?connected=digitalocean', request.url));
+}
