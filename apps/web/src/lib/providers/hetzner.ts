@@ -16,7 +16,7 @@ function getToken(): string {
 
 async function hetznerFetch<T = unknown>(
   path: string,
-  init?: RequestInit
+  init?: RequestInit,
 ): Promise<T> {
   const res = await fetch(`${API_BASE}${path}`, {
     ...init,
@@ -82,7 +82,7 @@ export class HetznerProvider implements CloudProvider {
     if (labelSelector) params.set("label_selector", labelSelector);
     const qs = params.toString();
     const data = await hetznerFetch<{ servers: unknown[] }>(
-      `/servers${qs ? `?${qs}` : ""}`
+      `/servers${qs ? `?${qs}` : ""}`,
     );
     return data.servers.map(toServerInfo);
   }
