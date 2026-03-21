@@ -1,14 +1,29 @@
 import type { Metadata } from "next";
 import "./globals.css";
 
+const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "https://handsoff.app";
+
 export const metadata: Metadata = {
-  title: "OpenClaw — Your Personal AI Assistant, Set Up in Minutes",
+  title: "HandsOff — Your Personal AI Assistant That Actually Does Things",
   description:
-    "Get a private AI assistant that manages your email, calendar, and messages. No coding required. Set up in under 5 minutes.",
+    "Not a chatbot. A doer. HandsOff gives you a personal AI assistant that handles your email, calendar, research, and more — all through the messaging app you already use.",
+  metadataBase: new URL(siteUrl),
+  icons: { icon: "/favicon.ico" },
+  themeColor: "#020617", // slate-950
   openGraph: {
-    title: "OpenClaw — Your Personal AI Assistant",
-    description: "Set up in minutes. No coding required.",
+    title: "HandsOff — Your Personal AI Assistant That Actually Does Things",
+    description:
+      "Not a chatbot. A doer. HandsOff gives you a personal AI assistant that handles your email, calendar, research, and more — all through the messaging app you already use.",
     type: "website",
+    url: siteUrl,
+    images: [{ url: "/opengraph-image", width: 1200, height: 630, alt: "HandsOff" }],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "HandsOff — Your Personal AI Assistant That Actually Does Things",
+    description:
+      "Not a chatbot. A doer. HandsOff gives you a personal AI assistant that handles your email, calendar, research, and more.",
+    images: ["/opengraph-image"],
   },
 };
 
