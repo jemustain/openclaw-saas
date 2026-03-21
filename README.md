@@ -1,72 +1,67 @@
-# OpenClaw as a Service (OCaaS)
+# HandsOff (OCaaS)
 
-**Your personal AI assistant, set up in minutes. No coding required.**
-
-OCaaS is a managed hosting platform for [OpenClaw](https://github.com/openclaw/openclaw) — the open-source personal AI assistant. We handle the servers, configuration, and infrastructure so you can focus on what matters: having an AI assistant that actually helps.
-
-## How It Works
-
-1. **Sign up** — Create an account in seconds
-2. **Connect** — Link your Telegram, Gmail, Calendar via guided wizards
-3. **Chat** — Your AI assistant is live. Message it anytime.
-
-## What You Get
-
-- 🤖 **Personal AI assistant** on Telegram (more platforms coming)
-- 📧 **Email management** — inbox summaries, drafts, replies
-- 📅 **Calendar integration** — scheduling, reminders, daily briefs
-- 🔒 **Your own server** — isolated, private, backed up daily
-- 🎛️ **Dashboard** — manage everything from a simple web portal
-- 🆘 **Managed support** — we can take over if you need help
+**Your personal AI assistant, set up in minutes.** HandsOff is a managed hosting platform for [OpenClaw](https://github.com/openclaw/openclaw) — it handles servers, configuration, and infrastructure so you can focus on having an AI assistant that actually helps. Sign up, connect your services, and start chatting.
 
 ## Tech Stack
 
 | Layer | Technology |
 |-------|-----------|
 | Portal | Next.js 14, Tailwind CSS, Vercel |
-| Auth | Clerk |
 | Database | Supabase (PostgreSQL) |
-| VM Hosting | Hetzner Cloud |
+| Auth | Supabase Auth |
 | Billing | Stripe |
-| Instance Config | Sidecar API (no SSH) |
+| VM Hosting | Hetzner Cloud |
+| Email | Resend |
+
+## Quick Start
+
+```bash
+# Clone the repo
+git clone https://github.com/jemustain/openclaw-saas.git
+cd openclaw-saas
+
+# Install dependencies
+cd apps/web
+npm install
+
+# Set up environment
+cp .env.example .env.local
+# Edit .env.local with your values (see docs/SETUP.md)
+
+# Run locally
+npm run dev
+```
+
+Open [http://localhost:3000](http://localhost:3000).
+
+## Setup
+
+For the full setup guide (Supabase, Stripe, Hetzner, Resend, Vercel, domain config), see **[docs/SETUP.md](docs/SETUP.md)**.
+
+For environment variable reference, see **[docs/ENV_VARS.md](docs/ENV_VARS.md)**.
+
+To verify your setup:
+
+```bash
+chmod +x scripts/setup-check.sh
+./scripts/setup-check.sh
+```
 
 ## Project Structure
 
 ```
 apps/
-├── web/           # Next.js portal + marketing site
-├── sidecar/       # Lightweight API on each user VM
-packages/
-├── shared/        # Shared types
-infra/
-├── packer/        # VM image builds
-├── cloud-init/    # Instance bootstrap
-specs/
-├── mvp/           # Spec-kit specification documents
+  web/          → Next.js frontend + API routes
+  sidecar/      → Sidecar service
+supabase/
+  migrations/   → Database schema
+scripts/
+  setup-check.sh → Setup validation script
+docs/
+  SETUP.md      → Full setup guide
+  ENV_VARS.md   → Environment variable reference
 ```
-
-## Development
-
-```bash
-# Install dependencies
-cd apps/web && npm install
-
-# Run locally
-npm run dev
-
-# Deploy
-git push  # Auto-deploys to Vercel
-```
-
-## Spec-Driven Development
-
-This project uses [GitHub Spec Kit](https://github.com/github/spec-kit). See `specs/mvp/` for the full specification:
-
-- [Constitution](.specify/memory/constitution.md) — Project principles
-- [Specification](specs/mvp/spec.md) — User stories and requirements
-- [Plan](specs/mvp/plan.md) — Implementation plan and architecture
-- [Tasks](specs/mvp/tasks.md) — Task breakdown
 
 ## License
 
-MIT
+Private — All rights reserved.
