@@ -11,13 +11,13 @@
 - [ ] T08: Set up Stripe account + products (Free, Basic $10, Pro $25)
 
 ## Phase 2: Provider Integrations (Week 2)
-- [ ] T09: Hetzner API client (create server, list servers, delete server, SSH keys)
+- [ ] T09: DigitalOcean API client (create server, list servers, delete server, SSH keys)
 - [ ] T10: DigitalOcean API client (same operations)
 - [ ] T11: Vultr API client (same operations)
 - [ ] T12: Provider abstraction layer (common interface for all providers)
 - [ ] T13: Cloud-init template for OpenClaw installation
 - [ ] T14: Cloud-init template for sidecar agent installation
-- [ ] T15: Test provisioning on Hetzner (manual API key)
+- [ ] T15: Test provisioning on DigitalOcean (manual API key)
 - [ ] T16: Test provisioning on DigitalOcean
 - [ ] T17: Set up referral/affiliate links for all providers
 

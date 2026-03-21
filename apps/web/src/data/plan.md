@@ -19,8 +19,8 @@
 └───────┼──────────────┼─────────────┼─────────┘
         │              │             │
    ┌────▼────┐   ┌─────▼────┐  ┌────▼─────┐
-   │ Hetzner │   │ Digital  │  │  Vultr   │
-   │   API   │   │ Ocean API│  │   API    │
+   │ Digital  │   │  (future) │  │ (future) │
+   │ Ocean API│   │  Hetzner  │  │  Vultr   │
    └────┬────┘   └─────┬────┘  └────┬─────┘
         │              │             │
    ┌────▼──────────────▼─────────────▼──────┐
@@ -50,7 +50,7 @@ Total infrastructure cost to run Claw4All: **$0/mo** until significant scale.
 | Database | Supabase (PostgreSQL) | Free tier |
 | Payments | Stripe | 2.9% + $0.30/txn |
 | Provisioning | Vercel Serverless Functions | Free tier (100K/mo) |
-| VPS APIs | Hetzner/DO/Vultr REST APIs | Free |
+| VPS APIs | DigitalOcean REST API (Hetzner/Vultr planned) | Free |
 | Sidecar Agent | Lightweight HTTP agent on user VPS | Bundled |
 | Monitoring | Sidecar heartbeat → Supabase | Free |
 
@@ -96,7 +96,7 @@ apps/
         dashboard/            # User dashboard
         marketplace/          # Skill marketplace
       lib/
-        providers/            # Hetzner, DO, Vultr API clients
+        providers/            # DigitalOcean (primary), Hetzner/Vultr (planned)
         provisioning/         # Cloud-init templates, setup logic
         sidecar/              # Sidecar API client
   sidecar/            # Sidecar agent (deployed to user VPS)

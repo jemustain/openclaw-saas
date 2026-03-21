@@ -10,7 +10,7 @@
 | Database | Supabase (PostgreSQL) |
 | Auth | Supabase Auth |
 | Billing | Stripe |
-| VM Hosting | Hetzner Cloud |
+| VM Hosting | DigitalOcean |
 | Email | Resend |
 
 ## Quick Start
@@ -36,7 +36,7 @@ Open [http://localhost:3000](http://localhost:3000).
 
 ## Setup
 
-For the full setup guide (Supabase, Stripe, Hetzner, Resend, Vercel, domain config), see **[docs/SETUP.md](docs/SETUP.md)**.
+For the full setup guide (Supabase, Stripe, DigitalOcean, Resend, Vercel, domain config), see **[docs/SETUP.md](docs/SETUP.md)**.
 
 For environment variable reference, see **[docs/ENV_VARS.md](docs/ENV_VARS.md)**.
 

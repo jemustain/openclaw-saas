@@ -22,7 +22,7 @@ create table public.assistants (
   id uuid primary key default gen_random_uuid(),
   user_id uuid not null references public.users on delete cascade,
   vm_id text,
-  provider text not null default 'hetzner',
+  provider text not null default 'digitalocean',
   region text,
   status public.assistant_status not null default 'provisioning',
   ip_address text,

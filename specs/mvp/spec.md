@@ -20,7 +20,7 @@ Think "Superhuman for AI assistants." Simple signup, instant value, zero technic
 **Acceptance Criteria:**
 - User signs up with email or Google
 - Clicks "Launch my assistant"
-- We provision an OpenClaw VM on our Hetzner account via API (invisible to user)
+- We provision an OpenClaw VM on our DigitalOcean account via API (invisible to user)
 - User sees a friendly progress indicator ("Setting things up…" → "Almost ready…" → "Done!")
 - Total time: < 90 seconds
 - User is prompted to connect a messaging app
@@ -97,7 +97,7 @@ Think "Superhuman for AI assistants." Simple signup, instant value, zero technic
 - API access for power users
 
 ### Unit Economics (per user)
-- Hetzner CX22 VM: ~€4.50/mo ($5/mo)
+- DigitalOcean Droplet (Basic): ~$6/mo
 - AI API usage (Anthropic/OpenAI): ~$3-8/mo avg
 - Our margin at $12/mo Starter: ~$0-4/mo (break-even to slight margin)
 - Our margin at $25/mo Pro: ~$12-17/mo (healthy margin)

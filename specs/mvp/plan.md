@@ -19,9 +19,9 @@
 └────────┼──────────────────────────┼───────────────┘
          │                          │
     ┌────▼─────┐             ┌──────▼───────┐
-    │ Hetzner  │             │   Stripe     │
-    │ API      │             │   Billing    │
-    │ (our     │             └──────────────┘
+    │ Digital  │             │   Stripe     │
+    │ Ocean    │             │   Billing    │
+    │ API (our │             └──────────────┘
     │ account) │
     └────┬─────┘
          │
@@ -38,7 +38,7 @@
 ## Key Architecture Decisions
 
 ### We Own the Infrastructure
-- Single Hetzner account, provisioned via API with our credentials
+- Single DigitalOcean account, provisioned via API with our credentials
 - Each user gets a dedicated VM (isolation, security, simplicity)
 - We manage lifecycle: create, monitor, update, suspend, destroy
 - User never sees or accesses the VM directly
@@ -57,7 +57,7 @@
 | Auth | Supabase Auth | Free tier |
 | Database | Supabase (PostgreSQL) | Free tier |
 | Payments | Stripe Subscriptions | 2.9% + $0.30/txn |
-| VM Provisioning | Hetzner Cloud API | ~$5/user/mo |
+| VM Provisioning | DigitalOcean API | ~$6/user/mo |
 | VM Management | Sidecar agent on each VM | Bundled |
 | Background Jobs | Vercel Cron or Inngest | Free tier |
 | AI API Keys | Our keys, metered per user | ~$3-8/user/mo |
@@ -65,7 +65,7 @@
 ## Provisioning Flow
 
 1. User clicks "Launch my assistant"
-2. Serverless function calls Hetzner API:
+2. Serverless function calls DigitalOcean API:
    - Create CX22 VM (2 vCPU, 4GB RAM, 40GB disk)
    - Inject cloud-init script that installs OpenClaw + sidecar agent
    - Tag VM with user ID
@@ -117,7 +117,8 @@ apps/
         onboarding/             # Post-signup messaging setup
         skills/                 # Skill library
       lib/
-        hetzner/                # Hetzner API client
+        digitalocean/           # DigitalOcean API client (primary)
+        hetzner/                # Hetzner API client (planned)
         orchestration/          # VM lifecycle management
         sidecar-client/         # Talk to sidecar agents
         billing/                # Stripe integration
@@ -134,7 +135,7 @@ specs/
 - **No user SSH access:** users never see or touch their VM
 - **Sidecar auth:** mTLS or rotating secrets, not user-facing
 - **AI API keys:** our keys stored encrypted, never exposed to users
-- **Hetzner API key:** single admin key, stored in Vercel env vars, never exposed
+- **DigitalOcean API key:** single admin key, stored in Vercel env vars, never exposed
 - **Data retention:** user cancels → VM destroyed after 30-day grace → data gone
 - **Compliance:** no user data stored on our portal beyond account info; all personal data lives on their isolated VM
 
