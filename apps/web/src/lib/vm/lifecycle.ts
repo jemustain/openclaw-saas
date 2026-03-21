@@ -1,10 +1,9 @@
 import { createClient } from '../supabase/server';
-import { HetznerProvider } from '../providers/hetzner';
+import { createDroplet, destroyDroplet, powerOn, powerOff } from '../providers/digitalocean';
+import { getProviderToken, refreshProviderToken } from '../providers/token-store';
 import { generateCloudInit } from '../providers/cloud-init';
 import type { Assistant, AssistantStatus } from '../supabase/types';
 import { randomUUID } from 'crypto';
-
-const hetzner = new HetznerProvider();
 
 const PORTAL_URL = process.env.NEXT_PUBLIC_APP_URL ?? 'https://app.claw4all.com';
 
@@ -44,10 +43,26 @@ async function updateAssistantStatus(
 }
 
 /**
- * Launch a new assistant VM for the given user.
+ * Get a valid DO access token for the user, refreshing if expired.
+ */
+async function getUserDOToken(userId: string): Promise<string> {
+  const tokenData = await getProviderToken(userId, 'digitalocean');
+  if (!tokenData) throw new Error('DigitalOcean account not connected. Please connect via Settings.');
+
+  // Refresh if expired or expiring within 5 minutes
+  if (tokenData.expiresAt && tokenData.expiresAt.getTime() < Date.now() + 5 * 60 * 1000) {
+    return await refreshProviderToken(userId, 'digitalocean');
+  }
+
+  return tokenData.accessToken;
+}
+
+/**
+ * Launch a new assistant VM on the user's DigitalOcean account.
  */
 export async function launchAssistant(userId: string): Promise<Assistant> {
   const supabase: any = await createClient();
+  const token = await getUserDOToken(userId);
 
   const assistantId = randomUUID();
   const sidecarToken = randomUUID();
@@ -64,7 +79,7 @@ export async function launchAssistant(userId: string): Promise<Assistant> {
     .insert({
       id: assistantId,
       user_id: userId,
-      provider: 'hetzner',
+      provider: 'digitalocean',
       status: 'provisioning' as AssistantStatus,
       sidecar_token: sidecarToken,
     })
@@ -74,27 +89,24 @@ export async function launchAssistant(userId: string): Promise<Assistant> {
   if (insertError) throw new Error(`Failed to create assistant: ${insertError.message}`);
 
   try {
-    const server = await hetzner.createServer({
+    const droplet = await createDroplet(token, {
       name: `claw-${assistantId.slice(0, 8)}`,
       cloudInit,
-      labels: { managed_by: 'claw4all', assistant_id: assistantId },
     });
 
-    // Update with VM info
     return await updateAssistantStatus(assistantId, 'provisioning', {
-      vm_id: server.id,
-      ip_address: server.publicIpv4,
-      region: server.region,
+      vm_id: String(droplet.id),
+      ip_address: droplet.publicIpv4,
+      region: droplet.region,
     });
   } catch (err) {
-    // Mark destroyed on failure
     await updateAssistantStatus(assistantId, 'destroyed').catch(() => {});
     throw err;
   }
 }
 
 /**
- * Suspend (power off) an assistant's VM.
+ * Suspend (power off) an assistant's droplet.
  */
 export async function suspendAssistant(assistantId: string): Promise<Assistant> {
   const supabase: any = await createClient();
@@ -110,12 +122,13 @@ export async function suspendAssistant(assistantId: string): Promise<Assistant> 
   assertTransition(assistant.status, 'suspended');
   if (!assistant.vm_id) throw new Error('No VM associated with assistant');
 
-  await hetzner.powerOff(assistant.vm_id);
+  const token = await getUserDOToken(assistant.user_id);
+  await powerOff(token, Number(assistant.vm_id));
   return await updateAssistantStatus(assistantId, 'suspended');
 }
 
 /**
- * Resume (power on) a suspended assistant's VM.
+ * Resume (power on) a suspended assistant's droplet.
  */
 export async function resumeAssistant(assistantId: string): Promise<Assistant> {
   const supabase: any = await createClient();
@@ -131,12 +144,13 @@ export async function resumeAssistant(assistantId: string): Promise<Assistant> {
   assertTransition(assistant.status, 'active');
   if (!assistant.vm_id) throw new Error('No VM associated with assistant');
 
-  await hetzner.powerOn(assistant.vm_id);
+  const token = await getUserDOToken(assistant.user_id);
+  await powerOn(token, Number(assistant.vm_id));
   return await updateAssistantStatus(assistantId, 'active');
 }
 
 /**
- * Destroy an assistant's VM permanently.
+ * Destroy an assistant's droplet permanently.
  */
 export async function destroyAssistant(assistantId: string): Promise<Assistant> {
   const supabase: any = await createClient();
@@ -154,14 +168,14 @@ export async function destroyAssistant(assistantId: string): Promise<Assistant> 
 
   try {
     if (assistant.vm_id) {
-      await hetzner.destroyServer(assistant.vm_id);
+      const token = await getUserDOToken(assistant.user_id);
+      await destroyDroplet(token, Number(assistant.vm_id));
     }
     return await updateAssistantStatus(assistantId, 'destroyed', {
       vm_id: null,
       ip_address: null,
     });
   } catch (err) {
-    // Still mark destroyed — VM may already be gone
     return await updateAssistantStatus(assistantId, 'destroyed', {
       vm_id: null,
       ip_address: null,
