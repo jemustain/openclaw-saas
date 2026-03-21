@@ -315,7 +315,6 @@ export default function Home() {
             <span className="font-bold">HandsOff</span>
           </div>
           <div className="flex gap-6 text-sm text-slate-400">
-            <a href="/spec" className="hover:text-white transition">Spec</a>
           </div>
           <p className="text-sm text-slate-500">
             © {new Date().getFullYear()} HandsOff
