@@ -1,10 +1,14 @@
 'use client';
 
-import { createClient } from '../../../../lib/supabase/client';
+import { Suspense } from 'react';
+
+
+
+import { createClient } from '@/lib/supabase/client';
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
 
-export default function SignUpPage() {
+function Inner() {
   const supabase = createClient();
   const router = useRouter();
   const [email, setEmail] = useState('');
@@ -74,5 +78,13 @@ export default function SignUpPage() {
         </p>
       </div>
     </main>
+  );
+}
+
+export default function Page() {
+  return (
+    <Suspense>
+      <Inner />
+    </Suspense>
   );
 }

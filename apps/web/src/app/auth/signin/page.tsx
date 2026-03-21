@@ -1,10 +1,14 @@
 'use client';
 
-import { createClient } from '../../../../lib/supabase/client';
+import { Suspense } from 'react';
+
+
+
+import { createClient } from '@/lib/supabase/client';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useState } from 'react';
 
-export default function SignInPage() {
+function Inner() {
   const supabase = createClient();
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -59,5 +63,13 @@ export default function SignInPage() {
         </p>
       </div>
     </main>
+  );
+}
+
+export default function Page() {
+  return (
+    <Suspense>
+      <Inner />
+    </Suspense>
   );
 }
