@@ -61,7 +61,7 @@ export class HetznerProvider implements CloudProvider {
         location: options.region ?? DEFAULT_REGION,
         image: "ubuntu-24.04",
         user_data: options.cloudInit ?? undefined,
-        labels: options.labels ?? { managed_by: "claw4all" },
+        labels: options.labels ?? { managed_by: "shiftworker" },
         start_after_create: true,
       }),
     });

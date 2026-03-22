@@ -2,8 +2,8 @@ import type { MetadataRoute } from "next";
 
 export default function manifest(): MetadataRoute.Manifest {
   return {
-    name: "HandsOff",
-    short_name: "HandsOff",
+    name: "ShiftWorker",
+    short_name: "ShiftWorker",
     description:
       "Your personal AI assistant that handles email, calendar, research, and more.",
     start_url: "/",

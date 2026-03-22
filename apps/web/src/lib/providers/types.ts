@@ -1,5 +1,5 @@
 /**
- * Cloud provider abstraction for Claw4All.
+ * Cloud provider abstraction for ShiftWorker.
  * Implement this interface to add DigitalOcean, Vultr, etc.
  */
 

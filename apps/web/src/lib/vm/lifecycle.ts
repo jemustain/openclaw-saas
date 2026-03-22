@@ -5,7 +5,7 @@ import { generateCloudInit } from '../providers/cloud-init';
 import type { Assistant, AssistantStatus } from '../supabase/types';
 import { randomUUID } from 'crypto';
 
-const PORTAL_URL = process.env.NEXT_PUBLIC_APP_URL ?? 'https://app.claw4all.com';
+const PORTAL_URL = process.env.NEXT_PUBLIC_APP_URL ?? 'https://shiftworker.ai';
 
 /**
  * Valid state transitions for the assistant lifecycle.

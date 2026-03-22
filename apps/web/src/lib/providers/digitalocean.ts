@@ -1,5 +1,5 @@
 const API = 'https://api.digitalocean.com/v2';
-const TAG = 'handsoff';
+const TAG = 'shiftworker';
 
 interface DropletOptions {
   name: string;

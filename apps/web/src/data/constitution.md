@@ -1,6 +1,6 @@
-# Claw4All Constitution
+# ShiftWorker Constitution
 
-_The guiding principles for building Claw4All — the free OpenClaw setup wizard._
+_The guiding principles for building ShiftWorker — the free OpenClaw setup wizard._
 
 ## 1. Zero-CLI for End Users
 The target user has never opened a terminal. Every interaction happens through a web UI. If they need to type a command, we failed.

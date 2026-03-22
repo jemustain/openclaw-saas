@@ -8,7 +8,7 @@ const resend = new Proxy({} as Resend, {
   },
 });
 
-const FROM_EMAIL = 'HandsOff <noreply@handsoff.app>';
+const FROM_EMAIL = 'ShiftWorker <hello@shiftworker.ai>';
 
 export async function sendEmail(to: string, subject: string, html: string) {
   if (!process.env.RESEND_API_KEY) {

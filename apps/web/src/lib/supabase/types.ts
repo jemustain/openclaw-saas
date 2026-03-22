@@ -1,5 +1,5 @@
 /* ------------------------------------------------------------------ */
-/*  Supabase Database Types for HandsOff                               */
+/*  Supabase Database Types for ShiftWorker                               */
 /* ------------------------------------------------------------------ */
 
 export type Plan = 'free' | 'starter' | 'pro';

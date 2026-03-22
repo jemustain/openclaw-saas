@@ -29,7 +29,7 @@ export function DashboardNav({ userName = 'User', plan = 'Free' }: DashboardNavP
     <>
       {/* Mobile top bar */}
       <div className="lg:hidden flex items-center justify-between bg-slate-900 border-b border-slate-800 px-4 py-3">
-        <span className="text-white font-semibold">HandsOff</span>
+        <span className="text-white font-semibold">ShiftWorker</span>
         <button onClick={() => setOpen(!open)} className="text-slate-300 hover:text-white" aria-label="Toggle nav">
           <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
             {open ? (
@@ -48,7 +48,7 @@ export function DashboardNav({ userName = 'User', plan = 'Free' }: DashboardNavP
         ${open ? 'translate-x-0' : '-translate-x-full'}
       `}>
         <div className="hidden lg:flex items-center gap-2 px-6 py-5 border-b border-slate-800">
-          <Link href="/" className="text-lg font-bold text-white">HandsOff</Link>
+          <Link href="/" className="text-lg font-bold text-white">ShiftWorker</Link>
         </div>
 
         <div className="px-4 py-4 border-b border-slate-800">

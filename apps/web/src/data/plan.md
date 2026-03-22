@@ -1,10 +1,10 @@
-# Claw4All — Implementation Plan
+# ShiftWorker — Implementation Plan
 
 ## Architecture Overview
 
 ```
 ┌─────────────────────────────────────────────┐
-│              Claw4All Portal                 │
+│              ShiftWorker Portal                 │
 │         (Next.js on Vercel — FREE)           │
 │                                              │
 │  ┌──────────┐ ┌───────────┐ ┌────────────┐  │
@@ -39,7 +39,7 @@ Because we don't host anything, the entire portal can run on:
 - **Supabase Free Tier** — Auth + database (50K monthly active users)
 - **No servers to manage** — all provisioning is API calls to user's provider
 
-Total infrastructure cost to run Claw4All: **$0/mo** until significant scale.
+Total infrastructure cost to run ShiftWorker: **$0/mo** until significant scale.
 
 ## Tech Stack
 
@@ -124,7 +124,7 @@ specs/
 
 ## Competitive Advantages
 
-| Us (Claw4All) | EZClaw / OpenClawd.ai | Emergent / Moltbot |
+| Us (ShiftWorker) | EZClaw / OpenClawd.ai | Emergent / Moltbot |
 |---|---|---|
 | User owns server | They own server | They own everything |
 | $0 to run the platform | Infrastructure costs | VC-funded burn |

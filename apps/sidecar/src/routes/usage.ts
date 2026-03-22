@@ -4,7 +4,7 @@ import { dirname } from 'path';
 
 const router = Router();
 
-const USAGE_FILE = process.env.USAGE_FILE || '/var/lib/handsoff/usage.json';
+const USAGE_FILE = process.env.USAGE_FILE || '/var/lib/shiftworker/usage.json';
 
 interface DailyUsage {
   date: string;

@@ -1,5 +1,5 @@
 /**
- * Generate cloud-init user data for a Claw4All instance.
+ * Generate cloud-init user data for a ShiftWorker instance.
  */
 
 export interface CloudInitOptions {
@@ -23,7 +23,7 @@ export function generateCloudInit(opts: CloudInitOptions): string {
   const ocVersion = opts.openclawVersion ?? "latest";
 
   return `#cloud-config
-# Claw4All instance provisioning — managed, do not edit
+# ShiftWorker instance provisioning — managed, do not edit
 
 users:
   - name: ${user}
@@ -42,7 +42,7 @@ packages:
   - unzip
 
 write_files:
-  - path: /etc/claw4all/sidecar.env
+  - path: /etc/shiftworker/sidecar.env
     permissions: "0600"
     content: |
       SIDECAR_TOKEN=${opts.sidecarToken}
@@ -76,7 +76,7 @@ runcmd:
     [Service]
     Type=simple
     User=${user}
-    EnvironmentFile=/etc/claw4all/sidecar.env
+    EnvironmentFile=/etc/shiftworker/sidecar.env
     ExecStart=/usr/bin/openclaw gateway start
     Restart=always
     RestartSec=5

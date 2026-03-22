@@ -1,4 +1,4 @@
-# Claw4All — MVP Specification
+# ShiftWorker — MVP Specification
 
 _Free OpenClaw Setup Wizard + Skill Marketplace_
 
@@ -43,7 +43,7 @@ Make OpenClaw accessible to everyone by automating the entire setup process. Use
 - Marketplace page with categories (productivity, smart home, social, finance)
 - Each skill has: description, rating, install count, "Install" button
 - Free skills available to all users
-- Premium skills require Claw4All account upgrade
+- Premium skills require ShiftWorker account upgrade
 - Installation happens via API call to user's sidecar agent
 - Installed skills visible in "My Skills" dashboard
 
@@ -95,7 +95,7 @@ Make OpenClaw accessible to everyone by automating the entire setup process. Use
 
 ### Marketplace Revenue (future)
 - Skill creators list premium skills
-- Claw4All takes 20-30% commission
+- ShiftWorker takes 20-30% commission
 - Creates ecosystem flywheel
 
 ---

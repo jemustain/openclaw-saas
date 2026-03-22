@@ -1,6 +1,6 @@
-# HandsOff (OCaaS)
+# ShiftWorker
 
-**Your personal AI assistant, set up in minutes.** HandsOff is a managed hosting platform for [OpenClaw](https://github.com/openclaw/openclaw) — it handles servers, configuration, and infrastructure so you can focus on having an AI assistant that actually helps. Sign up, connect your services, and start chatting.
+**AI agent hosting platform.** ShiftWorker provisions and manages [OpenClaw](https://github.com/openclaw/openclaw) instances for users — it handles servers, configuration, and infrastructure so you can focus on having an AI assistant that actually helps. Sign up, connect your services, and start chatting.
 
 ## Tech Stack
 

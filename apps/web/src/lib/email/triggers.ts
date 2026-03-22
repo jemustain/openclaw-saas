@@ -19,7 +19,7 @@ async function getUserEmail(userId: string): Promise<{ email: string; name: stri
 export async function onUserSignup(userId: string) {
   const user = await getUserEmail(userId);
   if (!user) return;
-  await sendEmail(user.email, 'Welcome to HandsOff! 🎉', welcomeEmail(user.name));
+  await sendEmail(user.email, 'Welcome to ShiftWorker! 🎉', welcomeEmail(user.name));
 }
 
 export async function onAssistantReady(userId: string) {
