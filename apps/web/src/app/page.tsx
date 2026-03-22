@@ -232,41 +232,80 @@ export default function Home() {
       </section>
 
       {/* Pricing */}
-      <section id="pricing" className="mx-auto max-w-3xl px-6 py-24">
+      <section id="pricing" className="mx-auto max-w-5xl px-6 py-24">
         <h2 className="text-center text-3xl font-bold sm:text-4xl mb-4">
-          Simple pricing
+          Simple pricing. No surprises.
         </h2>
         <p className="text-center text-slate-400 mb-16">
-          One plan. Everything included. Cancel anytime.
+          Start free. Upgrade when your assistant becomes indispensable.
         </p>
-        <div className="rounded-2xl border-2 border-violet-500 bg-violet-500/5 p-8 max-w-md mx-auto text-center">
-          <h3 className="text-lg font-semibold">ShiftWorker Pro</h3>
-          <div className="mt-2 flex items-baseline justify-center gap-1">
-            <span className="text-5xl font-bold">$12</span>
-            <span className="text-slate-400">/month</span>
-          </div>
-          <p className="mt-3 text-sm text-slate-400">Your own private AI assistant, fully managed</p>
-          <ul className="mt-8 space-y-3 text-left max-w-xs mx-auto">
-            {[
-              "Private VM — your data stays yours",
-              "24/7 availability",
-              "Unlimited messages",
-              "All skills and integrations",
-              "WhatsApp + Telegram",
-              "Priority support",
-            ].map((f) => (
-              <li key={f} className="flex items-start gap-2 text-sm text-slate-300">
-                <span className="text-violet-400 mt-0.5">✓</span>
-                {f}
-              </li>
-            ))}
-          </ul>
-          <a
-            href="#get-started"
-            className="mt-8 block w-full rounded-full bg-violet-600 py-2.5 text-sm font-medium hover:bg-violet-500 transition"
-          >
-            Get Started
-          </a>
+        <div className="grid gap-8 sm:grid-cols-2 max-w-3xl mx-auto">
+          {[
+            {
+              name: "Free",
+              price: "$0",
+              period: "forever",
+              desc: "Try it out, no commitment",
+              features: [
+                "Shared infrastructure",
+                "100 messages per day",
+                "Basic skills (search, Q&A)",
+                "One chat platform",
+              ],
+              cta: "Get Started Free",
+              highlight: false,
+            },
+            {
+              name: "Pro",
+              price: "$12",
+              period: "/month",
+              desc: "Your own private VM, fully managed",
+              features: [
+                "Private VM — your data stays yours",
+                "24/7 availability",
+                "Unlimited messages",
+                "All skills and integrations",
+                "WhatsApp + Telegram",
+                "Priority support",
+              ],
+              cta: "Go Pro",
+              highlight: true,
+            },
+          ].map((p) => (
+            <div
+              key={p.name}
+              className={`rounded-2xl p-8 ${
+                p.highlight
+                  ? "border-2 border-violet-500 bg-violet-500/5"
+                  : "border border-slate-800 bg-slate-900/50"
+              }`}
+            >
+              <h3 className="text-lg font-semibold">{p.name}</h3>
+              <div className="mt-2 flex items-baseline gap-1">
+                <span className="text-4xl font-bold">{p.price}</span>
+                <span className="text-slate-400">{p.period}</span>
+              </div>
+              <p className="mt-2 text-sm text-slate-400">{p.desc}</p>
+              <ul className="mt-6 space-y-3">
+                {p.features.map((f) => (
+                  <li key={f} className="flex items-start gap-2 text-sm text-slate-300">
+                    <span className="text-violet-400 mt-0.5">✓</span>
+                    {f}
+                  </li>
+                ))}
+              </ul>
+              <a
+                href="#get-started"
+                className={`mt-8 block w-full rounded-full py-2.5 text-sm font-medium text-center transition ${
+                  p.highlight
+                    ? "bg-violet-600 hover:bg-violet-500 text-white"
+                    : "border border-slate-700 text-slate-300 hover:border-slate-500 hover:text-white"
+                }`}
+              >
+                {p.cta}
+              </a>
+            </div>
+          ))}
         </div>
       </section>
 
