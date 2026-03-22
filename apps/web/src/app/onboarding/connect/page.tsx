@@ -41,6 +41,23 @@ export default async function ConnectPage({
         </div>
 
         <div className="space-y-3">
+          {/* Referral callout */}
+          {!isConnected && (
+            <div className="p-4 bg-blue-950/50 rounded-xl border border-blue-800/50 text-center space-y-2">
+              <p className="text-blue-200 font-medium">
+                Don&apos;t have a DigitalOcean account?
+              </p>
+              <a
+                href="https://cloud.digitalocean.com/account-referrals?i=091ab6c0-097d-4111-baab-ee4872bd796d"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-block text-blue-400 hover:text-blue-300 font-semibold underline underline-offset-2 transition-colors"
+              >
+                Sign up and get $200 in free credits →
+              </a>
+            </div>
+          )}
+
           <div className="flex items-center justify-between p-4 bg-slate-900 rounded-xl border border-slate-800">
             <div className="flex items-center gap-3">
               <span className="text-2xl">🌊</span>

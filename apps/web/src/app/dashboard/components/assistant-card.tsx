@@ -120,12 +120,13 @@ export function AssistantCard({ assistant }: { assistant: Assistant | null }) {
         )}
 
         {status === "offline" && (
-          <a
-            href="/onboarding"
-            className="rounded-lg bg-indigo-600 px-4 py-2 text-sm text-white hover:bg-indigo-500"
+          <button
+            disabled={!!loading}
+            onClick={() => act("/api/assistant/launch")}
+            className="rounded-lg bg-indigo-600 px-4 py-2 text-sm text-white hover:bg-indigo-500 disabled:opacity-50"
           >
-            Launch Assistant
-          </a>
+            {loading === "/api/assistant/launch" ? "Launching…" : "Launch Assistant"}
+          </button>
         )}
       </div>
     </div>

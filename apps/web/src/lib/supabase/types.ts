@@ -58,6 +58,17 @@ export interface UsageLog {
   api_tokens_used: number;
 }
 
+export interface ProviderToken {
+  id: string;
+  user_id: string;
+  provider: string;
+  access_token_encrypted: string;
+  refresh_token_encrypted: string | null;
+  expires_at: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
 export type Database = {
   public: {
     Tables: {
@@ -83,6 +94,12 @@ export type Database = {
         Row: UsageLog;
         Insert: Partial<UsageLog> & Pick<UsageLog, 'id' | 'assistant_id' | 'date'>;
         Update: Partial<UsageLog>;
+        Relationships: [];
+      };
+      provider_tokens: {
+        Row: ProviderToken;
+        Insert: Partial<ProviderToken> & Pick<ProviderToken, 'user_id' | 'provider' | 'access_token_encrypted'>;
+        Update: Partial<ProviderToken>;
         Relationships: [];
       };
       waitlist: {
