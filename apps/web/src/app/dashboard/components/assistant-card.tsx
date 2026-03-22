@@ -25,15 +25,23 @@ export function AssistantCard({ assistant }: { assistant: Assistant | null }) {
 
   const { label, dot } = statusConfig[status] ?? statusConfig.offline;
 
+  const [error, setError] = useState<string | null>(null);
+
   async function act(endpoint: string, method = "POST") {
     setLoading(endpoint);
+    setError(null);
     try {
       const res = await fetch(endpoint, { method });
-      if (res.ok) {
-        const refreshed = await fetch("/api/assistant/status");
-        const data = await refreshed.json();
-        setCurrent(data.assistant ?? null);
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        setError(data.error ?? `Action failed (${res.status})`);
+        return;
       }
+      const refreshed = await fetch("/api/assistant/status");
+      const data = await refreshed.json();
+      setCurrent(data.assistant ?? null);
+    } catch (err) {
+      setError("Network error — please try again");
     } finally {
       setLoading(null);
       setConfirmDestroy(false);
@@ -70,6 +78,10 @@ export function AssistantCard({ assistant }: { assistant: Assistant | null }) {
         </p>
       )}
 
+      {error && (
+        <p className="text-sm text-red-400 mb-3">{error}</p>
+      )}
+
       <div className="flex flex-wrap gap-2 mt-2">
         {status === "active" && (
           <button
@@ -84,10 +96,10 @@ export function AssistantCard({ assistant }: { assistant: Assistant | null }) {
         {status === "suspended" && (
           <button
             disabled={!!loading}
-            onClick={() => act("/api/launch")}
+            onClick={() => act("/api/assistant/launch")}
             className="rounded-lg bg-indigo-600 px-4 py-2 text-sm text-white hover:bg-indigo-500 disabled:opacity-50"
           >
-            {loading === "/api/launch" ? "Resuming…" : "Resume"}
+            {loading === "/api/assistant/launch" ? "Resuming…" : "Resume"}
           </button>
         )}
 
