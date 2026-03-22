@@ -234,27 +234,31 @@ export default function Home() {
       {/* Pricing */}
       <section id="pricing" className="mx-auto max-w-5xl px-6 py-24">
         <h2 className="text-center text-3xl font-bold sm:text-4xl mb-4">
-          Simple pricing. No surprises.
+          Free to configure. Seriously.
         </h2>
         <p className="text-center text-slate-400 max-w-2xl mx-auto mb-16">
-          ShiftWorker handles the setup and configuration for free.
-          You bring your own cloud server and AI provider — you control the accounts, the data, and the costs.
+          ShiftWorker sets up your AI assistant at no cost. You get $200 in
+          hosting credit to start — that covers up to 4 years of server time.
+          AI is free too, powered by Google Gemini.
         </p>
         <div className="grid gap-8 sm:grid-cols-2 max-w-3xl mx-auto">
           <div className="rounded-2xl border border-slate-800 bg-slate-900/50 p-8">
             <h3 className="text-lg font-semibold">Free</h3>
             <div className="mt-2 flex items-baseline gap-1">
               <span className="text-4xl font-bold">$0</span>
-              <span className="text-slate-400">from ShiftWorker</span>
+              <span className="text-slate-400">to configure</span>
             </div>
-            <p className="mt-2 text-sm text-slate-400">We configure everything. You own the infrastructure.</p>
+            <p className="mt-2 text-sm text-slate-400">
+              We handle everything. You just need a Google account.
+            </p>
             <ul className="mt-6 space-y-3">
               {[
-                "Automated VM provisioning and setup",
-                "OpenClaw installation and configuration",
-                "Messaging app integration",
+                "Full setup and configuration",
                 "Your own private server",
-                "Full access to all skills",
+                "$200 hosting credit (~4 years free)",
+                "AI included via Google Gemini",
+                "WhatsApp + Telegram integration",
+                "All skills unlocked",
               ].map((f) => (
                 <li key={f} className="flex items-start gap-2 text-sm text-slate-300">
                   <span className="text-violet-400 mt-0.5">✓</span>
@@ -266,7 +270,7 @@ export default function Home() {
               href="#get-started"
               className="mt-8 block w-full rounded-full py-2.5 text-sm font-medium text-center border border-slate-700 text-slate-300 hover:border-slate-500 hover:text-white transition"
             >
-              Get Started
+              Get Started Free
             </a>
           </div>
           <div className="rounded-2xl border-2 border-violet-500 bg-violet-500/5 p-8">
@@ -275,7 +279,7 @@ export default function Home() {
               <span className="text-4xl font-bold">$12</span>
               <span className="text-slate-400">/month</span>
             </div>
-            <p className="mt-2 text-sm text-slate-400">Hands-off management and priority support.</p>
+            <p className="mt-2 text-sm text-slate-400">Managed hosting and priority support.</p>
             <ul className="mt-6 space-y-3">
               {[
                 "Everything in Free",
@@ -298,29 +302,10 @@ export default function Home() {
             </a>
           </div>
         </div>
-        <div className="mt-12 rounded-xl border border-slate-800 bg-slate-900/30 p-6 max-w-3xl mx-auto">
-          <h4 className="font-medium mb-3">External costs you control</h4>
-          <p className="text-sm text-slate-400 leading-relaxed mb-4">
-            ShiftWorker sets everything up, but the server and AI run on your own accounts.
-            This means your data stays under your control — and so do the bills.
-          </p>
-          <div className="grid gap-4 sm:grid-cols-2 text-sm">
-            <div className="flex items-start gap-3">
-              <span className="text-slate-500 mt-0.5">1.</span>
-              <div>
-                <p className="text-slate-300 font-medium">Cloud server (VM)</p>
-                <p className="text-slate-500">DigitalOcean, ~$4–12/mo depending on size</p>
-              </div>
-            </div>
-            <div className="flex items-start gap-3">
-              <span className="text-slate-500 mt-0.5">2.</span>
-              <div>
-                <p className="text-slate-300 font-medium">AI provider</p>
-                <p className="text-slate-500">OpenAI, Anthropic, or similar — pay-as-you-go</p>
-              </div>
-            </div>
-          </div>
-        </div>
+        <p className="mt-8 text-center text-sm text-slate-500 max-w-2xl mx-auto">
+          Hosting runs on DigitalOcean (~$4/mo after credits). AI is powered by
+          Google Gemini Flash — free with your Google account, no card required.
+        </p>
       </section>
 
       {/* FAQ */}
