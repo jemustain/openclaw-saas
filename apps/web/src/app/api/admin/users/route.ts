@@ -1,20 +1,19 @@
 import { NextResponse } from 'next/server';
+import { getSession } from '@/lib/auth/session';
 import { createClient } from '@/lib/supabase/server';
 import { isAdmin } from '@/lib/admin/auth';
 
 export async function GET(request: Request) {
   try {
-    const supabase: any = await createClient();
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
-
-    if (authError || !user) {
+    const session = await getSession();
+    if (!session) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
-
-    if (!isAdmin(user.email)) {
+    if (!isAdmin(session.email)) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 
+    const supabase = createClient();
     const url = new URL(request.url);
     const page = parseInt(url.searchParams.get('page') ?? '1', 10);
     const limit = Math.min(parseInt(url.searchParams.get('limit') ?? '20', 10), 100);
@@ -38,7 +37,6 @@ export async function GET(request: Request) {
       return NextResponse.json({ error: 'Query failed' }, { status: 500 });
     }
 
-    // Fetch assistant status for these users
     const userIds = (users ?? []).map((u: any) => u.id);
     const { data: assistants } = await supabase
       .from('assistants')
@@ -47,7 +45,7 @@ export async function GET(request: Request) {
       .neq('status', 'destroyed');
 
     const assistantMap: Record<string, string> = {};
-    for (const a of assistants ?? []) {
+    for (const a of (assistants ?? []) as any[]) {
       assistantMap[a.user_id] = a.status;
     }
 

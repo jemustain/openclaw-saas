@@ -1,21 +1,16 @@
 import { redirect } from 'next/navigation';
+import { getSession } from '@/lib/auth/session';
 import { createClient } from '@/lib/supabase/server';
 import { isAdmin } from '@/lib/admin/auth';
 
-async function fetchJson(url: string, cookie: string) {
-  const res = await fetch(url, { headers: { cookie }, cache: 'no-store' });
-  if (!res.ok) return null;
-  return res.json();
-}
-
 export default async function AdminDashboard() {
-  const supabase: any = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
+  const session = await getSession();
 
-  if (!user) redirect('/auth/signin?redirect=/admin');
-  if (!isAdmin(user.email)) redirect('/dashboard');
+  if (!session) redirect('/auth/signin?redirect=/admin');
+  if (!isAdmin(session.email)) redirect('/dashboard');
 
-  // Fetch data server-side via Supabase directly
+  const supabase = createClient();
+
   const { count: totalUsers } = await supabase
     .from('profiles')
     .select('*', { count: 'exact', head: true });
@@ -43,13 +38,12 @@ export default async function AdminDashboard() {
     .order('created_at', { ascending: false })
     .limit(20);
 
-  // Get emails for VMs
   const userIds = [...new Set((activeVMs ?? []).map((v: any) => v.user_id))];
   const { data: vmProfiles } = userIds.length
     ? await supabase.from('profiles').select('id, email').in('id', userIds)
-    : { data: [] };
+    : { data: [] as any[] };
   const emailMap: Record<string, string> = {};
-  for (const p of vmProfiles ?? []) emailMap[p.id] = p.email;
+  for (const p of (vmProfiles ?? []) as any[]) emailMap[p.id] = p.email;
 
   const stats = [
     { label: 'Total Users', value: totalUsers ?? 0, icon: '👤' },
@@ -68,7 +62,6 @@ export default async function AdminDashboard() {
           </a>
         </div>
 
-        {/* Stats Cards */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
           {stats.map((s) => (
             <div key={s.label} className="bg-slate-900 border border-slate-800 rounded-xl p-5">
@@ -79,7 +72,6 @@ export default async function AdminDashboard() {
           ))}
         </div>
 
-        {/* Recent Signups */}
         <section>
           <h2 className="text-xl font-semibold mb-3">Recent Signups</h2>
           <div className="overflow-x-auto bg-slate-900 border border-slate-800 rounded-xl">
@@ -113,7 +105,6 @@ export default async function AdminDashboard() {
           </div>
         </section>
 
-        {/* Active VMs */}
         <section>
           <h2 className="text-xl font-semibold mb-3">Active VMs</h2>
           <div className="overflow-x-auto bg-slate-900 border border-slate-800 rounded-xl">

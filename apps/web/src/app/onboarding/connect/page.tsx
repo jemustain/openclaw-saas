@@ -1,4 +1,5 @@
 import { redirect } from 'next/navigation';
+import { getSession } from '@/lib/auth/session';
 import { createClient } from '@/lib/supabase/server';
 import { getProviderToken } from '@/lib/providers/token-store';
 import Link from 'next/link';
@@ -16,21 +17,18 @@ export default async function ConnectPage({
 }: {
   searchParams: Promise<{ connected?: string; error?: string }>;
 }) {
-  const supabase: any = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-
-  if (!user) {
+  const session = await getSession();
+  if (!session) {
     redirect('/auth/signin');
   }
 
   const params = await searchParams;
-  const doToken = await getProviderToken(user.id, 'digitalocean');
+  const doToken = await getProviderToken(session.userId, 'digitalocean');
   const isConnected = !!doToken || params.connected === 'digitalocean';
 
   return (
     <div className="min-h-screen bg-slate-950 flex items-center justify-center px-4">
       <div className="max-w-lg w-full space-y-8">
-        {/* Step 1: Connect Cloud */}
         <div className="text-center space-y-3">
           <h1 className="text-3xl font-bold text-white">
             Connect your cloud
@@ -72,7 +70,6 @@ export default async function ConnectPage({
           )}
         </div>
 
-        {/* Step 2: Connect Chat App */}
         <div className="text-center space-y-3 pt-4">
           <h2 className="text-xl font-semibold text-white">
             Connect a chat app

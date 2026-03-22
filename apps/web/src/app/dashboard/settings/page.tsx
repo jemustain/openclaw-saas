@@ -1,6 +1,5 @@
 'use client';
 
-import { createClient } from '@/lib/supabase/client';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 
@@ -13,7 +12,6 @@ const TIMEZONES = [
 ];
 
 export default function SettingsPage() {
-  const supabase = createClient();
   const router = useRouter();
 
   const [email, setEmail] = useState('');
@@ -26,19 +24,26 @@ export default function SettingsPage() {
   const [deleteConfirm, setDeleteConfirm] = useState('');
 
   useEffect(() => {
-    supabase.auth.getUser().then(({ data: { user } }) => {
-      if (!user) return;
-      setEmail(user.email ?? '');
-      setName(user.user_metadata?.name ?? '');
-      setTimezone(user.user_metadata?.timezone ?? 'America/New_York');
-      setPlan(user.user_metadata?.plan ?? 'Free');
-    });
-  }, [supabase]);
+    // Fetch user profile from an API endpoint
+    fetch('/api/auth/me')
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.user) {
+          setEmail(data.user.email ?? '');
+          setName(data.user.name ?? '');
+          setTimezone(data.user.timezone ?? 'America/New_York');
+          setPlan(data.user.plan ?? 'Free');
+        }
+      })
+      .catch(() => {});
+  }, []);
 
   async function handleSave() {
     setSaving(true);
-    await supabase.auth.updateUser({
-      data: { name, timezone },
+    await fetch('/api/auth/me', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name, timezone }),
     });
     setSaving(false);
     setSaved(true);
@@ -47,8 +52,7 @@ export default function SettingsPage() {
 
   async function handleDelete() {
     if (deleteConfirm !== 'DELETE') return;
-    // In production this would call an API route that deletes the user
-    await supabase.auth.signOut();
+    await fetch('/api/auth/signout', { method: 'POST' });
     router.push('/');
   }
 

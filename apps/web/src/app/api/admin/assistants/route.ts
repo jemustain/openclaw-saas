@@ -1,20 +1,19 @@
 import { NextResponse } from 'next/server';
+import { getSession } from '@/lib/auth/session';
 import { createClient } from '@/lib/supabase/server';
 import { isAdmin } from '@/lib/admin/auth';
 
 export async function GET(request: Request) {
   try {
-    const supabase: any = await createClient();
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
-
-    if (authError || !user) {
+    const session = await getSession();
+    if (!session) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
-
-    if (!isAdmin(user.email)) {
+    if (!isAdmin(session.email)) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 
+    const supabase = createClient();
     const url = new URL(request.url);
     const status = url.searchParams.get('status');
 
@@ -35,7 +34,6 @@ export async function GET(request: Request) {
       return NextResponse.json({ error: 'Query failed' }, { status: 500 });
     }
 
-    // Get user emails for each assistant
     const userIds = [...new Set((assistants ?? []).map((a: any) => a.user_id))];
     const { data: profiles } = await supabase
       .from('profiles')
@@ -43,7 +41,7 @@ export async function GET(request: Request) {
       .in('id', userIds);
 
     const emailMap: Record<string, string> = {};
-    for (const p of profiles ?? []) {
+    for (const p of (profiles ?? []) as any[]) {
       emailMap[p.id] = p.email;
     }
 
