@@ -1,14 +1,15 @@
 'use client';
 
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import { useState } from 'react';
+import { LayoutDashboard, Puzzle, Settings, CreditCard, LogOut } from 'lucide-react';
 
 const links = [
-  { href: '/dashboard', label: 'Overview' },
-  { href: '/dashboard/skills', label: 'Skills' },
-  { href: '/dashboard/settings', label: 'Settings' },
-  { href: '/dashboard/billing', label: 'Billing' },
+  { href: '/dashboard', label: 'Overview', icon: LayoutDashboard },
+  { href: '/dashboard/skills', label: 'Skills', icon: Puzzle },
+  { href: '/dashboard/settings', label: 'Settings', icon: Settings },
+  { href: '/dashboard/billing', label: 'Billing', icon: CreditCard },
 ];
 
 interface DashboardNavProps {
@@ -18,7 +19,19 @@ interface DashboardNavProps {
 
 export function DashboardNav({ userName = 'User', plan = 'Free' }: DashboardNavProps) {
   const pathname = usePathname();
+  const router = useRouter();
   const [open, setOpen] = useState(false);
+  const [signingOut, setSigningOut] = useState(false);
+
+  async function handleSignOut() {
+    setSigningOut(true);
+    try {
+      await fetch('/api/auth/signout', { method: 'POST' });
+      router.push('/');
+    } catch {
+      setSigningOut(false);
+    }
+  }
 
   const isActive = (href: string) =>
     href === '/dashboard' ? pathname === '/dashboard' : pathname.startsWith(href);
@@ -59,21 +72,33 @@ export function DashboardNav({ userName = 'User', plan = 'Free' }: DashboardNavP
         </div>
 
         <nav className="flex-1 px-3 py-4 space-y-1">
-          {links.map(({ href, label }) => (
+          {links.map(({ href, label, icon: Icon }) => (
             <Link
               key={href}
               href={href}
               onClick={() => setOpen(false)}
-              className={`block rounded-lg px-3 py-2 text-sm transition ${
+              className={`flex items-center gap-3 rounded-lg px-3 py-2 text-sm transition ${
                 isActive(href)
                   ? 'bg-violet-600/20 text-violet-300 font-medium'
                   : 'text-slate-400 hover:text-white hover:bg-slate-800'
               }`}
             >
+              <Icon className="h-4 w-4" />
               {label}
             </Link>
           ))}
         </nav>
+
+        <div className="px-3 py-4 border-t border-slate-800">
+          <button
+            onClick={handleSignOut}
+            disabled={signingOut}
+            className="flex items-center gap-3 w-full rounded-lg px-3 py-2 text-sm text-slate-400 hover:text-white hover:bg-slate-800 transition disabled:opacity-50"
+          >
+            <LogOut className="h-4 w-4" />
+            {signingOut ? 'Signing out…' : 'Sign Out'}
+          </button>
+        </div>
       </aside>
 
       {/* Mobile overlay */}
