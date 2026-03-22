@@ -13,9 +13,11 @@ export function PlanCard({ plan }: { plan: PlanKey }) {
   const info = PLANS[plan];
   const limits = planLimits[plan];
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   async function handleUpgrade() {
     setLoading(true);
+    setError(null);
     try {
       const res = await fetch("/api/stripe/checkout", {
         method: "POST",
@@ -26,11 +28,11 @@ export function PlanCard({ plan }: { plan: PlanKey }) {
       if (data.url) {
         window.location.href = data.url;
       } else {
-        console.error("Checkout error:", data.error);
+        setError(data.error ?? "Failed to create checkout session");
         setLoading(false);
       }
     } catch (err) {
-      console.error("Checkout error:", err);
+      setError("Network error — please try again");
       setLoading(false);
     }
   }
@@ -64,6 +66,9 @@ export function PlanCard({ plan }: { plan: PlanKey }) {
           <p className="text-sm text-slate-400 mb-3">
             Upgrade to Pro for unlimited messages and 24/7 availability
           </p>
+          {error && (
+            <p className="text-sm text-red-400 mb-2">{error}</p>
+          )}
           <button
             onClick={handleUpgrade}
             disabled={loading}

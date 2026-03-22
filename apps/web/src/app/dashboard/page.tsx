@@ -43,6 +43,16 @@ async function DashboardContent({
 
   const plan: PlanKey = profile?.plan ?? "free";
 
+  // Check DigitalOcean connection
+  const { data: doToken } = await supabase
+    .from("provider_tokens")
+    .select("id")
+    .eq("user_id", session.userId)
+    .eq("provider", "digitalocean")
+    .single();
+
+  const doConnected = !!doToken;
+
   return (
     <div className="min-h-screen bg-slate-950 px-4 py-8 sm:px-6 lg:px-8">
       <div className="mx-auto max-w-5xl">
@@ -52,7 +62,7 @@ async function DashboardContent({
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <AssistantCard assistant={assistant ?? null} />
           <UsageCard plan={plan} messagesUsed={0} hoursActive={0} />
-          <ConnectionsCard />
+          <ConnectionsCard digitalOceanConnected={doConnected} />
           <PlanCard plan={plan} />
         </div>
       </div>

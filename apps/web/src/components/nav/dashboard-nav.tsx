@@ -38,11 +38,6 @@ export function DashboardNav({ userName = 'User', plan = 'Free' }: DashboardNavP
 
   const planColor = plan === 'Pro' ? 'bg-violet-600' : plan === 'Starter' ? 'bg-blue-600' : 'bg-slate-700';
 
-  async function handleSignOut() {
-    await fetch('/api/auth/signout', { method: 'POST' });
-    router.push('/');
-  }
-
   return (
     <>
       {/* Mobile top bar */}
@@ -97,10 +92,11 @@ export function DashboardNav({ userName = 'User', plan = 'Free' }: DashboardNavP
         <div className="px-3 py-4 border-t border-slate-800">
           <button
             onClick={handleSignOut}
-            className="flex items-center gap-3 w-full rounded-lg px-3 py-2 text-sm text-slate-400 hover:text-white hover:bg-slate-800 transition"
+            disabled={signingOut}
+            className="flex items-center gap-3 w-full rounded-lg px-3 py-2 text-sm text-slate-400 hover:text-white hover:bg-slate-800 transition disabled:opacity-50"
           >
             <LogOut className="h-4 w-4" />
-            Sign Out
+            {signingOut ? 'Signing out…' : 'Sign Out'}
           </button>
         </div>
       </aside>
