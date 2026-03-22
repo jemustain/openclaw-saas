@@ -5,9 +5,17 @@ import { AssistantCard } from "./components/assistant-card";
 import { UsageCard } from "./components/usage-card";
 import { ConnectionsCard } from "./components/connections-card";
 import { PlanCard } from "./components/plan-card";
+import { UpgradeBanner } from "./components/upgrade-banner";
 import type { PlanKey } from "@/lib/stripe/config";
 
-async function DashboardContent() {
+async function DashboardContent({
+  searchParams,
+}: {
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
+}) {
+  const params = await searchParams;
+  const upgraded = params?.upgraded === "true";
+
   const supabase: any = await createClient();
   const { data: { user }, error } = await supabase.auth.getUser();
 
@@ -37,6 +45,7 @@ async function DashboardContent() {
   return (
     <div className="min-h-screen bg-slate-950 px-4 py-8 sm:px-6 lg:px-8">
       <div className="mx-auto max-w-5xl">
+        {upgraded && <UpgradeBanner />}
         <h1 className="text-3xl font-bold text-white mb-8">Dashboard</h1>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -50,7 +59,11 @@ async function DashboardContent() {
   );
 }
 
-export default function DashboardPage() {
+export default async function DashboardPage({
+  searchParams,
+}: {
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
+}) {
   return (
     <Suspense
       fallback={
@@ -59,7 +72,7 @@ export default function DashboardPage() {
         </div>
       }
     >
-      <DashboardContent />
+      <DashboardContent searchParams={searchParams} />
     </Suspense>
   );
 }

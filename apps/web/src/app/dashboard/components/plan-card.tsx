@@ -1,4 +1,7 @@
+"use client";
+
 import Link from "next/link";
+import { useState } from "react";
 import { PLANS, type PlanKey } from "@/lib/stripe/config";
 
 const planLimits: Record<PlanKey, string[]> = {
@@ -9,6 +12,28 @@ const planLimits: Record<PlanKey, string[]> = {
 export function PlanCard({ plan }: { plan: PlanKey }) {
   const info = PLANS[plan];
   const limits = planLimits[plan];
+  const [loading, setLoading] = useState(false);
+
+  async function handleUpgrade() {
+    setLoading(true);
+    try {
+      const res = await fetch("/api/stripe/checkout", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ plan: "pro" }),
+      });
+      const data = await res.json();
+      if (data.url) {
+        window.location.href = data.url;
+      } else {
+        console.error("Checkout error:", data.error);
+        setLoading(false);
+      }
+    } catch (err) {
+      console.error("Checkout error:", err);
+      setLoading(false);
+    }
+  }
 
   return (
     <div className="rounded-xl border border-slate-800 bg-slate-900 p-6">
@@ -37,14 +62,15 @@ export function PlanCard({ plan }: { plan: PlanKey }) {
       {plan === "free" && (
         <div className="pt-2 border-t border-slate-800">
           <p className="text-sm text-slate-400 mb-3">
-            Upgrade for unlimited messages and more cloud accounts
+            Upgrade to Pro for unlimited messages and 24/7 availability
           </p>
-          <Link
-            href="/api/stripe/checkout"
-            className="inline-block rounded-lg bg-indigo-600 px-4 py-2 text-sm text-white hover:bg-indigo-500"
+          <button
+            onClick={handleUpgrade}
+            disabled={loading}
+            className="inline-block rounded-lg bg-indigo-600 px-4 py-2 text-sm text-white hover:bg-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            Upgrade
-          </Link>
+            {loading ? "Redirecting…" : "Upgrade to Pro — $12/mo"}
+          </button>
         </div>
       )}
 
