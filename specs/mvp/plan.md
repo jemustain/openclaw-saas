@@ -1,10 +1,10 @@
-# Claw4All — Implementation Plan
+# ShiftWorker — Implementation Plan
 
 ## Architecture Overview
 
 ```
 ┌──────────────────────────────────────────────────┐
-│              Claw4All Portal                      │
+│              ShiftWorker Portal                      │
 │         (Next.js on Vercel — FREE tier)           │
 │                                                   │
 │  ┌───────────┐ ┌────────────┐ ┌───────────────┐  │
@@ -26,7 +26,7 @@
     └────┬─────┘
          │
     ┌────▼──────────────────────────────────┐
-    │    Claw4All-Managed VM Pool           │
+    │    ShiftWorker-Managed VM Pool           │
     │                                        │
     │  ┌──────────┐ ┌──────────┐ ┌────────┐ │
     │  │ User A's │ │ User B's │ │User C's│ │
@@ -78,7 +78,7 @@
 
 Internal management agent — user never interacts with it directly.
 
-- **Phones home** to Claw4All API on startup and via heartbeat
+- **Phones home** to ShiftWorker API on startup and via heartbeat
 - **Endpoints** (called by our orchestration layer only):
   - `GET /health` — VM and OpenClaw status
   - `POST /openclaw/restart` — restart OpenClaw
@@ -141,7 +141,7 @@ specs/
 
 ## Competitive Positioning
 
-| | Claw4All | Self-hosted OpenClaw | Competitor SaaS |
+| | ShiftWorker | Self-hosted OpenClaw | Competitor SaaS |
 |---|---|---|---|
 | Setup time | 60 seconds | 30+ minutes | Varies |
 | Technical skill needed | None | Moderate | Low-Moderate |

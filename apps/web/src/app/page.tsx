@@ -7,7 +7,7 @@ export default function Home() {
       {/* Nav */}
       <nav className="mx-auto flex max-w-6xl items-center justify-between px-4 py-4 sm:px-6 sm:py-6">
         <div className="flex items-center gap-2 text-lg sm:text-xl font-bold shrink-0">
-          <span>HandsOff</span>
+          <span>ShiftWorker</span>
         </div>
         <div className="hidden sm:flex items-center gap-6 text-sm text-slate-300">
           <a href="#how-it-works" className="hover:text-white transition">
@@ -307,12 +307,12 @@ export default function Home() {
       <footer className="border-t border-slate-800 py-12">
         <div className="mx-auto max-w-6xl px-6 flex flex-col sm:flex-row items-center justify-between gap-4">
           <div className="flex items-center gap-2">
-            <span className="font-bold">HandsOff</span>
+            <span className="font-bold">ShiftWorker</span>
           </div>
           <div className="flex gap-6 text-sm text-slate-400">
           </div>
           <p className="text-sm text-slate-500">
-            © {new Date().getFullYear()} HandsOff
+            © {new Date().getFullYear()} ShiftWorker
           </p>
         </div>
       </footer>

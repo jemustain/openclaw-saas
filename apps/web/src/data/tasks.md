@@ -1,4 +1,4 @@
-# Claw4All — Task Breakdown
+# ShiftWorker — Task Breakdown
 
 ## Phase 1: Foundation (Week 1)
 - [x] T01: Initialize repo + monorepo structure
@@ -43,7 +43,7 @@
 - [ ] T34: Skill list endpoint
 - [ ] T35: Bearer token auth middleware
 - [ ] T36: HTTPS setup (self-signed cert or Let's Encrypt)
-- [ ] T37: Heartbeat to Claw4All portal (server online/offline tracking)
+- [ ] T37: Heartbeat to ShiftWorker portal (server online/offline tracking)
 
 ## Phase 5: User Dashboard (Week 4)
 - [ ] T38: Dashboard layout + navigation
@@ -86,4 +86,4 @@
 
 **Critical path:** Phase 2 (provider APIs) → Phase 3 (wizard) → Phase 4 (sidecar) — these are sequential and blocking.
 
-**Quick wins:** Phase 1 is mostly done. Landing page is live at claw4all-app.vercel.app.
+**Quick wins:** Phase 1 is mostly done. Landing page is live at shiftworker.ai.

@@ -38,12 +38,12 @@ export async function POST(request: Request) {
     // Send welcome email
     try {
       const token = await generateToken(trimmed);
-      const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://claw4all-app.vercel.app';
+      const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://shiftworker.ai';
       const unsubscribeUrl = `${baseUrl}/api/waitlist/unsubscribe?email=${encodeURIComponent(trimmed)}&token=${token}`;
 
       const welcomeEmail = waitlistWelcomeEmail({ unsubscribeUrl });
       await getResend().emails.send({
-        from: 'HandsOff <onboarding@resend.dev>',
+        from: 'ShiftWorker <hello@shiftworker.ai>',
         to: trimmed,
         subject: welcomeEmail.subject,
         html: welcomeEmail.html,

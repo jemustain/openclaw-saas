@@ -9,7 +9,7 @@ const faqs = [
   },
   {
     q: "Do I need any technical skills?",
-    a: "Absolutely not. If you can send a text message, you can use HandsOff. Just chat with your assistant like you'd chat with a friend.",
+    a: "Absolutely not. If you can send a text message, you can use ShiftWorker. Just chat with your assistant like you'd chat with a friend.",
   },
   {
     q: "How do I talk to my assistant?",

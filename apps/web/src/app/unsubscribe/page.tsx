@@ -14,7 +14,7 @@ function UnsubscribeContent() {
           <>
             <h1 className="text-2xl font-bold mb-4">You&apos;ve been removed</h1>
             <p className="text-slate-400">
-              Your email has been removed from the HandsOff waitlist. Sorry to see you go!
+              Your email has been removed from the ShiftWorker waitlist. Sorry to see you go!
             </p>
           </>
         )}
@@ -44,7 +44,7 @@ function UnsubscribeContent() {
           href="/"
           className="inline-block mt-8 text-violet-400 hover:text-violet-300 transition"
         >
-          ← Back to HandsOff
+          ← Back to ShiftWorker
         </a>
       </div>
     </div>

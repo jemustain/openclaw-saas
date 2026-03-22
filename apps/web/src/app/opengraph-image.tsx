@@ -1,7 +1,7 @@
 import { ImageResponse } from "next/og";
 
 export const runtime = "edge";
-export const alt = "HandsOff — Your Personal AI Assistant";
+export const alt = "ShiftWorker — AI Agent Hosting Platform";
 export const size = { width: 1200, height: 630 };
 export const contentType = "image/png";
 
@@ -28,7 +28,7 @@ export default function OgImage() {
             letterSpacing: "-0.02em",
           }}
         >
-          HandsOff
+          ShiftWorker
         </div>
         <div
           style={{

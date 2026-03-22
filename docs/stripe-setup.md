@@ -1,4 +1,4 @@
-# Stripe Setup for Claw4All
+# Stripe Setup for ShiftWorker
 
 ## 1. Create a Stripe Account
 

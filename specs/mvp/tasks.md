@@ -1,4 +1,4 @@
-# Claw4All — Task Breakdown
+# ShiftWorker — Task Breakdown
 
 ## Phase 1: Foundation (Week 1)
 - [x] T01: Initialize repo + monorepo structure

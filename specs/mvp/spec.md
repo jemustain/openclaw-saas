@@ -1,10 +1,10 @@
-# Claw4All — MVP Specification
+# ShiftWorker — MVP Specification
 
 _Managed AI assistants you talk to via chat. We handle everything._
 
 ## Vision
 
-Claw4All gives everyone a personal AI assistant that lives in their favorite chat app. Users click a button, connect WhatsApp or Telegram, and start talking. We provision and manage the infrastructure invisibly — the user never sees a server, terminal, or config file.
+ShiftWorker gives everyone a personal AI assistant that lives in their favorite chat app. Users click a button, connect WhatsApp or Telegram, and start talking. We provision and manage the infrastructure invisibly — the user never sees a server, terminal, or config file.
 
 Think "Superhuman for AI assistants." Simple signup, instant value, zero technical knowledge required.
 

@@ -1,5 +1,5 @@
 /**
- * Stripe product and price configuration for HandsOff.
+ * Stripe product and price configuration for ShiftWorker.
  *
  * Two tiers: Free (limited) and Pro (unlimited).
  * Users pay their cloud provider separately for VM hosting.

@@ -1,5 +1,5 @@
 export async function generateToken(email: string): Promise<string> {
-  const secret = process.env.WAITLIST_UNSUBSCRIBE_SECRET || 'handsoff-waitlist-default-secret';
+  const secret = process.env.WAITLIST_UNSUBSCRIBE_SECRET || 'shiftworker-waitlist-default-secret';
   const encoder = new TextEncoder();
   const key = await crypto.subtle.importKey(
     'raw',

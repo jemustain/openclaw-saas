@@ -1,6 +1,6 @@
-# HandsOff Setup Guide
+# ShiftWorker Setup Guide
 
-Complete step-by-step instructions for setting up all external services needed to run HandsOff.
+Complete step-by-step instructions for setting up all external services needed to run ShiftWorker.
 
 > **Prerequisites:** A GitHub account, a credit card for Stripe/DigitalOcean, and ~30 minutes.
 
@@ -11,7 +11,7 @@ Complete step-by-step instructions for setting up all external services needed t
 Supabase provides the PostgreSQL database and authentication layer.
 
 1. Go to [supabase.com](https://supabase.com) → **New Project**
-2. Choose an organization (or create one), name the project (e.g., `handsoff`), set a strong database password, and pick a region close to your users
+2. Choose an organization (or create one), name the project (e.g., `shiftworker`), set a strong database password, and pick a region close to your users
 3. Wait for the project to finish provisioning (~2 minutes)
 
 ### Get your API credentials
@@ -30,7 +30,7 @@ Supabase provides the PostgreSQL database and authentication layer.
 ### Configure Auth
 
 11. Go to **Authentication → URL Configuration**
-12. Set **Site URL** to your Vercel deployment URL (e.g., `https://handsoff.yourdomain.com`)
+12. Set **Site URL** to your Vercel deployment URL (e.g., `https://shiftworker.ai`)
 13. Add `http://localhost:3000` to **Redirect URLs** for local development
 
 ### Env vars from this step
@@ -53,12 +53,12 @@ Stripe handles subscriptions and billing.
 
 3. Go to **Dashboard → Products → + Add product**
 4. Create the first product:
-   - **Name:** `HandsOff Starter`
+   - **Name:** `ShiftWorker Starter`
    - **Pricing:** `$12.00` / month (recurring)
    - Click **Save product**
    - Copy the **Price ID** (starts with `price_`) → this is `STRIPE_PRICE_STARTER`
 5. Create the second product:
-   - **Name:** `HandsOff Pro`
+   - **Name:** `ShiftWorker Pro`
    - **Pricing:** `$25.00` / month (recurring)
    - Click **Save product**
    - Copy the **Price ID** → this is `STRIPE_PRICE_PRO`
@@ -103,10 +103,10 @@ Stripe handles subscriptions and billing.
 DigitalOcean provides the virtual machines (Droplets) where user OpenClaw instances run.
 
 1. Go to [cloud.digitalocean.com](https://cloud.digitalocean.com) → create an account
-2. Create a new project called **HandsOff** (or similar)
+2. Create a new project called **ShiftWorker** (or similar)
 3. Go to **API** in the left sidebar
 4. Click **Generate New Token**
-   - Name: `handsoff-api`
+   - Name: `shiftworker-api`
    - Expiration: No expiry (or set as needed)
    - Scopes: **Read & Write**
 5. Copy the token immediately (it's only shown once) → `DO_API_TOKEN`
@@ -128,7 +128,7 @@ Resend handles transactional emails (welcome emails, notifications, etc.).
 1. Go to [resend.com](https://resend.com) → create an account
 2. Go to **API Keys** in the sidebar
 3. Click **Create API Key**
-   - Name: `handsoff`
+   - Name: `shiftworker`
    - Permission: **Full access** (or Sending access if you prefer)
 4. Copy the key → `RESEND_API_KEY`
 
