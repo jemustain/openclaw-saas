@@ -3,6 +3,10 @@ import { stripe } from "@/lib/stripe/client";
 import { PLANS, PlanKey } from "@/lib/stripe/config";
 import { getSession } from "@/lib/auth/session";
 
+/**
+ * POST /api/stripe/checkout
+ * Creates a Stripe Checkout session for upgrading to a paid plan.
+ */
 export async function POST(req: NextRequest) {
   try {
     const session = await getSession();
