@@ -91,9 +91,9 @@ export default function Home() {
           </span>
         </h1>
         <p className="mx-auto mt-6 max-w-2xl text-lg text-slate-400 leading-relaxed">
-          ShiftWorker provisions a private VM just for you, installs everything,
-          and hands you a fully configured AI assistant — no servers to manage,
-          no Docker, no SSH. Just sign up and start talking.
+          ShiftWorker connects to your cloud account, spins up a private VM,
+          installs everything, and hands you a fully configured AI assistant.
+          No Docker, no SSH, no config files. You own the server — we just set it up.
         </p>
         <div className="mt-10 flex flex-col sm:flex-row items-center justify-center gap-4">
           <a
@@ -116,12 +116,12 @@ export default function Home() {
         <div className="grid gap-8 sm:grid-cols-3">
           {[
             {
-              title: "Your own private VM",
-              desc: "Not a shared service. Your assistant runs on an isolated virtual machine that belongs to you.",
+              title: "You own everything",
+              desc: "Your server, your AI keys, your data. We configure it — you control it.",
             },
             {
-              title: "We set it all up",
-              desc: "Server provisioning, OpenClaw installation, messaging integration — handled in minutes, not hours.",
+              title: "We handle the hard part",
+              desc: "VM provisioning, OpenClaw install, messaging setup — done in minutes, not hours.",
             },
             {
               title: "Talk through your apps",
@@ -236,76 +236,90 @@ export default function Home() {
         <h2 className="text-center text-3xl font-bold sm:text-4xl mb-4">
           Simple pricing. No surprises.
         </h2>
-        <p className="text-center text-slate-400 mb-16">
-          Start free. Upgrade when your assistant becomes indispensable.
+        <p className="text-center text-slate-400 max-w-2xl mx-auto mb-16">
+          ShiftWorker handles the setup and configuration for free.
+          You bring your own cloud server and AI provider — you control the accounts, the data, and the costs.
         </p>
         <div className="grid gap-8 sm:grid-cols-2 max-w-3xl mx-auto">
-          {[
-            {
-              name: "Free",
-              price: "$0",
-              period: "forever",
-              desc: "Try it out, no commitment",
-              features: [
-                "Shared infrastructure",
-                "100 messages per day",
-                "Basic skills (search, Q&A)",
-                "One chat platform",
-              ],
-              cta: "Get Started Free",
-              highlight: false,
-            },
-            {
-              name: "Pro",
-              price: "$12",
-              period: "/month",
-              desc: "Your own private VM, fully managed",
-              features: [
-                "Private VM — your data stays yours",
-                "24/7 availability",
-                "Unlimited messages",
-                "All skills and integrations",
-                "WhatsApp + Telegram",
-                "Priority support",
-              ],
-              cta: "Go Pro",
-              highlight: true,
-            },
-          ].map((p) => (
-            <div
-              key={p.name}
-              className={`rounded-2xl p-8 ${
-                p.highlight
-                  ? "border-2 border-violet-500 bg-violet-500/5"
-                  : "border border-slate-800 bg-slate-900/50"
-              }`}
-            >
-              <h3 className="text-lg font-semibold">{p.name}</h3>
-              <div className="mt-2 flex items-baseline gap-1">
-                <span className="text-4xl font-bold">{p.price}</span>
-                <span className="text-slate-400">{p.period}</span>
-              </div>
-              <p className="mt-2 text-sm text-slate-400">{p.desc}</p>
-              <ul className="mt-6 space-y-3">
-                {p.features.map((f) => (
-                  <li key={f} className="flex items-start gap-2 text-sm text-slate-300">
-                    <span className="text-violet-400 mt-0.5">✓</span>
-                    {f}
-                  </li>
-                ))}
-              </ul>
-              <a
-                href="#get-started"
-                className={`mt-8 block w-full rounded-full py-2.5 text-sm font-medium text-center transition ${
-                  p.highlight
-                    ? "bg-violet-600 hover:bg-violet-500 text-white"
-                    : "border border-slate-700 text-slate-300 hover:border-slate-500 hover:text-white"
-                }`}
-              >
-                {p.cta}
-              </a>
+          <div className="rounded-2xl border border-slate-800 bg-slate-900/50 p-8">
+            <h3 className="text-lg font-semibold">Free</h3>
+            <div className="mt-2 flex items-baseline gap-1">
+              <span className="text-4xl font-bold">$0</span>
+              <span className="text-slate-400">from ShiftWorker</span>
             </div>
-          ))}
+            <p className="mt-2 text-sm text-slate-400">We configure everything. You own the infrastructure.</p>
+            <ul className="mt-6 space-y-3">
+              {[
+                "Automated VM provisioning and setup",
+                "OpenClaw installation and configuration",
+                "Messaging app integration",
+                "Your own private server",
+                "Full access to all skills",
+              ].map((f) => (
+                <li key={f} className="flex items-start gap-2 text-sm text-slate-300">
+                  <span className="text-violet-400 mt-0.5">✓</span>
+                  {f}
+                </li>
+              ))}
+            </ul>
+            <a
+              href="#get-started"
+              className="mt-8 block w-full rounded-full py-2.5 text-sm font-medium text-center border border-slate-700 text-slate-300 hover:border-slate-500 hover:text-white transition"
+            >
+              Get Started
+            </a>
+          </div>
+          <div className="rounded-2xl border-2 border-violet-500 bg-violet-500/5 p-8">
+            <h3 className="text-lg font-semibold">Pro</h3>
+            <div className="mt-2 flex items-baseline gap-1">
+              <span className="text-4xl font-bold">$12</span>
+              <span className="text-slate-400">/month</span>
+            </div>
+            <p className="mt-2 text-sm text-slate-400">Hands-off management and priority support.</p>
+            <ul className="mt-6 space-y-3">
+              {[
+                "Everything in Free",
+                "Managed updates and maintenance",
+                "Automated backups",
+                "Priority support",
+                "Advanced monitoring",
+              ].map((f) => (
+                <li key={f} className="flex items-start gap-2 text-sm text-slate-300">
+                  <span className="text-violet-400 mt-0.5">✓</span>
+                  {f}
+                </li>
+              ))}
+            </ul>
+            <a
+              href="#get-started"
+              className="mt-8 block w-full rounded-full py-2.5 text-sm font-medium text-center bg-violet-600 hover:bg-violet-500 text-white transition"
+            >
+              Go Pro
+            </a>
+          </div>
+        </div>
+        <div className="mt-12 rounded-xl border border-slate-800 bg-slate-900/30 p-6 max-w-3xl mx-auto">
+          <h4 className="font-medium mb-3">External costs you control</h4>
+          <p className="text-sm text-slate-400 leading-relaxed mb-4">
+            ShiftWorker sets everything up, but the server and AI run on your own accounts.
+            This means your data stays under your control — and so do the bills.
+          </p>
+          <div className="grid gap-4 sm:grid-cols-2 text-sm">
+            <div className="flex items-start gap-3">
+              <span className="text-slate-500 mt-0.5">1.</span>
+              <div>
+                <p className="text-slate-300 font-medium">Cloud server (VM)</p>
+                <p className="text-slate-500">DigitalOcean, ~$4–12/mo depending on size</p>
+              </div>
+            </div>
+            <div className="flex items-start gap-3">
+              <span className="text-slate-500 mt-0.5">2.</span>
+              <div>
+                <p className="text-slate-300 font-medium">AI provider</p>
+                <p className="text-slate-500">OpenAI, Anthropic, or similar — pay-as-you-go</p>
+              </div>
+            </div>
+          </div>
         </div>
       </section>
 
