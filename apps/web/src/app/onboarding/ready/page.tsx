@@ -1,12 +1,10 @@
 import { redirect } from 'next/navigation';
-import { createClient } from '@/lib/supabase/server';
+import { getSession } from '@/lib/auth/session';
 import Link from 'next/link';
 
 export default async function ReadyPage() {
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-
-  if (!user) {
+  const session = await getSession();
+  if (!session) {
     redirect('/auth/signin');
   }
 

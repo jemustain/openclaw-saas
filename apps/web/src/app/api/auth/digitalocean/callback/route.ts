@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@/lib/supabase/server';
+import { getSession } from '@/lib/auth/session';
 import { saveProviderToken } from '@/lib/providers/token-store';
 
 export async function GET(request: NextRequest) {
@@ -27,10 +27,9 @@ export async function GET(request: NextRequest) {
 
   const tokenData = await tokenRes.json();
 
-  // Get current user
-  const supabase: any = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) {
+  // Get current user from session
+  const session = await getSession();
+  if (!session) {
     return NextResponse.redirect(new URL('/auth/signin', request.url));
   }
 
@@ -40,7 +39,7 @@ export async function GET(request: NextRequest) {
     : null;
 
   await saveProviderToken(
-    user.id,
+    session.userId,
     'digitalocean',
     tokenData.access_token,
     tokenData.refresh_token,

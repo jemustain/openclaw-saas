@@ -1,35 +1,39 @@
 'use client';
 
-import { createClient } from '@/lib/supabase/client';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
-import type { User } from '@supabase/supabase-js';
+
+interface UserInfo {
+  email: string;
+  name: string | null;
+}
 
 export function MainNav() {
-  const supabase = createClient();
   const router = useRouter();
-  const [user, setUser] = useState<User | null>(null);
+  const [user, setUser] = useState<UserInfo | null>(null);
   const [menuOpen, setMenuOpen] = useState(false);
   const [loaded, setLoaded] = useState(false);
 
   useEffect(() => {
-    supabase.auth.getUser().then(({ data }) => {
-      setUser(data.user);
-      setLoaded(true);
-    });
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      setUser(session?.user ?? null);
-    });
-    return () => subscription.unsubscribe();
-  }, [supabase]);
+    fetch('/api/auth/me')
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data) => {
+        if (data?.user) {
+          setUser(data.user);
+        }
+        setLoaded(true);
+      })
+      .catch(() => setLoaded(true));
+  }, []);
 
   async function handleSignOut() {
-    await supabase.auth.signOut();
+    await fetch('/api/auth/signout', { method: 'POST' });
+    setUser(null);
     router.push('/');
   }
 
-  const initial = user?.user_metadata?.name?.[0]?.toUpperCase()
+  const initial = user?.name?.[0]?.toUpperCase()
     ?? user?.email?.[0]?.toUpperCase()
     ?? '?';
 
@@ -63,7 +67,7 @@ export function MainNav() {
                 Sign In
               </Link>
               <Link
-                href="/auth/signup"
+                href="/auth/signin"
                 className="rounded-full bg-violet-600 px-4 py-2 text-sm font-medium text-white hover:bg-violet-500 transition"
               >
                 Get Started Free
@@ -105,7 +109,7 @@ export function MainNav() {
               <Link href="/auth/signin" className="block text-sm text-slate-300 hover:text-white" onClick={() => setMenuOpen(false)}>
                 Sign In
               </Link>
-              <Link href="/auth/signup" className="block text-sm text-violet-400 hover:text-violet-300" onClick={() => setMenuOpen(false)}>
+              <Link href="/auth/signin" className="block text-sm text-violet-400 hover:text-violet-300" onClick={() => setMenuOpen(false)}>
                 Get Started Free
               </Link>
             </>

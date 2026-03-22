@@ -1,23 +1,23 @@
 import { NextResponse } from 'next/server';
+import { getSession } from '@/lib/auth/session';
 import { createClient } from '@/lib/supabase/server';
 
 export async function GET() {
   try {
-    const supabase: any = await createClient();
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
-
-    if (authError || !user) {
+    const session = await getSession();
+    if (!session) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
+    const supabase: any = createClient();
     const { data: assistant, error } = await supabase
       .from('assistants')
       .select()
-      .eq('user_id', user.id)
+      .eq('user_id', session.userId)
       .neq('status', 'destroyed')
       .order('created_at', { ascending: false })
       .limit(1)
-      .single() as any;
+      .single();
 
     if (error || !assistant) {
       return NextResponse.json({ assistant: null });

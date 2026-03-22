@@ -1,44 +1,40 @@
 import { NextResponse } from 'next/server';
+import { getSession } from '@/lib/auth/session';
 import { createClient } from '@/lib/supabase/server';
 import { isAdmin } from '@/lib/admin/auth';
 
-export async function GET(request: Request) {
+export async function GET() {
   try {
-    const supabase: any = await createClient();
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
-
-    if (authError || !user) {
+    const session = await getSession();
+    if (!session) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
-
-    if (!isAdmin(user.email)) {
+    if (!isAdmin(session.email)) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 
-    // Total users
+    const supabase = createClient();
+
     const { count: totalUsers } = await supabase
       .from('profiles')
       .select('*', { count: 'exact', head: true });
 
-    // Active assistants
     const { count: activeAssistants } = await supabase
       .from('assistants')
       .select('*', { count: 'exact', head: true })
       .eq('status', 'running');
 
-    // Total VMs (not destroyed)
     const { count: totalVMs } = await supabase
       .from('assistants')
       .select('*', { count: 'exact', head: true })
       .neq('status', 'destroyed');
 
-    // Users by plan
     const { data: planData } = await supabase
       .from('profiles')
       .select('plan');
 
     const usersByPlan: Record<string, number> = {};
-    for (const row of planData ?? []) {
+    for (const row of (planData ?? []) as any[]) {
       const plan = row.plan ?? 'free';
       usersByPlan[plan] = (usersByPlan[plan] ?? 0) + 1;
     }

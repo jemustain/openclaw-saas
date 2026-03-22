@@ -1,5 +1,6 @@
 import { Suspense } from "react";
 import { redirect } from "next/navigation";
+import { getSession } from "@/lib/auth/session";
 import { createClient } from "@/lib/supabase/server";
 import { AssistantCard } from "./components/assistant-card";
 import { UsageCard } from "./components/usage-card";
@@ -16,18 +17,18 @@ async function DashboardContent({
   const params = await searchParams;
   const upgraded = params?.upgraded === "true";
 
-  const supabase: any = await createClient();
-  const { data: { user }, error } = await supabase.auth.getUser();
-
-  if (error || !user) {
+  const session = await getSession();
+  if (!session) {
     redirect("/auth/signin");
   }
+
+  const supabase: any = createClient();
 
   // Fetch assistant status
   const { data: assistant } = await supabase
     .from("assistants")
     .select()
-    .eq("user_id", user.id)
+    .eq("user_id", session.userId)
     .neq("status", "destroyed")
     .order("created_at", { ascending: false })
     .limit(1)
@@ -37,7 +38,7 @@ async function DashboardContent({
   const { data: profile } = await supabase
     .from("profiles")
     .select("plan")
-    .eq("id", user.id)
+    .eq("id", session.userId)
     .single();
 
   const plan: PlanKey = profile?.plan ?? "free";

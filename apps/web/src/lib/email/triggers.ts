@@ -9,11 +9,14 @@ import {
 } from './templates';
 
 async function getUserEmail(userId: string): Promise<{ email: string; name: string } | null> {
-  const supabase = await createClient();
-  const { data } = await supabase.auth.admin.getUserById(userId);
-  if (!data?.user?.email) return null;
-  const name = data.user.user_metadata?.full_name || data.user.email.split('@')[0];
-  return { email: data.user.email, name };
+  const supabase: any = createClient();
+  const { data } = await supabase
+    .from('users')
+    .select('email, name')
+    .eq('id', userId)
+    .single();
+  if (!data?.email) return null;
+  return { email: data.email, name: data.name || data.email.split('@')[0] };
 }
 
 export async function onUserSignup(userId: string) {

@@ -29,7 +29,7 @@ async function updateAssistantStatus(
   status: AssistantStatus,
   extra: Partial<Assistant> = {},
 ): Promise<Assistant> {
-  const supabase: any = await createClient();
+  const supabase: any = createClient();
   const updatePayload: Partial<Assistant> = { status, ...extra, updated_at: new Date().toISOString() };
   const { data, error } = await supabase
     .from('assistants')
@@ -61,7 +61,7 @@ async function getUserDOToken(userId: string): Promise<string> {
  * Launch a new assistant VM on the user's DigitalOcean account.
  */
 export async function launchAssistant(userId: string): Promise<Assistant> {
-  const supabase: any = await createClient();
+  const supabase: any = createClient();
   const token = await getUserDOToken(userId);
 
   const assistantId = randomUUID();
@@ -109,7 +109,7 @@ export async function launchAssistant(userId: string): Promise<Assistant> {
  * Suspend (power off) an assistant's droplet.
  */
 export async function suspendAssistant(assistantId: string): Promise<Assistant> {
-  const supabase: any = await createClient();
+  const supabase: any = createClient();
   const { data, error } = await supabase
     .from('assistants')
     .select()
@@ -131,7 +131,7 @@ export async function suspendAssistant(assistantId: string): Promise<Assistant> 
  * Resume (power on) a suspended assistant's droplet.
  */
 export async function resumeAssistant(assistantId: string): Promise<Assistant> {
-  const supabase: any = await createClient();
+  const supabase: any = createClient();
   const { data, error } = await supabase
     .from('assistants')
     .select()
@@ -153,7 +153,7 @@ export async function resumeAssistant(assistantId: string): Promise<Assistant> {
  * Destroy an assistant's droplet permanently.
  */
 export async function destroyAssistant(assistantId: string): Promise<Assistant> {
-  const supabase: any = await createClient();
+  const supabase: any = createClient();
   const { data, error } = await supabase
     .from('assistants')
     .select()
