@@ -70,12 +70,20 @@ export default function Home() {
             FAQ
           </a>
         </div>
-        <a
-          href="#get-started"
-          className="rounded-full bg-violet-600 px-4 py-2 text-xs sm:text-sm font-medium text-white hover:bg-violet-500 transition shrink-0"
-        >
-          Get Started
-        </a>
+        <div className="flex items-center gap-3 shrink-0">
+          <a
+            href="/auth/signin"
+            className="text-xs sm:text-sm text-slate-300 hover:text-white transition"
+          >
+            Sign In
+          </a>
+          <a
+            href="#get-started"
+            className="rounded-full bg-violet-600 px-4 py-2 text-xs sm:text-sm font-medium text-white hover:bg-violet-500 transition"
+          >
+            Get Started
+          </a>
+        </div>
       </nav>
 
       {/* Hero */}
