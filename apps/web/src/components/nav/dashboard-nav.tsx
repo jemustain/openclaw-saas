@@ -38,11 +38,6 @@ export function DashboardNav({ userName = 'User', plan = 'Free' }: DashboardNavP
 
   const planColor = plan === 'Pro' ? 'bg-violet-600' : plan === 'Starter' ? 'bg-blue-600' : 'bg-slate-700';
 
-  async function handleSignOut() {
-    await fetch('/api/auth/signout', { method: 'POST' });
-    router.push('/');
-  }
-
   return (
     <>
       {/* Mobile top bar */}
