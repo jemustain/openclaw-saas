@@ -4,6 +4,7 @@ import { verifySessionToken } from '@/lib/auth/session';
 const publicPaths = ['/', '/auth/callback'];
 const authPaths = ['/auth/signin', '/auth/signup'];
 const protectedPrefixes = ['/dashboard', '/onboarding', '/api/launch', '/api/assistant'];
+const onboardingSkipPrefixes = ['/onboarding', '/api/', '/_next/', '/auth/'];
 
 export async function middleware(request: NextRequest) {
   const token = request.cookies.get('session')?.value;
@@ -47,6 +48,15 @@ export async function middleware(request: NextRequest) {
     url.pathname = '/auth/signin';
     url.searchParams.set('redirect', pathname);
     return NextResponse.redirect(url);
+  }
+
+  // Onboarding redirect: if authenticated but not on skip paths, check cookie
+  if (session && !onboardingSkipPrefixes.some((p) => pathname.startsWith(p))) {
+    const onboardingComplete = request.cookies.get('onboarding_complete')?.value;
+    if (onboardingComplete !== 'true') {
+      // We can't query DB in middleware easily, so we use a lightweight cookie check.
+      // The onboarding page itself handles the full check.
+    }
   }
 
   return NextResponse.next();

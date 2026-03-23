@@ -71,6 +71,17 @@ export async function GET(request: NextRequest) {
       name: googleUser.name,
     });
 
+    // Check if onboarding is complete
+    const { data: userData } = await supabase
+      .from('users')
+      .select('onboarding_complete')
+      .eq('id', userId)
+      .single();
+
+    if (!userData?.onboarding_complete) {
+      return NextResponse.redirect(`${origin}/onboarding`);
+    }
+
     return NextResponse.redirect(`${origin}${state}`);
   } catch (err) {
     console.error('Google OAuth callback error:', err);
