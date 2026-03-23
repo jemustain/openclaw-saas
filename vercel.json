@@ -2,11 +2,11 @@
   "crons": [
     {
       "path": "/api/cron/scheduler",
-      "schedule": "*/15 * * * *"
+      "schedule": "0 0 * * *"
     },
     {
       "path": "/api/cron/vm-scheduler",
-      "schedule": "0 * * * *"
+      "schedule": "0 0 * * *"
     }
   ]
 }
