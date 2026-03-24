@@ -7,9 +7,12 @@ import {
   Zap, ArrowRight, ArrowLeft, Check, Loader2,
   Home, Share2, Briefcase, Code, Gamepad2,
   MessageCircle, Send, Hash, Slack, Shield,
+  Mail, Globe, Bell, FileText, Sun, Lock,
+  ShoppingCart, Plane, DollarSign, CalendarDays,
+  QrCode, Bot, Smartphone,
 } from 'lucide-react';
 
-const STEPS = ['Welcome', 'Hosting', 'Plan', 'Messengers', 'Skills', 'Setting Up', 'Ready'];
+const STEPS = ['Welcome', 'Hosting', 'Plan', 'Messengers', 'Skills', 'Setup & Connect', 'Ready'];
 
 const MESSENGERS = [
   { id: 'whatsapp', label: 'WhatsApp', icon: MessageCircle },
@@ -19,13 +22,71 @@ const MESSENGERS = [
   { id: 'signal', label: 'Signal', icon: Shield },
 ];
 
-const SKILLS = [
-  { id: 'smart-home', label: 'Smart Home', icon: Home },
-  { id: 'social-media', label: 'Social Media', icon: Share2 },
-  { id: 'productivity', label: 'Productivity', icon: Briefcase },
-  { id: 'developer-tools', label: 'Developer Tools', icon: Code },
-  { id: 'entertainment', label: 'Entertainment', icon: Gamepad2 },
+type SkillDef = {
+  id: string;
+  label: string;
+  description: string;
+  icon: typeof Mail;
+  category: string;
+  pro: boolean;
+};
+
+const SKILL_CATEGORIES = ['Communication', 'Productivity', 'Research', 'Social Media', 'Smart Home'];
+
+const SKILLS: SkillDef[] = [
+  // Free
+  { id: 'email-triage', label: 'Email Triage', description: 'Reads your inbox, flags important messages, drafts replies', icon: Mail, category: 'Communication', pro: false },
+  { id: 'calendar-mgmt', label: 'Calendar Management', description: 'Books meetings, resolves conflicts, sends reminders', icon: CalendarDays, category: 'Productivity', pro: false },
+  { id: 'web-research', label: 'Web Research', description: 'Searches the web, reads pages, summarizes findings', icon: Globe, category: 'Research', pro: false },
+  { id: 'reminders-tasks', label: 'Reminders & Tasks', description: 'Tracks to-dos, sets reminders, follows up', icon: Bell, category: 'Productivity', pro: false },
+  { id: 'documents-writing', label: 'Documents & Writing', description: 'Writes, edits, and organizes documents', icon: FileText, category: 'Productivity', pro: false },
+  { id: 'weather-news', label: 'Weather & News', description: 'Daily briefings on weather and headlines', icon: Sun, category: 'Research', pro: false },
+  // Pro
+  { id: 'social-media', label: 'Social Media', description: 'Drafts posts, schedules content, monitors mentions', icon: Share2, category: 'Social Media', pro: true },
+  { id: 'smart-home', label: 'Smart Home', description: 'Controls lights, cameras, and IoT devices', icon: Home, category: 'Smart Home', pro: true },
+  { id: 'code-assistant', label: 'Code Assistant', description: 'Reviews PRs, writes scripts, debugs issues', icon: Code, category: 'Productivity', pro: true },
+  { id: 'shopping-deals', label: 'Shopping & Deals', description: 'Tracks prices, finds deals, manages wishlists', icon: ShoppingCart, category: 'Research', pro: true },
+  { id: 'travel-planning', label: 'Travel Planning', description: 'Books flights, hotels, builds itineraries', icon: Plane, category: 'Productivity', pro: true },
+  { id: 'finance-tracking', label: 'Finance Tracking', description: 'Monitors accounts, categorizes spending, alerts on unusual activity', icon: DollarSign, category: 'Smart Home', pro: true },
 ];
+
+const FREE_SKILLS = SKILLS.filter((s) => !s.pro);
+const PRO_SKILLS = SKILLS.filter((s) => s.pro);
+
+type MessengerSetupStatus = 'pending' | 'ready' | 'connected';
+
+const MESSENGER_SETUP_INFO: Record<string, { title: string; pendingMsg: string; readyMsg: string; icon: typeof QrCode }> = {
+  whatsapp: {
+    title: 'WhatsApp',
+    pendingMsg: 'Your server is starting up — QR code will appear here shortly.',
+    readyMsg: 'Ready to connect! Scan the QR code below with WhatsApp to link your assistant.',
+    icon: QrCode,
+  },
+  telegram: {
+    title: 'Telegram',
+    pendingMsg: 'Your server is starting up — connection setup will appear here shortly.',
+    readyMsg: 'Ready to connect! Open Telegram, search @BotFather, send /newbot, and paste the token below.',
+    icon: Bot,
+  },
+  discord: {
+    title: 'Discord',
+    pendingMsg: 'Your server is starting up — bot invite link will appear here shortly.',
+    readyMsg: 'Ready to connect! Click the invite link to add your bot to a Discord server.',
+    icon: Hash,
+  },
+  slack: {
+    title: 'Slack',
+    pendingMsg: 'Your server is starting up — workspace connection will appear here shortly.',
+    readyMsg: 'Ready to connect! Click below to install the ShiftWorker app to your Slack workspace.',
+    icon: Slack,
+  },
+  signal: {
+    title: 'Signal',
+    pendingMsg: 'Your server is starting up — connection setup will appear here shortly.',
+    readyMsg: 'Ready to connect! Follow the instructions below to link Signal.',
+    icon: Smartphone,
+  },
+};
 
 export default function OnboardingWizard() {
   const router = useRouter();
@@ -42,6 +103,8 @@ export default function OnboardingWizard() {
   const [skills, setSkills] = useState<string[]>([]);
   const [setupStatus, setSetupStatus] = useState<string[]>([]);
   const [setupDone, setSetupDone] = useState(false);
+  const [serverActive, setServerActive] = useState(false);
+  const [proTooltip, setProTooltip] = useState<string | null>(null);
 
   // Init from URL params and timezone
   useEffect(() => {
@@ -59,9 +122,8 @@ export default function OnboardingWizard() {
     if (upgraded === 'true' && !stepParam) {
       setPlan('pro');
       setStep(3);
-      // Pre-check all messengers and skills for pro
       setMessengers(MESSENGERS.map((m) => m.id));
-      setSkills(SKILLS.map((s) => s.id));
+      setSkills(SKILLS.filter((s) => !s.pro).map((s) => s.id));
     }
   }, [searchParams]);
 
@@ -77,7 +139,6 @@ export default function OnboardingWizard() {
   const next = () => goTo(step + 1);
   const back = () => goTo(step - 1);
 
-  // When plan changes to pro, pre-select all
   const selectPlan = (p: 'free' | 'pro') => {
     setPlan(p);
     if (p === 'pro') {
@@ -100,6 +161,16 @@ export default function OnboardingWizard() {
   };
 
   const toggleSkill = (id: string) => {
+    const skill = SKILLS.find((s) => s.id === id);
+    if (!skill) return;
+
+    // Pro skills require pro plan
+    if (skill.pro && plan !== 'pro') {
+      setProTooltip(id);
+      setTimeout(() => setProTooltip(null), 2000);
+      return;
+    }
+
     if (plan === 'free') {
       setSkills((prev) => {
         if (prev.includes(id)) return prev.filter((s) => s !== id);
@@ -121,8 +192,10 @@ export default function OnboardingWizard() {
     const interval = setInterval(() => setElapsedSecs((s) => s + 1), 1000);
     return () => clearInterval(interval);
   }, [step, setupDone]);
+
   const saveAndLaunch = async () => {
     goTo(5);
+    setServerActive(false);
     const statuses: string[] = [];
     const addStatus = (s: string) => {
       statuses.push(s);
@@ -164,24 +237,24 @@ export default function OnboardingWizard() {
         const data = await res.json();
         if (data.status === 'active') {
           addStatus('✅ Assistant is online!');
+          setServerActive(true);
           await fetch('/api/onboarding', {
             method: 'PATCH',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ onboardingComplete: true }),
           });
           setSetupDone(true);
-          setTimeout(() => goTo(6), 1000);
+          setTimeout(() => goTo(6), 2000);
           return;
         }
       } catch { /* ignore */ }
       attempts++;
       const elapsed = attempts * 3;
-      // Show progress milestones
       while (nextMilestone < milestones.length && elapsed >= milestones[nextMilestone].at) {
         addStatus(milestones[nextMilestone].msg);
         nextMilestone++;
       }
-      if (attempts < 80) { // ~4 min polling
+      if (attempts < 80) {
         await new Promise((r) => setTimeout(r, 3000));
         return poll();
       }
@@ -192,8 +265,8 @@ export default function OnboardingWizard() {
     await poll();
   };
 
-  const Card = ({ selected, disabled, onClick, children }: {
-    selected?: boolean; disabled?: boolean; onClick?: () => void; children: React.ReactNode;
+  const Card = ({ selected, disabled, onClick, children, className: extraClass }: {
+    selected?: boolean; disabled?: boolean; onClick?: () => void; children: React.ReactNode; className?: string;
   }) => (
     <button
       type="button"
@@ -205,7 +278,7 @@ export default function OnboardingWizard() {
           : selected
             ? 'border-violet-600 bg-slate-900 shadow-lg shadow-violet-600/10'
             : 'border-slate-800 bg-slate-900 hover:border-slate-700 cursor-pointer'
-      }`}
+      } ${extraClass || ''}`}
     >
       {selected && (
         <div className="absolute top-3 right-3 w-5 h-5 rounded-full bg-violet-600 flex items-center justify-center">
@@ -234,6 +307,110 @@ export default function OnboardingWizard() {
       <ArrowLeft className="w-4 h-4" /> Back
     </button>
   );
+
+  // Skill card component
+  const SkillCard = ({ skill }: { skill: SkillDef }) => {
+    const Icon = skill.icon;
+    const isSelected = skills.includes(skill.id);
+    const isLocked = skill.pro && plan !== 'pro';
+    const showTooltip = proTooltip === skill.id;
+
+    return (
+      <div className="relative">
+        <button
+          type="button"
+          onClick={() => toggleSkill(skill.id)}
+          className={`relative w-full p-4 rounded-xl border-2 text-left transition-all ${
+            isLocked
+              ? 'border-slate-700/50 bg-slate-900/30 opacity-60 cursor-pointer hover:opacity-75'
+              : isSelected
+                ? 'border-violet-600 bg-slate-900 shadow-lg shadow-violet-600/10'
+                : 'border-slate-800 bg-slate-900 hover:border-slate-700 cursor-pointer'
+          }`}
+        >
+          {/* Pro badge */}
+          {skill.pro && (
+            <div className="absolute top-2.5 right-2.5 flex items-center gap-1 bg-amber-500/20 text-amber-400 text-[10px] font-bold px-2 py-0.5 rounded-full">
+              <Lock className="w-2.5 h-2.5" />
+              PRO
+            </div>
+          )}
+          {/* Selected checkmark */}
+          {isSelected && !isLocked && (
+            <div className="absolute top-2.5 right-2.5 w-5 h-5 rounded-full bg-violet-600 flex items-center justify-center">
+              <Check className="w-3 h-3 text-white" />
+            </div>
+          )}
+          <div className="flex items-start gap-3">
+            <div className={`w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0 ${
+              isLocked ? 'bg-slate-800 text-slate-500' : 'bg-violet-600/20 text-violet-400'
+            }`}>
+              <Icon className="w-5 h-5" />
+            </div>
+            <div className="min-w-0">
+              <div className="font-medium text-sm leading-tight">{skill.label}</div>
+              <div className={`text-xs mt-0.5 leading-snug ${isLocked ? 'text-slate-600' : 'text-slate-400'}`}>
+                {skill.description}
+              </div>
+              <div className={`text-[10px] mt-1.5 font-medium uppercase tracking-wider ${isLocked ? 'text-slate-600' : 'text-slate-500'}`}>
+                {skill.category}
+              </div>
+            </div>
+          </div>
+        </button>
+        {/* Tooltip */}
+        {showTooltip && (
+          <div className="absolute -top-8 left-1/2 -translate-x-1/2 bg-slate-700 text-white text-xs px-3 py-1.5 rounded-lg whitespace-nowrap z-10 shadow-lg">
+            Upgrade to Pro to unlock
+            <div className="absolute top-full left-1/2 -translate-x-1/2 border-4 border-transparent border-t-slate-700" />
+          </div>
+        )}
+      </div>
+    );
+  };
+
+  // Messenger setup card for Step 5
+  const MessengerSetupCard = ({ messengerId }: { messengerId: string }) => {
+    const info = MESSENGER_SETUP_INFO[messengerId];
+    if (!info) return null;
+    const Icon = info.icon;
+    const status: MessengerSetupStatus = serverActive ? 'ready' : 'pending';
+
+    return (
+      <div className="border border-slate-800 rounded-xl p-4 bg-slate-900/50 space-y-3">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <Icon className="w-5 h-5 text-violet-400" />
+            <span className="font-medium text-sm">{info.title}</span>
+          </div>
+          <span className={`text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full ${
+            status === 'pending'
+              ? 'bg-slate-800 text-slate-400'
+              : status === 'ready'
+                ? 'bg-green-500/20 text-green-400'
+                : 'bg-violet-500/20 text-violet-400'
+          }`}>
+            {status === 'pending' ? 'Waiting…' : status === 'ready' ? 'Ready' : 'Connected'}
+          </span>
+        </div>
+        <p className="text-xs text-slate-400 leading-relaxed">
+          {status === 'pending' ? info.pendingMsg : info.readyMsg}
+        </p>
+        {status === 'ready' && messengerId === 'telegram' && (
+          <input
+            type="text"
+            placeholder="Paste your bot token here..."
+            className="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white placeholder:text-slate-500 focus:outline-none focus:border-violet-500"
+          />
+        )}
+        {status === 'ready' && messengerId === 'whatsapp' && (
+          <div className="w-full h-32 bg-slate-800 rounded-lg flex items-center justify-center">
+            <QrCode className="w-12 h-12 text-slate-600" />
+          </div>
+        )}
+      </div>
+    );
+  };
 
   return (
     <div className="min-h-screen bg-slate-950 text-white flex flex-col items-center justify-center p-4">
@@ -425,21 +602,33 @@ export default function OnboardingWizard() {
           <div className="space-y-6">
             <h2 className="text-2xl font-bold text-center">Choose Your Skills</h2>
             <p className="text-slate-400 text-center">
-              {plan === 'free' ? 'Pick up to 2 skills.' : 'All skills are included with Pro.'}
+              {plan === 'free'
+                ? 'Pick up to 2 skills. Pro skills require an upgrade.'
+                : 'All skills are included with Pro.'}
             </p>
-            <div className="grid sm:grid-cols-2 gap-3">
-              {SKILLS.map((s) => {
-                const Icon = s.icon;
-                return (
-                  <Card key={s.id} selected={skills.includes(s.id)} onClick={() => toggleSkill(s.id)}>
-                    <div className="flex items-center gap-3">
-                      <Icon className="w-6 h-6 text-violet-400" />
-                      <span className="font-medium">{s.label}</span>
-                    </div>
-                  </Card>
-                );
-              })}
+
+            {/* Free skills */}
+            <div>
+              <h3 className="text-xs font-bold uppercase tracking-wider text-slate-500 mb-3">Included</h3>
+              <div className="grid grid-cols-2 lg:grid-cols-3 gap-3">
+                {FREE_SKILLS.map((s) => (
+                  <SkillCard key={s.id} skill={s} />
+                ))}
+              </div>
             </div>
+
+            {/* Pro skills */}
+            <div>
+              <h3 className="text-xs font-bold uppercase tracking-wider text-slate-500 mb-3 flex items-center gap-1.5">
+                <Lock className="w-3 h-3" /> Pro Skills
+              </h3>
+              <div className="grid grid-cols-2 lg:grid-cols-3 gap-3">
+                {PRO_SKILLS.map((s) => (
+                  <SkillCard key={s.id} skill={s} />
+                ))}
+              </div>
+            </div>
+
             <div className="flex justify-between items-center">
               <BackBtn />
               <PrimaryBtn onClick={saveAndLaunch} disabled={skills.length === 0}>
@@ -449,31 +638,54 @@ export default function OnboardingWizard() {
           </div>
         )}
 
-        {/* Step 5: Setting Up */}
+        {/* Step 5: Setup & Connect (provisioning + messenger setup) */}
         {step === 5 && (
-          <div className="text-center space-y-6">
-            <Loader2 className={`w-16 h-16 text-violet-500 mx-auto ${setupDone ? '' : 'animate-spin'}`} />
-            <h2 className="text-2xl font-bold">Setting Up Your Assistant</h2>
+          <div className="space-y-6">
+            <h2 className="text-2xl font-bold text-center">Setting Up Your Assistant</h2>
             {!setupDone && (
-              <p className="text-sm text-slate-400">
+              <p className="text-sm text-slate-400 text-center">
                 {Math.floor(elapsedSecs / 60)}:{String(elapsedSecs % 60).padStart(2, '0')} elapsed · typically takes 2–4 minutes
               </p>
             )}
-            <div className="space-y-2 text-left max-w-md mx-auto">
-              {setupStatus.map((s, i) => {
-                const isLast = i === setupStatus.length - 1;
-                const isActive = isLast && !setupDone;
-                return (
-                  <div key={i} className="flex items-center gap-2 text-sm">
-                    {isActive ? (
-                      <Loader2 className="w-4 h-4 text-violet-400 flex-shrink-0 animate-spin" />
-                    ) : (
-                      <Check className="w-4 h-4 text-green-400 flex-shrink-0" />
-                    )}
-                    <span className={isActive ? 'text-white font-medium' : 'text-slate-400'}>{s}</span>
-                  </div>
-                );
-              })}
+
+            <div className="grid md:grid-cols-2 gap-6">
+              {/* Left: provisioning progress */}
+              <div className="space-y-3">
+                <h3 className="text-xs font-bold uppercase tracking-wider text-slate-500 flex items-center gap-2">
+                  {!setupDone && <Loader2 className="w-3 h-3 animate-spin" />}
+                  {setupDone && <Check className="w-3 h-3 text-green-400" />}
+                  Server Progress
+                </h3>
+                <div className="space-y-2">
+                  {setupStatus.map((s, i) => {
+                    const isLast = i === setupStatus.length - 1;
+                    const isActive = isLast && !setupDone;
+                    return (
+                      <div key={i} className="flex items-center gap-2 text-sm">
+                        {isActive ? (
+                          <Loader2 className="w-4 h-4 text-violet-400 flex-shrink-0 animate-spin" />
+                        ) : (
+                          <Check className="w-4 h-4 text-green-400 flex-shrink-0" />
+                        )}
+                        <span className={isActive ? 'text-white font-medium' : 'text-slate-400'}>{s}</span>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Right: messenger setup cards */}
+              <div className="space-y-3">
+                <h3 className="text-xs font-bold uppercase tracking-wider text-slate-500 flex items-center gap-2">
+                  <MessageCircle className="w-3 h-3" />
+                  Connect Messengers
+                </h3>
+                <div className="space-y-3">
+                  {messengers.map((id) => (
+                    <MessengerSetupCard key={id} messengerId={id} />
+                  ))}
+                </div>
+              </div>
             </div>
           </div>
         )}
@@ -508,7 +720,7 @@ export default function OnboardingWizard() {
               </div>
               <div className="flex justify-between text-sm">
                 <span className="text-slate-400">Skills</span>
-                <span>{skills.map((s) => SKILLS.find((x) => x.id === s)?.label).join(', ')}</span>
+                <span>{skills.map((s) => SKILLS.find((x) => x.id === s)?.label).join(', ') || 'None'}</span>
               </div>
             </div>
             <PrimaryBtn onClick={() => router.push('/dashboard')}>
