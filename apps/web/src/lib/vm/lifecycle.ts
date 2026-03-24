@@ -1,5 +1,5 @@
 import { createClient } from '../supabase/server';
-import { createDroplet, destroyDroplet, powerOn, powerOff } from '../providers/digitalocean';
+import { createDroplet, destroyDroplet, powerOn, powerOff, validateAccount } from '../providers/digitalocean';
 import { getProviderToken, refreshProviderToken } from '../providers/token-store';
 import { generateCloudInit } from '../providers/cloud-init';
 import type { Assistant, AssistantStatus } from '../supabase/types';
@@ -63,6 +63,12 @@ async function getUserDOToken(userId: string): Promise<string> {
 export async function launchAssistant(userId: string): Promise<Assistant> {
   const supabase: any = createClient();
   const token = await getUserDOToken(userId);
+
+  // Pre-flight: validate the DO account can create resources
+  const validation = await validateAccount(token);
+  if (!validation.ok) {
+    throw new Error(validation.error ?? 'DigitalOcean account validation failed');
+  }
 
   const assistantId = randomUUID();
   const sidecarToken = randomUUID();
