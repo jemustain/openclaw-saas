@@ -182,7 +182,7 @@ export default function OnboardingWizard() {
       onClick={onClick}
       className={`relative p-5 rounded-xl border-2 text-left transition-all ${
         disabled
-          ? 'border-slate-800 bg-slate-900/50 opacity-50 cursor-not-allowed'
+          ? 'border-slate-700 bg-slate-900/50 opacity-70 cursor-not-allowed'
           : selected
             ? 'border-violet-600 bg-slate-900 shadow-lg shadow-violet-600/10'
             : 'border-slate-800 bg-slate-900 hover:border-slate-700 cursor-pointer'
@@ -267,7 +267,7 @@ export default function OnboardingWizard() {
                 <div className="flex items-center gap-3">
                   <Server className="w-8 h-8 text-blue-300" />
                   <div>
-                    <div className="font-semibold">Azure <span className="text-xs text-slate-500 ml-2">Coming soon</span></div>
+                    <div className="font-semibold">Azure <span className="text-xs text-slate-400 ml-2">Coming soon</span></div>
                     <div className="text-sm text-slate-400">Microsoft Azure cloud</div>
                   </div>
                 </div>
@@ -276,7 +276,7 @@ export default function OnboardingWizard() {
                 <div className="flex items-center gap-3">
                   <Server className="w-8 h-8 text-orange-300" />
                   <div>
-                    <div className="font-semibold">AWS <span className="text-xs text-slate-500 ml-2">Coming soon</span></div>
+                    <div className="font-semibold">AWS <span className="text-xs text-slate-400 ml-2">Coming soon</span></div>
                     <div className="text-sm text-slate-400">Amazon Web Services</div>
                   </div>
                 </div>
