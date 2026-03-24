@@ -347,7 +347,7 @@ export default function OnboardingWizard() {
             }`}>
               <Icon className="w-5 h-5" />
             </div>
-            <div className="min-w-0">
+            <div className={`min-w-0 ${skill.pro ? 'pr-12' : ''}`}>
               <div className="font-medium text-sm leading-tight">{skill.label}</div>
               <div className={`text-xs mt-0.5 leading-snug ${isLocked ? 'text-slate-600' : 'text-slate-400'}`}>
                 {skill.description}
