@@ -351,9 +351,17 @@ export default function OnboardingWizard() {
             </div>
             <div className="flex justify-between items-center">
               <BackBtn />
-              <PrimaryBtn onClick={() => {
+              <PrimaryBtn onClick={async () => {
                 if (plan === 'pro') {
-                  window.location.href = '/api/stripe/checkout';
+                  const res = await fetch('/api/stripe/checkout', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ plan: 'pro' }),
+                  });
+                  const data = await res.json();
+                  if (data.url) {
+                    window.location.href = data.url;
+                  }
                 } else {
                   next();
                 }
