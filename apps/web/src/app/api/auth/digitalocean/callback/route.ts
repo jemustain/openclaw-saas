@@ -22,6 +22,12 @@ export async function GET(request: NextRequest) {
   });
 
   if (!tokenRes.ok) {
+    const errorBody = await tokenRes.text().catch(() => 'no body');
+    console.error(
+      `DO token exchange failed: ${tokenRes.status} ${tokenRes.statusText}`,
+      `redirect_uri=${process.env.DO_REDIRECT_URI}`,
+      `body=${errorBody}`,
+    );
     return NextResponse.redirect(new URL('/onboarding?error=token_exchange', request.url));
   }
 
