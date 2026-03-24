@@ -5,7 +5,7 @@ import { saveProviderToken } from '@/lib/providers/token-store';
 export async function GET(request: NextRequest) {
   const code = request.nextUrl.searchParams.get('code');
   if (!code) {
-    return NextResponse.redirect(new URL('/onboarding/connect?error=missing_code', request.url));
+    return NextResponse.redirect(new URL('/onboarding?error=missing_code', request.url));
   }
 
   // Exchange code for tokens
@@ -22,7 +22,7 @@ export async function GET(request: NextRequest) {
   });
 
   if (!tokenRes.ok) {
-    return NextResponse.redirect(new URL('/onboarding/connect?error=token_exchange', request.url));
+    return NextResponse.redirect(new URL('/onboarding?error=token_exchange', request.url));
   }
 
   const tokenData = await tokenRes.json();
@@ -46,5 +46,5 @@ export async function GET(request: NextRequest) {
     expiresAt,
   );
 
-  return NextResponse.redirect(new URL('/onboarding/connect?connected=digitalocean', request.url));
+  return NextResponse.redirect(new URL('/onboarding?connected=digitalocean', request.url));
 }
