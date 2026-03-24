@@ -30,6 +30,15 @@ async function doFetch(token: string, path: string, init: RequestInit = {}) {
   });
   if (!res.ok) {
     const body = await res.text().catch(() => '');
+    // Parse DO error for user-friendly messages
+    try {
+      const parsed = JSON.parse(body);
+      if (res.status === 403 && parsed.message?.includes('payment method')) {
+        throw new Error('Your DigitalOcean account needs a payment method before creating servers. Add one at digitalocean.com/account/billing, then try again.');
+      }
+    } catch (e) {
+      if (e instanceof Error && e.message.includes('payment method')) throw e;
+    }
     throw new Error(`DigitalOcean API error ${res.status}: ${body}`);
   }
   if (res.status === 204) return null;
@@ -99,4 +108,33 @@ export async function powerOff(token: string, dropletId: number) {
     method: 'POST',
     body: JSON.stringify({ type: 'power_off' }),
   });
+}
+
+/**
+ * Validate the DO account can create resources (has payment method, etc.)
+ * Uses a lightweight API call to check account status.
+ */
+export async function validateAccount(token: string): Promise<{ ok: boolean; error?: string }> {
+  try {
+    const res = await fetch(`${API}/account`, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+        'Content-Type': 'application/json',
+      },
+    });
+    if (!res.ok) {
+      return { ok: false, error: 'Could not verify your DigitalOcean account. Please re-connect.' };
+    }
+    const data = await res.json();
+    const account = data.account;
+    if (account.status === 'locked') {
+      return { ok: false, error: 'Your DigitalOcean account is locked. Please check your account at digitalocean.com.' };
+    }
+    if (account.status === 'warning') {
+      // Account may have billing issues but can still create resources sometimes
+    }
+    return { ok: true };
+  } catch {
+    return { ok: false, error: 'Could not reach DigitalOcean. Please try again.' };
+  }
 }
