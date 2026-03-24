@@ -42,13 +42,13 @@ export async function GET(request: NextRequest) {
     try {
       const inWindow = isInWindow(user.window_start, user.timezone);
 
-      // Get DO token
+      // Get DO token (column is access_token_encrypted in DB)
       const { data: tokenRow } = await supabase
         .from('provider_tokens' as never)
-        .select('access_token')
+        .select('access_token_encrypted')
         .eq('user_id', user.id)
         .eq('provider', 'digitalocean')
-        .single() as unknown as { data: { access_token: string } | null };
+        .single() as unknown as { data: { access_token_encrypted: string } | null };
 
       if (!tokenRow) {
         console.warn(`No DO token for user ${user.id}, skipping`);
@@ -56,14 +56,14 @@ export async function GET(request: NextRequest) {
         continue;
       }
 
-      // Get assistant/droplet
+      // Get assistant (column is vm_id, not droplet_id)
       const { data: assistant } = await supabase
         .from('assistants' as never)
-        .select('id, status, droplet_id')
+        .select('id, status, vm_id')
         .eq('user_id', user.id)
-        .single() as unknown as { data: { id: string; status: string; droplet_id: string | null } | null };
+        .single() as unknown as { data: { id: string; status: string; vm_id: string | null } | null };
 
-      if (!assistant?.droplet_id) {
+      if (!assistant?.vm_id) {
         console.warn(`No droplet for user ${user.id}, skipping`);
         skipped++;
         continue;
@@ -71,22 +71,22 @@ export async function GET(request: NextRequest) {
 
       if (inWindow && assistant.status === 'suspended') {
         // Power on
-        await powerOnDroplet(assistant.droplet_id, tokenRow.access_token);
+        await powerOnDroplet(assistant.vm_id, tokenRow.access_token_encrypted);
         await supabase
           .from('assistants' as never)
           .update({ status: 'active' } as never)
           .eq('id', assistant.id);
         powered_on++;
-        console.log(`Powered ON droplet ${assistant.droplet_id} for user ${user.id}`);
+        console.log(`Powered ON droplet ${assistant.vm_id} for user ${user.id}`);
       } else if (!inWindow && assistant.status === 'active') {
         // Power off
-        await powerOffDroplet(assistant.droplet_id, tokenRow.access_token);
+        await powerOffDroplet(assistant.vm_id, tokenRow.access_token_encrypted);
         await supabase
           .from('assistants' as never)
           .update({ status: 'suspended' } as never)
           .eq('id', assistant.id);
         powered_off++;
-        console.log(`Powered OFF droplet ${assistant.droplet_id} for user ${user.id}`);
+        console.log(`Powered OFF droplet ${assistant.vm_id} for user ${user.id}`);
       } else {
         skipped++;
       }

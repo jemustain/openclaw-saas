@@ -19,6 +19,8 @@ export interface User {
   name: string | null;
   plan: Plan;
   timezone: string | null;
+  window_start: number | null;
+  onboarding_complete: boolean;
   created_at: string;
   updated_at: string;
 }
