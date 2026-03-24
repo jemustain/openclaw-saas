@@ -113,7 +113,14 @@ export default function OnboardingWizard() {
     }
   };
 
-  // Save and launch
+  const [elapsedSecs, setElapsedSecs] = useState(0);
+
+  // Timer for setup step
+  useEffect(() => {
+    if (step !== 5 || setupDone) return;
+    const interval = setInterval(() => setElapsedSecs((s) => s + 1), 1000);
+    return () => clearInterval(interval);
+  }, [step, setupDone]);
   const saveAndLaunch = async () => {
     goTo(5);
     const statuses: string[] = [];
@@ -142,15 +149,21 @@ export default function OnboardingWizard() {
       addStatus('Warning: Launch request failed');
     }
 
-    addStatus('Waiting for assistant to come online...');
+    addStatus('Provisioning your server — this usually takes 2–4 minutes...');
     let attempts = 0;
+    const milestones = [
+      { at: 15, msg: 'Creating your server on DigitalOcean...' },
+      { at: 30, msg: 'Installing OpenClaw and dependencies...' },
+      { at: 60, msg: 'Configuring your assistant...' },
+      { at: 90, msg: 'Almost there — starting services...' },
+    ];
+    let nextMilestone = 0;
     const poll = async (): Promise<void> => {
       try {
         const res = await fetch('/api/assistant/status');
         const data = await res.json();
         if (data.status === 'active') {
-          addStatus('Assistant is active!');
-          // Mark onboarding complete
+          addStatus('✅ Assistant is online!');
           await fetch('/api/onboarding', {
             method: 'PATCH',
             headers: { 'Content-Type': 'application/json' },
@@ -162,11 +175,17 @@ export default function OnboardingWizard() {
         }
       } catch { /* ignore */ }
       attempts++;
-      if (attempts < 30) {
-        await new Promise((r) => setTimeout(r, 2000));
+      const elapsed = attempts * 3;
+      // Show progress milestones
+      while (nextMilestone < milestones.length && elapsed >= milestones[nextMilestone].at) {
+        addStatus(milestones[nextMilestone].msg);
+        nextMilestone++;
+      }
+      if (attempts < 80) { // ~4 min polling
+        await new Promise((r) => setTimeout(r, 3000));
         return poll();
       }
-      addStatus('Taking longer than expected — check your dashboard');
+      addStatus('Taking longer than expected — you can check progress on your dashboard');
       setSetupDone(true);
       setTimeout(() => goTo(6), 1000);
     };
@@ -435,13 +454,26 @@ export default function OnboardingWizard() {
           <div className="text-center space-y-6">
             <Loader2 className={`w-16 h-16 text-violet-500 mx-auto ${setupDone ? '' : 'animate-spin'}`} />
             <h2 className="text-2xl font-bold">Setting Up Your Assistant</h2>
+            {!setupDone && (
+              <p className="text-sm text-slate-400">
+                {Math.floor(elapsedSecs / 60)}:{String(elapsedSecs % 60).padStart(2, '0')} elapsed · typically takes 2–4 minutes
+              </p>
+            )}
             <div className="space-y-2 text-left max-w-md mx-auto">
-              {setupStatus.map((s, i) => (
-                <div key={i} className="flex items-center gap-2 text-sm">
-                  <Check className="w-4 h-4 text-green-400 flex-shrink-0" />
-                  <span className="text-slate-300">{s}</span>
-                </div>
-              ))}
+              {setupStatus.map((s, i) => {
+                const isLast = i === setupStatus.length - 1;
+                const isActive = isLast && !setupDone;
+                return (
+                  <div key={i} className="flex items-center gap-2 text-sm">
+                    {isActive ? (
+                      <Loader2 className="w-4 h-4 text-violet-400 flex-shrink-0 animate-spin" />
+                    ) : (
+                      <Check className="w-4 h-4 text-green-400 flex-shrink-0" />
+                    )}
+                    <span className={isActive ? 'text-white font-medium' : 'text-slate-400'}>{s}</span>
+                  </div>
+                );
+              })}
             </div>
           </div>
         )}
