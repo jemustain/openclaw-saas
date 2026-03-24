@@ -316,11 +316,11 @@ export default function OnboardingWizard() {
     const showTooltip = proTooltip === skill.id;
 
     return (
-      <div className="relative">
+      <div className="relative h-full">
         <button
           type="button"
           onClick={() => toggleSkill(skill.id)}
-          className={`relative w-full p-4 rounded-xl border-2 text-left transition-all ${
+          className={`relative w-full h-full p-4 rounded-xl border-2 text-left transition-all ${
             isLocked
               ? 'border-slate-700/50 bg-slate-900/30 opacity-60 cursor-pointer hover:opacity-75'
               : isSelected
