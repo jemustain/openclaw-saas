@@ -15,9 +15,9 @@ export async function GET(request: NextRequest) {
     body: new URLSearchParams({
       grant_type: 'authorization_code',
       code,
-      client_id: process.env.DO_CLIENT_ID!,
-      client_secret: process.env.DO_CLIENT_SECRET!,
-      redirect_uri: process.env.DO_REDIRECT_URI!,
+      client_id: process.env.DO_CLIENT_ID!.trim(),
+      client_secret: process.env.DO_CLIENT_SECRET!.trim(),
+      redirect_uri: process.env.DO_REDIRECT_URI!.trim(),
     }),
   });
 
