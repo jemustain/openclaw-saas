@@ -324,7 +324,9 @@ export default function OnboardingWizard() {
                       <select
                         value={windowStart}
                         onChange={(e) => setWindowStart(Number(e.target.value))}
-                        className="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm"
+                        onClick={(e) => e.stopPropagation()}
+                        onPointerDown={(e) => e.stopPropagation()}
+                        className="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm appearance-auto"
                       >
                         {Array.from({ length: 24 }, (_, i) => (
                           <option key={i} value={i}>
