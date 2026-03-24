@@ -215,11 +215,25 @@ export default function OnboardingWizard() {
     }
 
     addStatus('Launching your assistant...');
+    let launchFailed = false;
     try {
-      await fetch('/api/launch', { method: 'POST' });
-      addStatus('Assistant launched');
+      const launchRes = await fetch('/api/launch', { method: 'POST' });
+      if (!launchRes.ok) {
+        const errData = await launchRes.json().catch(() => ({}));
+        addStatus(`⚠️ ${errData.error ?? 'Launch failed — please check your DigitalOcean account'}`);
+        launchFailed = true;
+      } else {
+        addStatus('Assistant launched');
+      }
     } catch {
-      addStatus('Warning: Launch request failed');
+      addStatus('⚠️ Launch request failed — check your connection');
+      launchFailed = true;
+    }
+
+    if (launchFailed) {
+      setSetupDone(true);
+      setTimeout(() => goTo(6), 2000);
+      return;
     }
 
     addStatus('Provisioning your server — this usually takes 2–4 minutes...');
@@ -235,7 +249,7 @@ export default function OnboardingWizard() {
       try {
         const res = await fetch('/api/assistant/status');
         const data = await res.json();
-        if (data.status === 'active') {
+        if (data.assistant?.status === 'active') {
           addStatus('✅ Assistant is online!');
           setServerActive(true);
           await fetch('/api/onboarding', {
@@ -243,6 +257,19 @@ export default function OnboardingWizard() {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ onboardingComplete: true }),
           });
+          setSetupDone(true);
+          setTimeout(() => goTo(6), 2000);
+          return;
+        }
+        if (data.assistant?.status === 'destroyed' || data.assistant?.status === 'destroying') {
+          addStatus('⚠️ Server provisioning failed — please try again from your dashboard');
+          setSetupDone(true);
+          setTimeout(() => goTo(6), 2000);
+          return;
+        }
+        // No assistant found at all after some attempts = likely failed
+        if (!data.assistant && attempts > 10) {
+          addStatus('⚠️ Something went wrong — please try launching from your dashboard');
           setSetupDone(true);
           setTimeout(() => goTo(6), 2000);
           return;
