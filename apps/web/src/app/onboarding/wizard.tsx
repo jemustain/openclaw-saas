@@ -96,7 +96,7 @@ export default function OnboardingWizard() {
   const [direction, setDirection] = useState(1);
   const [animating, setAnimating] = useState(false);
   const [timezone, setTimezone] = useState('');
-  const [hosting, setHosting] = useState('digitalocean');
+  const [hosting, setHosting] = useState('oracle');
   const [plan, setPlan] = useState<'free' | 'pro'>('free');
   const [windowStart, setWindowStart] = useState(9);
   const [messengers, setMessengers] = useState<string[]>([]);
@@ -118,7 +118,7 @@ export default function OnboardingWizard() {
       const s = parseInt(stepParam, 10);
       if (s >= 0 && s < STEPS.length) setStep(s);
     }
-    if (connected === 'digitalocean' && !stepParam) setStep(2);
+    if ((connected === 'digitalocean' || connected === 'oracle') && !stepParam) setStep(2);
     if (upgraded === 'true' && !stepParam) {
       setPlan('pro');
       setStep(3);
@@ -207,7 +207,7 @@ export default function OnboardingWizard() {
       await fetch('/api/onboarding', {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ timezone, plan, windowStart, messengers, skills, onboardingComplete: false }),
+        body: JSON.stringify({ timezone, plan, windowStart, messengers, skills, hosting, onboardingComplete: false }),
       });
       addStatus('Preferences saved');
     } catch {
@@ -220,7 +220,7 @@ export default function OnboardingWizard() {
       const launchRes = await fetch('/api/launch', { method: 'POST' });
       if (!launchRes.ok) {
         const errData = await launchRes.json().catch(() => ({}));
-        addStatus(`⚠️ ${errData.error ?? 'Launch failed — please check your DigitalOcean account'}`);
+        addStatus(`⚠️ ${errData.error ?? 'Launch failed — please try again'}`);
         launchFailed = true;
       } else {
         addStatus('Assistant launched');
@@ -239,7 +239,7 @@ export default function OnboardingWizard() {
     addStatus('Provisioning your server — this usually takes 2–4 minutes...');
     let attempts = 0;
     const milestones = [
-      { at: 15, msg: 'Creating your server on DigitalOcean...' },
+      { at: 15, msg: `Creating your server on ${hosting === 'oracle' ? 'Oracle Cloud' : 'DigitalOcean'}...` },
       { at: 30, msg: 'Installing OpenClaw and dependencies...' },
       { at: 60, msg: 'Configuring your assistant...' },
       { at: 90, msg: 'Almost there — starting services...' },
@@ -477,12 +477,26 @@ export default function OnboardingWizard() {
             <h2 className="text-2xl font-bold text-center">Choose Your Hosting</h2>
             <p className="text-slate-400 text-center">Where should your AI assistant run?</p>
             <div className="grid gap-4">
-              <Card selected={hosting === 'digitalocean'} onClick={() => setHosting('digitalocean')}>
+              <Card selected={hosting === 'oracle'} onClick={() => setHosting('oracle')}>
                 <div className="flex items-center gap-3">
-                  <Cloud className="w-8 h-8 text-blue-400" />
+                  <Sun className="w-8 h-8 text-amber-400" />
                   <div>
-                    <div className="font-semibold">DigitalOcean</div>
-                    <div className="text-sm text-slate-400">Reliable cloud hosting, starting at $4/mo</div>
+                    <div className="font-semibold">Oracle Cloud — Free Tier</div>
+                    <div className="text-sm text-slate-400">Always Free ARM server — no credit card, no hosting cost</div>
+                  </div>
+                </div>
+              </Card>
+              <Card disabled>
+                <div className="flex items-center gap-3">
+                  <Cloud className="w-8 h-8 text-blue-400 opacity-50" />
+                  <div>
+                    <div className="font-semibold text-slate-400">
+                      DigitalOcean{' '}
+                      <span className="ml-2 inline-flex items-center gap-1 bg-violet-500/20 text-violet-400 text-[10px] font-bold px-2 py-0.5 rounded-full">
+                        <Lock className="w-2.5 h-2.5" /> Pro — Coming Soon
+                      </span>
+                    </div>
+                    <div className="text-sm text-slate-500">Managed cloud hosting (requires Pro plan)</div>
                   </div>
                 </div>
               </Card>
@@ -507,14 +521,12 @@ export default function OnboardingWizard() {
             </div>
             <div className="flex justify-between items-center">
               <BackBtn />
-              <PrimaryBtn onClick={() => {
-                window.location.href = '/api/auth/digitalocean';
-              }}>
-                Connect DigitalOcean <ArrowRight className="w-4 h-4" />
+              <PrimaryBtn onClick={next} disabled={!hosting}>
+                Next <ArrowRight className="w-4 h-4" />
               </PrimaryBtn>
             </div>
             <p className="text-xs text-slate-500 text-center">
-              New to DigitalOcean?{' '}
+              Interested in DigitalOcean for the future?{' '}
               <a
                 href="https://cloud.digitalocean.com/account-referrals?i=091ab6c0-097d-4111-baab-ee4872bd796d"
                 target="_blank"
@@ -523,7 +535,7 @@ export default function OnboardingWizard() {
               >
                 Sign up with our referral link
               </a>{' '}
-              for free credits.
+              for free credits when it&apos;s available.
             </p>
           </div>
         )}
@@ -572,6 +584,9 @@ export default function OnboardingWizard() {
                 </div>
               </Card>
             </div>
+            <p className="text-xs text-slate-500 text-center">
+              Oracle Cloud free hosting is included with both plans — no hosting fees ever.
+            </p>
             <div className="flex justify-between items-center">
               <BackBtn />
               <PrimaryBtn onClick={async () => {
@@ -725,7 +740,7 @@ export default function OnboardingWizard() {
             <div className="bg-slate-900 border border-slate-800 rounded-xl p-6 text-left space-y-3 max-w-md mx-auto">
               <div className="flex justify-between text-sm">
                 <span className="text-slate-400">Hosting</span>
-                <span>DigitalOcean</span>
+                <span>{hosting === 'oracle' ? 'Oracle Cloud (Free)' : 'DigitalOcean'}</span>
               </div>
               <div className="flex justify-between text-sm">
                 <span className="text-slate-400">Plan</span>
