@@ -6,7 +6,6 @@ import { createClient } from "@/lib/supabase/server";
 import { resumeAssistant } from "@/lib/vm/lifecycle";
 import { handleCancellation } from "@/lib/billing/cancellation";
 import { onSubscriptionConfirmed, onPaymentFailed as sendPaymentFailedEmail } from "@/lib/email/triggers";
-import { onSubscriptionConfirmed, onPaymentFailed as sendPaymentFailedEmail } from "@/lib/email/triggers";
 
 /**
  * POST /api/stripe/webhook

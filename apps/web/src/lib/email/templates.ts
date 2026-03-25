@@ -71,7 +71,7 @@ export function assistantReadyEmail(name: string, messengerLinks?: { whatsapp?: 
     <table width="100%" cellpadding="0" cellspacing="0" style="background:#251840;border-radius:8px;padding:16px 20px;margin:20px 0;">
     <tr><td colspan="2" style="padding-bottom:12px;"><strong style="color:#c084fc;font-size:14px;">⚡ Quick tips</strong></td></tr>
     ${tip('💬', 'Just talk naturally — your assistant understands context')}
-    ${tip('📅', `Try "What's on my calendar today?" to get started`)}
+    ${tip('📅', 'Try "What\'s on my calendar today?" to get started')}
     ${tip('📧', 'Ask it to draft emails, summarize threads, or set reminders')}
     ${tip('🔗', 'Connect more tools from your dashboard settings')}
     </table>
