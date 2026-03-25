@@ -6,7 +6,18 @@ interface Assistant {
   id: string;
   status: string;
   ip_address?: string | null;
+  provider?: string;
+  region?: string;
   created_at: string;
+}
+
+function providerLabel(provider: string): string {
+  const labels: Record<string, string> = {
+    oracle: "Oracle Cloud",
+    azure: "Microsoft Azure",
+    digitalocean: "DigitalOcean",
+  };
+  return labels[provider] ?? provider;
 }
 
 export function AssistantCard({ assistant }: { assistant: Assistant | null }) {
@@ -64,6 +75,15 @@ export function AssistantCard({ assistant }: { assistant: Assistant | null }) {
         <span className={`h-3 w-3 rounded-full ${dot}`} />
         <span className="text-slate-100">{label}</span>
       </div>
+
+      {current?.provider && (
+        <p className="text-sm text-slate-400 mb-2">
+          Running on{" "}
+          <span className="text-slate-200">
+            {providerLabel(current.provider)}
+          </span>
+        </p>
+      )}
 
       {current?.ip_address && status === "active" && (
         <p className="text-sm text-slate-400 mb-2">

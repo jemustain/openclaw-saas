@@ -24,34 +24,50 @@ async function DashboardContent({
 
   const supabase: any = createClient();
 
-  // Fetch assistant status
+  // Fetch assistant status (include provider info)
   const { data: assistant } = await supabase
     .from("assistants")
-    .select()
+    .select("id, status, ip_address, provider, region, created_at")
     .eq("user_id", session.userId)
     .neq("status", "destroyed")
     .order("created_at", { ascending: false })
     .limit(1)
     .single();
 
-  // Fetch user profile for plan info
-  const { data: profile } = await supabase
-    .from("profiles")
-    .select("plan")
+  // Fetch user record for plan, hosting preference, and messengers
+  const { data: user } = await supabase
+    .from("users")
+    .select("plan, provider_preference, messengers")
     .eq("id", session.userId)
     .single();
 
-  const plan: PlanKey = profile?.plan ?? "free";
+  // Fallback to profiles table for plan if users table doesn't have it
+  let plan: PlanKey = user?.plan ?? "free";
+  if (!user?.plan) {
+    const { data: profile } = await supabase
+      .from("profiles")
+      .select("plan")
+      .eq("id", session.userId)
+      .single();
+    plan = profile?.plan ?? "free";
+  }
 
-  // Check DigitalOcean connection
-  const { data: doToken } = await supabase
-    .from("provider_tokens")
-    .select("id")
-    .eq("user_id", session.userId)
-    .eq("provider", "digitalocean")
-    .single();
+  const hosting: string | undefined = user?.provider_preference ?? undefined;
+  const messengers: string[] = user?.messengers ?? [];
 
-  const doConnected = !!doToken;
+  // Check provider token connections (Azure + DO need OAuth)
+  let providerConnected = false;
+  if (hosting === "oracle") {
+    providerConnected = true; // We manage Oracle — always active
+  } else if (hosting) {
+    const { data: token } = await supabase
+      .from("provider_tokens")
+      .select("id")
+      .eq("user_id", session.userId)
+      .eq("provider", hosting)
+      .single();
+    providerConnected = !!token;
+  }
 
   return (
     <div className="min-h-screen bg-slate-950 px-4 py-8 sm:px-6 lg:px-8">
@@ -61,8 +77,12 @@ async function DashboardContent({
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <AssistantCard assistant={assistant ?? null} />
-          <UsageCard plan={plan} messagesUsed={0} hoursActive={0} />
-          <ConnectionsCard digitalOceanConnected={doConnected} />
+          <UsageCard />
+          <ConnectionsCard
+            hosting={hosting}
+            providerConnected={providerConnected}
+            messengers={messengers}
+          />
           <PlanCard plan={plan} />
         </div>
       </div>
