@@ -7,6 +7,23 @@ import { generateCloudInit } from '../providers/cloud-init';
 import type { Assistant, AssistantStatus } from '../supabase/types';
 import { randomUUID } from 'crypto';
 
+const RG_NAME = 'shiftworker-rg';
+
+/**
+ * Parse an Azure resource ID into its components.
+ * Format: /subscriptions/{sub}/resourceGroups/{rg}/providers/Microsoft.Compute/virtualMachines/{name}
+ */
+function parseAzureVmId(resourceId: string): { subscriptionId: string; resourceGroup: string; vmName: string } {
+  const match = resourceId.match(
+    /\/subscriptions\/([^/]+)\/resourceGroups\/([^/]+)\/providers\/Microsoft\.Compute\/virtualMachines\/([^/]+)/i,
+  );
+  if (match) {
+    return { subscriptionId: match[1], resourceGroup: match[2], vmName: match[3] };
+  }
+  // Fallback: treat as just a VM name (shouldn't happen, but be safe)
+  throw new Error(`Cannot parse Azure VM resource ID: ${resourceId}`);
+}
+
 const PORTAL_URL = process.env.NEXT_PUBLIC_APP_URL ?? 'https://shiftworker.ai';
 
 /**
@@ -148,7 +165,11 @@ export async function launchAssistant(userId: string): Promise<Assistant> {
       });
     } else if (provider === 'azure') {
       const token = await getUserProviderToken(userId, 'azure');
-      const { subscriptionId } = await validateAzureAccount(token);
+      const validation = await validateAzureAccount(token);
+      if (!validation.ok || !validation.subscriptionId) {
+        throw new Error(validation.error ?? 'No active Azure subscription found');
+      }
+      const subscriptionId = validation.subscriptionId;
       const resourceGroup = await ensureResourceGroup(token, subscriptionId);
       const networking = await ensureNetworking(token, subscriptionId, resourceGroup);
       const vm = await createVM(token, {
@@ -212,7 +233,8 @@ export async function suspendAssistant(assistantId: string): Promise<Assistant> 
     await oracle.powerOff(assistant.vm_id);
   } else if (assistant.provider === 'azure') {
     const token = await getUserProviderToken(assistant.user_id, 'azure');
-    await powerOffVM(token, assistant.vm_id);
+    const { subscriptionId, resourceGroup, vmName } = parseAzureVmId(assistant.vm_id);
+    await powerOffVM(token, subscriptionId, resourceGroup, vmName);
   } else {
     const token = await getUserDOToken(assistant.user_id);
     await powerOff(token, Number(assistant.vm_id));
@@ -243,7 +265,8 @@ export async function resumeAssistant(assistantId: string): Promise<Assistant> {
     await oracle.powerOn(assistant.vm_id);
   } else if (assistant.provider === 'azure') {
     const token = await getUserProviderToken(assistant.user_id, 'azure');
-    await powerOnVM(token, assistant.vm_id);
+    const { subscriptionId, resourceGroup, vmName } = parseAzureVmId(assistant.vm_id);
+    await powerOnVM(token, subscriptionId, resourceGroup, vmName);
   } else {
     const token = await getUserDOToken(assistant.user_id);
     await powerOn(token, Number(assistant.vm_id));
@@ -276,7 +299,8 @@ export async function destroyAssistant(assistantId: string): Promise<Assistant> 
         await oracle.destroyServer(assistant.vm_id);
       } else if (assistant.provider === 'azure') {
         const token = await getUserProviderToken(assistant.user_id, 'azure');
-        await destroyVM(token, assistant.vm_id);
+        const { subscriptionId, resourceGroup, vmName } = parseAzureVmId(assistant.vm_id);
+        await destroyVM(token, subscriptionId, resourceGroup, vmName);
       } else {
         const token = await getUserDOToken(assistant.user_id);
         await destroyDroplet(token, Number(assistant.vm_id));
