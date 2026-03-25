@@ -311,8 +311,9 @@ export default function Home() {
           </div>
         </div>
         <p className="mt-8 text-center text-sm text-slate-500 max-w-2xl mx-auto">
-          Hosting runs on DigitalOcean (~$4/mo after credits). AI is powered by
-          Google Gemini Flash — free with your Google account, no card required.
+          Free tier runs on Oracle Cloud&apos;s Always Free ARM servers — no hosting cost,
+          no credit card required. Pro tier runs on DigitalOcean for managed hosting.
+          AI is powered by Google Gemini Flash — free with your Google account.
           {' '}
           <a
             href="https://cloud.digitalocean.com/account-referrals?i=091ab6c0-097d-4111-baab-ee4872bd796d"
@@ -320,7 +321,7 @@ export default function Home() {
             rel="noopener noreferrer"
             className="text-violet-400 hover:text-violet-300 underline underline-offset-2"
           >
-            Sign up for DigitalOcean and get $200 in free credits
+            Pro users: sign up for DigitalOcean and get $200 in free credits
           </a>.
         </p>
       </section>
