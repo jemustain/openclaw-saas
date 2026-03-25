@@ -20,7 +20,7 @@ Think "Superhuman for AI assistants." Simple signup, instant value, zero technic
 **Acceptance Criteria:**
 - User signs up with email or Google
 - Clicks "Launch my assistant"
-- We provision an OpenClaw VM on Oracle Cloud (free tier) or user's DigitalOcean account (paid tier)
+- We provision an OpenClaw VM on the user's Azure subscription
 - User sees a friendly progress indicator ("Setting things up…" → "Almost ready…" → "Done!")
 - Total time: < 90 seconds
 - User is prompted to connect a messaging app
@@ -97,12 +97,11 @@ Think "Superhuman for AI assistants." Simple signup, instant value, zero technic
 - API access for power users
 
 ### Unit Economics (per user)
-- Oracle Cloud Always Free ARM: $0/mo (free tier)
-- DigitalOcean Droplet (paid tier): ~$6/mo
+- Azure VM (Standard_B1s): ~$4/mo (paid by user via their Azure subscription)
 - AI API usage (Anthropic/OpenAI): ~$3-8/mo avg
-- Our margin at $12/mo Starter: ~$4-9/mo (healthy margin)
-- Our margin at $25/mo Pro: ~$17-22/mo (excellent margin)
-- Free tier cost: $0/mo compute (Oracle Always Free), only AI API costs
+- Our margin at $12/mo Starter: ~$12/mo (no hosting cost to us)
+- Our margin at $25/mo Pro: ~$25/mo (no hosting cost to us)
+- User pays Azure directly for VM hosting
 
 ### Revenue Targets
 - 100 paid users = ~$1,500/mo revenue, ~$1,200/mo margin

@@ -95,7 +95,7 @@ export default function OnboardingWizard() {
   const [direction, setDirection] = useState(1);
   const [animating, setAnimating] = useState(false);
   const [timezone, setTimezone] = useState('');
-  const [hosting, setHosting] = useState('oracle');
+  const [hosting, setHosting] = useState('azure');
   const [vmSize, setVmSize] = useState('');
 
   const AZURE_SIZES = [
@@ -260,7 +260,7 @@ export default function OnboardingWizard() {
     addStatus('Provisioning your server — this usually takes 2–4 minutes...');
     let attempts = 0;
     const milestones = [
-      { at: 15, msg: `Creating your server on ${hosting === 'oracle' ? 'Oracle Cloud' : hosting === 'azure' ? 'Azure' : 'DigitalOcean'}...` },
+      { at: 15, msg: `Creating your server on ${hosting === 'azure' ? 'Azure' : hosting === 'oracle' ? 'Oracle Cloud' : 'DigitalOcean'}...` },
       { at: 30, msg: 'Installing OpenClaw and dependencies...' },
       { at: 60, msg: 'Configuring your assistant...' },
       { at: 90, msg: 'Almost there — starting services...' },
@@ -674,15 +674,6 @@ export default function OnboardingWizard() {
             <h2 className="text-2xl font-bold text-center">Choose Your Hosting</h2>
             <p className="text-slate-400 text-center">Where should your AI assistant run?</p>
             <div className="grid gap-4">
-              <Card selected={hosting === 'oracle'} onClick={() => { setHosting('oracle'); setVmSize(''); }}>
-                <div className="flex items-center gap-3">
-                  <Cloud className="w-8 h-8 text-blue-400" />
-                  <div>
-                    <div className="font-semibold">Oracle Cloud <span className="text-xs text-green-400 ml-2">Free</span></div>
-                    <div className="text-sm text-slate-400">Always Free ARM server — no credit card, no hosting cost</div>
-                  </div>
-                </div>
-              </Card>
               <Card selected={hosting === 'azure'} onClick={() => { setHosting('azure'); setVmSize(getDefaultSize('azure')); }}>
                 <div className="flex items-center gap-3">
                   <Server className="w-8 h-8 text-blue-500" />
@@ -692,12 +683,21 @@ export default function OnboardingWizard() {
                   </div>
                 </div>
               </Card>
-              <Card selected={hosting === 'digitalocean'} onClick={() => { setHosting('digitalocean'); setVmSize(getDefaultSize('digitalocean')); }}>
+              <Card disabled>
+                <div className="flex items-center gap-3">
+                  <Cloud className="w-8 h-8 text-blue-400" />
+                  <div>
+                    <div className="font-semibold">Oracle Cloud <span className="text-xs text-slate-400 ml-2">Coming soon</span></div>
+                    <div className="text-sm text-slate-400">Always Free ARM server</div>
+                  </div>
+                </div>
+              </Card>
+              <Card disabled>
                 <div className="flex items-center gap-3">
                   <Sun className="w-8 h-8 text-amber-400" />
                   <div>
-                    <div className="font-semibold">DigitalOcean</div>
-                    <div className="text-sm text-slate-400">Reliable cloud hosting — starts at ~$4/mo</div>
+                    <div className="font-semibold">DigitalOcean <span className="text-xs text-slate-400 ml-2">Coming soon</span></div>
+                    <div className="text-sm text-slate-400">Reliable cloud hosting</div>
                   </div>
                 </div>
               </Card>
@@ -714,36 +714,14 @@ export default function OnboardingWizard() {
             <div className="flex justify-between items-center">
               <BackBtn />
               <PrimaryBtn onClick={() => {
-                if (hosting === 'oracle') {
-                  next();
-                } else if (hosting === 'azure') {
-                  window.location.href = '/api/auth/azure';
-                } else {
-                  window.location.href = '/api/auth/digitalocean';
-                }
+                window.location.href = '/api/auth/azure';
               }}>
-                {hosting === 'oracle' ? 'Next' : hosting === 'azure' ? 'Connect Azure' : 'Connect DigitalOcean'} <ArrowRight className="w-4 h-4" />
+                Connect Azure <ArrowRight className="w-4 h-4" />
               </PrimaryBtn>
             </div>
-            {hosting === 'azure' && (
-              <p className="text-xs text-slate-500 text-center">
-                You&apos;ll sign in with your Microsoft account to connect Azure.
-              </p>
-            )}
-            {hosting === 'digitalocean' && (
-              <p className="text-xs text-slate-500 text-center">
-                New to DigitalOcean?{' '}
-                <a
-                  href="https://cloud.digitalocean.com/account-referrals?i=091ab6c0-097d-4111-baab-ee4872bd796d"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-violet-400 hover:underline"
-                >
-                  Sign up with our referral link
-                </a>{' '}
-                for free credits.
-              </p>
-            )}
+            <p className="text-xs text-slate-500 text-center">
+              You&apos;ll sign in with your Microsoft account to connect Azure.
+            </p>
           </div>
         )}
 
@@ -949,7 +927,7 @@ export default function OnboardingWizard() {
             <div className="bg-slate-900 border border-slate-800 rounded-xl p-6 text-left space-y-3 max-w-md mx-auto">
               <div className="flex justify-between text-sm">
                 <span className="text-slate-400">Hosting</span>
-                <span>{hosting === 'oracle' ? 'Oracle Cloud (Free)' : hosting === 'azure' ? 'Microsoft Azure' : 'DigitalOcean'}</span>
+                <span>{hosting === 'azure' ? 'Microsoft Azure' : hosting === 'oracle' ? 'Oracle Cloud' : 'DigitalOcean'}</span>
               </div>
               <div className="flex justify-between text-sm">
                 <span className="text-slate-400">Plan</span>
