@@ -1,5 +1,6 @@
 import { createClient } from '../supabase/server';
 import { createDroplet, destroyDroplet, powerOn, powerOff, validateAccount } from '../providers/digitalocean';
+import { OracleProvider } from '../providers/oracle';
 import { getProviderToken, refreshProviderToken } from '../providers/token-store';
 import { generateCloudInit } from '../providers/cloud-init';
 import type { Assistant, AssistantStatus } from '../supabase/types';
@@ -58,6 +59,7 @@ async function getUserProviderToken(userId: string, provider: string): Promise<s
 }
 
 /**
+<<<<<<< HEAD
  * @deprecated Use getUserProviderToken instead
  */
 async function getUserDOToken(userId: string): Promise<string> {
@@ -98,6 +100,39 @@ export async function launchAssistant(userId: string): Promise<Assistant> {
       throw new Error(validation.error ?? 'DigitalOcean account validation failed');
     }
   }
+=======
+ * Determine the cloud provider for a user.
+ * Checks user's provider_preference, falls back to CLOUD_PROVIDER env or 'oracle'.
+ */
+async function getProviderForUser(userId: string): Promise<'oracle' | 'digitalocean'> {
+  const supabase: any = createClient();
+  const { data } = await supabase
+    .from('users')
+    .select('provider_preference')
+    .eq('id', userId)
+    .single();
+
+  const pref = data?.provider_preference;
+  if (pref === 'oracle' || pref === 'digitalocean') return pref;
+  return (process.env.CLOUD_PROVIDER as 'oracle' | 'digitalocean') ?? 'oracle';
+}
+
+/**
+ * Get a shared OracleProvider instance (uses our own OCI credentials).
+ */
+function getOracleProvider(): OracleProvider {
+  return new OracleProvider();
+}
+
+/**
+ * Launch a new assistant VM.
+ * Oracle: uses our own OCI credentials (no user tokens needed).
+ * DigitalOcean: uses the user's OAuth token.
+ */
+export async function launchAssistant(userId: string): Promise<Assistant> {
+  const supabase: any = createClient();
+  const provider = await getProviderForUser(userId);
+>>>>>>> origin/main
 
   const assistantId = randomUUID();
   const sidecarToken = randomUUID();
@@ -114,7 +149,11 @@ export async function launchAssistant(userId: string): Promise<Assistant> {
     .insert({
       id: assistantId,
       user_id: userId,
+<<<<<<< HEAD
       provider: hosting,
+=======
+      provider,
+>>>>>>> origin/main
       status: 'provisioning' as AssistantStatus,
       sidecar_token: sidecarToken,
     })
@@ -124,6 +163,7 @@ export async function launchAssistant(userId: string): Promise<Assistant> {
   if (insertError) throw new Error(`Failed to create assistant: ${insertError.message}`);
 
   try {
+<<<<<<< HEAD
     if (hosting === 'azure') {
       // TODO: call Azure createVM with vmSize once azure provider is merged
       throw new Error('Azure VM provisioning not yet implemented');
@@ -135,12 +175,39 @@ export async function launchAssistant(userId: string): Promise<Assistant> {
       cloudInit,
       size: vmSize ?? undefined,
     });
+=======
+    if (provider === 'oracle') {
+      const oracle = getOracleProvider();
+      const server = await oracle.createServer({
+        name: `claw-${assistantId.slice(0, 8)}`,
+        cloudInit,
+      });
+>>>>>>> origin/main
 
-    return await updateAssistantStatus(assistantId, 'provisioning', {
-      vm_id: String(droplet.id),
-      ip_address: droplet.publicIpv4,
-      region: droplet.region,
-    });
+      return await updateAssistantStatus(assistantId, 'provisioning', {
+        vm_id: server.id,
+        ip_address: server.publicIpv4,
+        region: server.region,
+      });
+    } else {
+      // DigitalOcean flow — requires user OAuth tokens
+      const token = await getUserDOToken(userId);
+      const validation = await validateAccount(token);
+      if (!validation.ok) {
+        throw new Error(validation.error ?? 'DigitalOcean account validation failed');
+      }
+
+      const droplet = await createDroplet(token, {
+        name: `claw-${assistantId.slice(0, 8)}`,
+        cloudInit,
+      });
+
+      return await updateAssistantStatus(assistantId, 'provisioning', {
+        vm_id: String(droplet.id),
+        ip_address: droplet.publicIpv4,
+        region: droplet.region,
+      });
+    }
   } catch (err) {
     await updateAssistantStatus(assistantId, 'destroyed').catch(() => {});
     throw err;
@@ -148,7 +215,7 @@ export async function launchAssistant(userId: string): Promise<Assistant> {
 }
 
 /**
- * Suspend (power off) an assistant's droplet.
+ * Suspend (power off) an assistant's VM.
  */
 export async function suspendAssistant(assistantId: string): Promise<Assistant> {
   const supabase: any = createClient();
@@ -164,13 +231,19 @@ export async function suspendAssistant(assistantId: string): Promise<Assistant> 
   assertTransition(assistant.status, 'suspended');
   if (!assistant.vm_id) throw new Error('No VM associated with assistant');
 
-  const token = await getUserDOToken(assistant.user_id);
-  await powerOff(token, Number(assistant.vm_id));
+  if (assistant.provider === 'oracle') {
+    const oracle = getOracleProvider();
+    await oracle.powerOff(assistant.vm_id);
+  } else {
+    const token = await getUserDOToken(assistant.user_id);
+    await powerOff(token, Number(assistant.vm_id));
+  }
+
   return await updateAssistantStatus(assistantId, 'suspended');
 }
 
 /**
- * Resume (power on) a suspended assistant's droplet.
+ * Resume (power on) a suspended assistant's VM.
  */
 export async function resumeAssistant(assistantId: string): Promise<Assistant> {
   const supabase: any = createClient();
@@ -186,13 +259,19 @@ export async function resumeAssistant(assistantId: string): Promise<Assistant> {
   assertTransition(assistant.status, 'active');
   if (!assistant.vm_id) throw new Error('No VM associated with assistant');
 
-  const token = await getUserDOToken(assistant.user_id);
-  await powerOn(token, Number(assistant.vm_id));
+  if (assistant.provider === 'oracle') {
+    const oracle = getOracleProvider();
+    await oracle.powerOn(assistant.vm_id);
+  } else {
+    const token = await getUserDOToken(assistant.user_id);
+    await powerOn(token, Number(assistant.vm_id));
+  }
+
   return await updateAssistantStatus(assistantId, 'active');
 }
 
 /**
- * Destroy an assistant's droplet permanently.
+ * Destroy an assistant's VM permanently.
  */
 export async function destroyAssistant(assistantId: string): Promise<Assistant> {
   const supabase: any = createClient();
@@ -210,8 +289,13 @@ export async function destroyAssistant(assistantId: string): Promise<Assistant> 
 
   try {
     if (assistant.vm_id) {
-      const token = await getUserDOToken(assistant.user_id);
-      await destroyDroplet(token, Number(assistant.vm_id));
+      if (assistant.provider === 'oracle') {
+        const oracle = getOracleProvider();
+        await oracle.destroyServer(assistant.vm_id);
+      } else {
+        const token = await getUserDOToken(assistant.user_id);
+        await destroyDroplet(token, Number(assistant.vm_id));
+      }
     }
     return await updateAssistantStatus(assistantId, 'destroyed', {
       vm_id: null,

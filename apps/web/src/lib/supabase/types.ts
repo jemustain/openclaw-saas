@@ -23,6 +23,7 @@ export interface User {
   timezone: string | null;
   window_start: number | null;
   onboarding_complete: boolean;
+  provider_preference: string | null;
   created_at: string;
   updated_at: string;
 }

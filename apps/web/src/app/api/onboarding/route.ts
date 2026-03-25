@@ -22,6 +22,7 @@ export async function PATCH(request: NextRequest) {
   if (hosting !== undefined) update.hosting = hosting;
   if (vmSize !== undefined) update.vm_size = vmSize;
   if (onboardingComplete !== undefined) update.onboarding_complete = onboardingComplete;
+  if (hosting !== undefined) update.provider_preference = hosting;
 
   const { error } = await supabase
     .from('users')
