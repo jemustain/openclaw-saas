@@ -529,7 +529,6 @@ export default function OnboardingWizard() {
             <h2 className="text-2xl font-bold text-center">Choose Your Hosting</h2>
             <p className="text-slate-400 text-center">Where should your AI assistant run?</p>
             <div className="grid gap-4">
-<<<<<<< HEAD
               <Card selected={hosting === 'oracle'} onClick={() => { setHosting('oracle'); setVmSize(''); }}>
                 <div className="flex items-center gap-3">
                   <Server className="w-8 h-8 text-red-400" />
@@ -549,42 +548,11 @@ export default function OnboardingWizard() {
                 </div>
               </Card>
               <Card selected={hosting === 'digitalocean'} onClick={() => { setHosting('digitalocean'); setVmSize(getDefaultSize('digitalocean')); }}>
-=======
-              <Card selected={hosting === 'oracle'} onClick={() => setHosting('oracle')}>
->>>>>>> origin/main
                 <div className="flex items-center gap-3">
                   <Sun className="w-8 h-8 text-amber-400" />
                   <div>
-<<<<<<< HEAD
                     <div className="font-semibold">DigitalOcean</div>
                     <div className="text-sm text-slate-400">Reliable cloud hosting — starts at ~$4/mo</div>
-=======
-                    <div className="font-semibold">Oracle Cloud — Free Tier</div>
-                    <div className="text-sm text-slate-400">Always Free ARM server — no credit card, no hosting cost</div>
-                  </div>
-                </div>
-              </Card>
-              <Card disabled>
-                <div className="flex items-center gap-3">
-                  <Cloud className="w-8 h-8 text-blue-400 opacity-50" />
-                  <div>
-                    <div className="font-semibold text-slate-400">
-                      DigitalOcean{' '}
-                      <span className="ml-2 inline-flex items-center gap-1 bg-violet-500/20 text-violet-400 text-[10px] font-bold px-2 py-0.5 rounded-full">
-                        <Lock className="w-2.5 h-2.5" /> Pro — Coming Soon
-                      </span>
-                    </div>
-                    <div className="text-sm text-slate-500">Managed cloud hosting (requires Pro plan)</div>
-                  </div>
-                </div>
-              </Card>
-              <Card disabled>
-                <div className="flex items-center gap-3">
-                  <Server className="w-8 h-8 text-blue-300" />
-                  <div>
-                    <div className="font-semibold">Azure <span className="text-xs text-slate-400 ml-2">Coming soon</span></div>
-                    <div className="text-sm text-slate-400">Microsoft Azure cloud</div>
->>>>>>> origin/main
                   </div>
                 </div>
               </Card>
@@ -600,7 +568,6 @@ export default function OnboardingWizard() {
             </div>
             <div className="flex justify-between items-center">
               <BackBtn />
-<<<<<<< HEAD
               <PrimaryBtn onClick={() => {
                 if (hosting === 'azure') {
                   window.location.href = '/api/auth/azure';
@@ -632,24 +599,6 @@ export default function OnboardingWizard() {
                 for free credits.
               </p>
             )}
-=======
-              <PrimaryBtn onClick={next} disabled={!hosting}>
-                Next <ArrowRight className="w-4 h-4" />
-              </PrimaryBtn>
-            </div>
-            <p className="text-xs text-slate-500 text-center">
-              Interested in DigitalOcean for the future?{' '}
-              <a
-                href="https://cloud.digitalocean.com/account-referrals?i=091ab6c0-097d-4111-baab-ee4872bd796d"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-violet-400 hover:underline"
-              >
-                Sign up with our referral link
-              </a>{' '}
-              for free credits when it&apos;s available.
-            </p>
->>>>>>> origin/main
           </div>
         )}
 
@@ -887,11 +836,7 @@ export default function OnboardingWizard() {
             <div className="bg-slate-900 border border-slate-800 rounded-xl p-6 text-left space-y-3 max-w-md mx-auto">
               <div className="flex justify-between text-sm">
                 <span className="text-slate-400">Hosting</span>
-<<<<<<< HEAD
                 <span>{hosting === 'oracle' ? 'Oracle Cloud (Free)' : hosting === 'azure' ? 'Microsoft Azure' : 'DigitalOcean'}</span>
-=======
-                <span>{hosting === 'oracle' ? 'Oracle Cloud (Free)' : 'DigitalOcean'}</span>
->>>>>>> origin/main
               </div>
               {hosting !== 'oracle' && vmSize && (
                 <div className="flex justify-between text-sm">
