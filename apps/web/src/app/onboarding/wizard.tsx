@@ -96,6 +96,27 @@ export default function OnboardingWizard() {
   const [animating, setAnimating] = useState(false);
   const [timezone, setTimezone] = useState('');
   const [hosting, setHosting] = useState('oracle');
+  const [vmSize, setVmSize] = useState('');
+
+  const AZURE_SIZES = [
+    { id: 'Standard_B1s', label: 'Basic', cpu: '1 vCPU', ram: '1 GB', price: '~$4/mo', recommended: true },
+    { id: 'Standard_B1ms', label: 'Standard', cpu: '1 vCPU', ram: '2 GB', price: '~$15/mo', recommended: false },
+    { id: 'Standard_B2s', label: 'Performance', cpu: '2 vCPU', ram: '4 GB', price: '~$30/mo', recommended: false },
+    { id: 'Standard_B2ms', label: 'Power', cpu: '2 vCPU', ram: '8 GB', price: '~$60/mo', recommended: false },
+  ];
+
+  const DO_SIZES = [
+    { id: 's-1vcpu-1gb', label: 'Basic', cpu: '1 vCPU', ram: '1 GB', price: '~$6/mo', recommended: true },
+    { id: 's-1vcpu-2gb', label: 'Standard', cpu: '1 vCPU', ram: '2 GB', price: '~$12/mo', recommended: false },
+    { id: 's-2vcpu-2gb', label: 'Performance', cpu: '2 vCPU', ram: '2 GB', price: '~$18/mo', recommended: false },
+    { id: 's-2vcpu-4gb', label: 'Power', cpu: '2 vCPU', ram: '4 GB', price: '~$24/mo', recommended: false },
+  ];
+
+  const getDefaultSize = (provider: string) => {
+    if (provider === 'azure') return AZURE_SIZES[0].id;
+    if (provider === 'digitalocean') return DO_SIZES[0].id;
+    return '';
+  };
   const [plan, setPlan] = useState<'free' | 'pro'>('free');
   const [windowStart, setWindowStart] = useState(9);
   const [messengers, setMessengers] = useState<string[]>([]);
