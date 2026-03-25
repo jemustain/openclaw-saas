@@ -2,6 +2,9 @@ import { NextRequest, NextResponse } from "next/server";
 import Stripe from "stripe";
 import { stripe } from "@/lib/stripe/client";
 import { planKeyFromPriceId } from "@/lib/stripe/config";
+import { createClient } from "@/lib/supabase/server";
+import { resumeAssistant } from "@/lib/vm/lifecycle";
+import { handleCancellation } from "@/lib/billing/cancellation";
 
 /**
  * POST /api/stripe/webhook
@@ -66,63 +69,175 @@ export async function POST(req: NextRequest) {
 }
 
 // ---------------------------------------------------------------------------
-// Event handlers — wire these to your DB when ready
+// Event handlers
 // ---------------------------------------------------------------------------
 
 async function handleCheckoutCompleted(session: Stripe.Checkout.Session) {
   const userId = session.metadata?.userId;
   const subscriptionId = session.subscription as string;
   const customerId = session.customer as string;
+  const plan = session.metadata?.plan ?? "pro";
+
+  if (!userId) {
+    console.error("Checkout session missing userId in metadata");
+    return;
+  }
 
   console.log(
-    `Checkout completed: user=${userId} subscription=${subscriptionId} customer=${customerId}`,
+    `Checkout completed: user=${userId} subscription=${subscriptionId} customer=${customerId} plan=${plan}`,
   );
 
-  // TODO: Upsert subscription in DB
-  // await db.subscription.upsert({
-  //   where: { userId },
-  //   create: { userId, stripeCustomerId: customerId, stripeSubscriptionId: subscriptionId, plan: session.metadata?.plan },
-  //   update: { stripeCustomerId: customerId, stripeSubscriptionId: subscriptionId, plan: session.metadata?.plan },
-  // });
+  const supabase: any = await createClient();
+
+  // Upsert subscription record
+  const { error: subError } = await supabase.from("subscriptions").upsert(
+    {
+      user_id: userId,
+      stripe_customer_id: customerId,
+      stripe_subscription_id: subscriptionId,
+      plan,
+      status: "active",
+      updated_at: new Date().toISOString(),
+    },
+    { onConflict: "user_id" },
+  );
+
+  if (subError) {
+    console.error("Failed to upsert subscription:", subError.message);
+    throw subError;
+  }
+
+  // Update user's plan field
+  const { error: userError } = await supabase
+    .from("users")
+    .update({ plan, updated_at: new Date().toISOString() })
+    .eq("id", userId);
+
+  if (userError) {
+    console.error("Failed to update user plan:", userError.message);
+  }
+
+  // If upgrading from free, resume assistant for 24/7
+  if (plan !== "free") {
+    const { data: assistant } = await supabase
+      .from("assistants")
+      .select("id, status")
+      .eq("user_id", userId)
+      .eq("status", "suspended")
+      .single();
+
+    if (assistant) {
+      try {
+        await resumeAssistant(assistant.id);
+        console.log(`Resumed assistant ${assistant.id} after upgrade to ${plan}`);
+      } catch (err) {
+        console.error(`Failed to resume assistant ${assistant.id}:`, err);
+      }
+    }
+  }
 }
 
 async function handleSubscriptionUpdated(subscription: Stripe.Subscription) {
   const priceId = subscription.items.data[0]?.price.id;
   const plan = priceId ? planKeyFromPriceId(priceId) : null;
 
-  console.log(`Subscription updated: id=${subscription.id} plan=${plan}`);
+  console.log(`Subscription updated: id=${subscription.id} plan=${plan} status=${subscription.status}`);
 
-  // TODO: Update plan in DB
-  // await db.subscription.update({
-  //   where: { stripeSubscriptionId: subscription.id },
-  //   data: { plan: plan ?? "free", status: subscription.status },
-  // });
+  const supabase: any = await createClient();
+
+  // Get existing subscription record
+  const { data: existingSub } = await supabase
+    .from("subscriptions")
+    .select("user_id, plan")
+    .eq("stripe_subscription_id", subscription.id)
+    .single();
+
+  if (!existingSub) {
+    console.error(`No subscription found for stripe ID ${subscription.id}`);
+    return;
+  }
+
+  const previousPlan = existingSub.plan;
+  const newPlan = plan ?? "free";
+
+  // Update subscription
+  const { error } = await supabase
+    .from("subscriptions")
+    .update({
+      plan: newPlan,
+      status: subscription.status,
+      updated_at: new Date().toISOString(),
+    })
+    .eq("stripe_subscription_id", subscription.id);
+
+  if (error) {
+    console.error("Failed to update subscription:", error.message);
+    throw error;
+  }
+
+  // Update user plan
+  await supabase
+    .from("users")
+    .update({ plan: newPlan, updated_at: new Date().toISOString() })
+    .eq("id", existingSub.user_id);
+
+  // If upgraded from free → paid, resume assistant
+  if (previousPlan === "free" && newPlan !== "free") {
+    const { data: assistant } = await supabase
+      .from("assistants")
+      .select("id, status")
+      .eq("user_id", existingSub.user_id)
+      .eq("status", "suspended")
+      .single();
+
+    if (assistant) {
+      try {
+        await resumeAssistant(assistant.id);
+        console.log(`Resumed assistant ${assistant.id} after upgrade to ${newPlan}`);
+      } catch (err) {
+        console.error(`Failed to resume assistant:`, err);
+      }
+    }
+  }
 }
 
 async function handleSubscriptionDeleted(subscription: Stripe.Subscription) {
   console.log(`Subscription deleted: id=${subscription.id}`);
 
-  // TODO: Downgrade to free and schedule VM suspension
-  // await db.subscription.update({
-  //   where: { stripeSubscriptionId: subscription.id },
-  //   data: { plan: "free", status: "canceled" },
-  // });
-  // await scheduleVmSuspension(subscription.metadata?.userId);
+  const supabase: any = await createClient();
+
+  const { data: sub } = await supabase
+    .from("subscriptions")
+    .select("user_id")
+    .eq("stripe_subscription_id", subscription.id)
+    .single();
+
+  if (!sub) {
+    console.error(`No subscription found for stripe ID ${subscription.id}`);
+    return;
+  }
+
+  await handleCancellation(sub.user_id);
 }
 
 async function handlePaymentFailed(invoice: Stripe.Invoice) {
   const customerId = invoice.customer as string;
-  console.log(
-    `Payment failed: customer=${customerId} invoice=${invoice.id}`,
-  );
+  console.log(`Payment failed: customer=${customerId} invoice=${invoice.id}`);
 
-  // TODO: Notify user and set grace period
-  // const user = await db.user.findUnique({ where: { stripeCustomerId: customerId } });
-  // if (user) {
-  //   await sendPaymentFailedEmail(user.email);
-  //   await db.subscription.update({
-  //     where: { stripeCustomerId: customerId },
-  //     data: { gracePeriodEnds: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000) },
-  //   });
-  // }
+  const supabase: any = await createClient();
+
+  const { error } = await supabase
+    .from("subscriptions")
+    .update({
+      status: "past_due",
+      updated_at: new Date().toISOString(),
+    })
+    .eq("stripe_customer_id", customerId);
+
+  if (error) {
+    console.error("Failed to update subscription status:", error.message);
+  }
+
+  // TODO: Send payment failed email notification
+  console.warn(`Payment failed for customer ${customerId} — user should be notified`);
 }

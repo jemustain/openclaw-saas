@@ -1,28 +1,24 @@
 import type { CloudProvider } from "./types";
 import { OracleProvider } from "./oracle";
-import { DigitalOceanProvider } from "./digitalocean";
-import { HetznerProvider } from "./hetzner";
 
 export { OracleProvider } from "./oracle";
-export { DigitalOceanProvider } from "./digitalocean";
-export { HetznerProvider } from "./hetzner";
+export { HetznerProvider } from "./hetzner"; // Planned — not yet active
 export { generateCloudInit } from "./cloud-init";
 export type { CloudProvider, ServerInfo, CreateServerOptions } from "./types";
 export type { CloudInitOptions } from "./cloud-init";
 
-/**
- * Factory: resolve a cloud provider by name.
- * Defaults to Oracle Cloud (Always Free tier).
- */
+// Note: DigitalOcean provider is exported as functions, not a class implementing CloudProvider
+// See ./digitalocean.ts for the DO API client
+
 export function getProvider(name?: string): CloudProvider {
   switch (name ?? process.env.CLOUD_PROVIDER ?? "oracle") {
     case "oracle":
       return new OracleProvider();
-    case "digitalocean":
-      return new DigitalOceanProvider();
     case "hetzner":
+      // Legacy — kept for reference
+      const { HetznerProvider } = require("./hetzner");
       return new HetznerProvider();
     default:
-      throw new Error(`Unknown provider: ${name}`);
+      throw new Error(`Unknown CloudProvider: ${name}. DigitalOcean uses its own API client.`);
   }
 }

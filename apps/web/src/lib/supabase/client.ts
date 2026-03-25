@@ -1,36 +1,28 @@
-import { createBrowserClient } from '@supabase/ssr';
+import { createClient as createSupabaseClient } from '@supabase/supabase-js';
 import type { Database } from './types';
 
-let client: ReturnType<typeof createBrowserClient<Database>> | null = null;
+let client: ReturnType<typeof createSupabaseClient<Database>> | null = null;
 
+/**
+ * Browser-side Supabase client for database queries (anon key, RLS applies).
+ */
 export function createClient() {
   if (client) return client;
 
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL ?? '';
   const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ?? '';
 
-  // During build/SSR without env vars, return a dummy that won't be called
   if (!url || !key) {
     if (typeof window === 'undefined') {
-      // SSR prerender — return a proxy that throws on actual use
-      return new Proxy({} as ReturnType<typeof createBrowserClient<Database>>, {
-        get(_, prop) {
-          if (prop === 'auth') {
-            return new Proxy({}, {
-              get() {
-                return () => { throw new Error('Supabase not configured'); };
-              },
-            });
-          }
+      return new Proxy({} as ReturnType<typeof createSupabaseClient<Database>>, {
+        get() {
           throw new Error('Supabase not configured');
         },
       });
     }
-    throw new Error(
-      'Missing NEXT_PUBLIC_SUPABASE_URL or NEXT_PUBLIC_SUPABASE_ANON_KEY.'
-    );
+    throw new Error('Missing NEXT_PUBLIC_SUPABASE_URL or NEXT_PUBLIC_SUPABASE_ANON_KEY.');
   }
 
-  client = createBrowserClient<Database>(url, key);
+  client = createSupabaseClient<Database>(url, key);
   return client;
 }

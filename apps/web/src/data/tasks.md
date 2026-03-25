@@ -1,4 +1,4 @@
-# Claw4All — Task Breakdown
+# ShiftWorker — Task Breakdown
 
 ## Phase 1: Foundation (Week 1)
 - [x] T01: Initialize repo + monorepo structure
@@ -11,13 +11,13 @@
 - [ ] T08: Set up Stripe account + products (Free, Basic $10, Pro $25)
 
 ## Phase 2: Provider Integrations (Week 2)
-- [ ] T09: Hetzner API client (create server, list servers, delete server, SSH keys)
+- [ ] T09: DigitalOcean API client (create server, list servers, delete server, SSH keys)
 - [ ] T10: DigitalOcean API client (same operations)
 - [ ] T11: Vultr API client (same operations)
 - [ ] T12: Provider abstraction layer (common interface for all providers)
 - [ ] T13: Cloud-init template for OpenClaw installation
 - [ ] T14: Cloud-init template for sidecar agent installation
-- [ ] T15: Test provisioning on Hetzner (manual API key)
+- [ ] T15: Test provisioning on DigitalOcean (manual API key)
 - [ ] T16: Test provisioning on DigitalOcean
 - [ ] T17: Set up referral/affiliate links for all providers
 
@@ -43,7 +43,7 @@
 - [ ] T34: Skill list endpoint
 - [ ] T35: Bearer token auth middleware
 - [ ] T36: HTTPS setup (self-signed cert or Let's Encrypt)
-- [ ] T37: Heartbeat to Claw4All portal (server online/offline tracking)
+- [ ] T37: Heartbeat to ShiftWorker portal (server online/offline tracking)
 
 ## Phase 5: User Dashboard (Week 4)
 - [ ] T38: Dashboard layout + navigation
@@ -86,4 +86,4 @@
 
 **Critical path:** Phase 2 (provider APIs) → Phase 3 (wizard) → Phase 4 (sidecar) — these are sequential and blocking.
 
-**Quick wins:** Phase 1 is mostly done. Landing page is live at claw4all-app.vercel.app.
+**Quick wins:** Phase 1 is mostly done. Landing page is live at shiftworker.ai.

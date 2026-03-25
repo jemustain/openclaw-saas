@@ -1,10 +1,10 @@
-# Claw4All — MVP Specification
+# ShiftWorker — MVP Specification
 
 _Managed AI assistants you talk to via chat. We handle everything._
 
 ## Vision
 
-Claw4All gives everyone a personal AI assistant that lives in their favorite chat app. Users click a button, connect WhatsApp or Telegram, and start talking. We provision and manage the infrastructure invisibly — the user never sees a server, terminal, or config file.
+ShiftWorker gives everyone a personal AI assistant that lives in their favorite chat app. Users click a button, connect WhatsApp or Telegram, and start talking. We provision and manage the infrastructure invisibly — the user never sees a server, terminal, or config file.
 
 Think "Superhuman for AI assistants." Simple signup, instant value, zero technical knowledge required.
 
@@ -20,7 +20,7 @@ Think "Superhuman for AI assistants." Simple signup, instant value, zero technic
 **Acceptance Criteria:**
 - User signs up with email or Google
 - Clicks "Launch my assistant"
-- We provision an OpenClaw VM on our Oracle Cloud account via API (invisible to user)
+- We provision an OpenClaw VM on Oracle Cloud (free tier) or user's DigitalOcean account (paid tier)
 - User sees a friendly progress indicator ("Setting things up…" → "Almost ready…" → "Done!")
 - Total time: < 90 seconds
 - User is prompted to connect a messaging app
@@ -98,6 +98,7 @@ Think "Superhuman for AI assistants." Simple signup, instant value, zero technic
 
 ### Unit Economics (per user)
 - Oracle Cloud Always Free ARM: $0/mo (free tier)
+- DigitalOcean Droplet (paid tier): ~$6/mo
 - AI API usage (Anthropic/OpenAI): ~$3-8/mo avg
 - Our margin at $12/mo Starter: ~$4-9/mo (healthy margin)
 - Our margin at $25/mo Pro: ~$17-22/mo (excellent margin)

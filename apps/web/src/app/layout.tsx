@@ -1,14 +1,29 @@
 import type { Metadata } from "next";
 import "./globals.css";
 
+const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "https://shiftworker.ai";
+
 export const metadata: Metadata = {
-  title: "OpenClaw — Your Personal AI Assistant, Set Up in Minutes",
+  title: "ShiftWorker — AI Agent Hosting Platform",
   description:
-    "Get a private AI assistant that manages your email, calendar, and messages. No coding required. Set up in under 5 minutes.",
+    "ShiftWorker provisions and manages OpenClaw instances for you. Get a personal AI agent that handles your email, calendar, research, and more — no servers, no setup.",
+  metadataBase: new URL(siteUrl),
+  icons: { icon: "/favicon.ico" },
+  themeColor: "#020617", // slate-950
   openGraph: {
-    title: "OpenClaw — Your Personal AI Assistant",
-    description: "Set up in minutes. No coding required.",
+    title: "ShiftWorker — AI Agent Hosting Platform",
+    description:
+      "ShiftWorker provisions and manages OpenClaw instances for you. Get a personal AI agent that handles your email, calendar, research, and more — no servers, no setup.",
     type: "website",
+    url: siteUrl,
+    images: [{ url: "/opengraph-image", width: 1200, height: 630, alt: "ShiftWorker" }],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "ShiftWorker — AI Agent Hosting Platform",
+    description:
+      "ShiftWorker provisions and manages OpenClaw instances for you. Get a personal AI agent that handles your email, calendar, research, and more — no servers, no setup.",
+    images: ["/opengraph-image"],
   },
 };
 

@@ -1,3 +1,7 @@
+/* ------------------------------------------------------------------ */
+/*  Supabase Database Types for ShiftWorker                               */
+/* ------------------------------------------------------------------ */
+
 export type Plan = 'free' | 'starter' | 'pro';
 
 export type AssistantStatus =
@@ -7,15 +11,7 @@ export type AssistantStatus =
   | 'destroying'
   | 'destroyed';
 
-export type SubscriptionStatus =
-  | 'active'
-  | 'canceled'
-  | 'past_due'
-  | 'trialing'
-  | 'incomplete'
-  | 'incomplete_expired'
-  | 'unpaid'
-  | 'paused';
+export type SubscriptionStatus = 'active' | 'past_due' | 'cancelled' | 'trialing';
 
 export interface User {
   id: string;
@@ -23,6 +19,8 @@ export interface User {
   name: string | null;
   plan: Plan;
   timezone: string | null;
+  window_start: number | null;
+  onboarding_complete: boolean;
   created_at: string;
   updated_at: string;
 }
@@ -62,28 +60,55 @@ export interface UsageLog {
   api_tokens_used: number;
 }
 
-export interface Database {
+export interface ProviderToken {
+  id: string;
+  user_id: string;
+  provider: string;
+  access_token_encrypted: string;
+  refresh_token_encrypted: string | null;
+  expires_at: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export type Database = {
   public: {
     Tables: {
       users: {
         Row: User;
-        Insert: Omit<User, 'created_at' | 'updated_at'> & { created_at?: string; updated_at?: string };
-        Update: Partial<Omit<User, 'id'>>;
+        Insert: Partial<User> & Pick<User, 'id' | 'email'>;
+        Update: Partial<User>;
+        Relationships: [];
       };
       assistants: {
         Row: Assistant;
-        Insert: Omit<Assistant, 'created_at' | 'updated_at'> & { created_at?: string; updated_at?: string };
-        Update: Partial<Omit<Assistant, 'id'>>;
+        Insert: Partial<Assistant> & Pick<Assistant, 'id' | 'user_id'>;
+        Update: Partial<Assistant>;
+        Relationships: [];
       };
       subscriptions: {
         Row: Subscription;
-        Insert: Omit<Subscription, 'created_at' | 'updated_at'> & { created_at?: string; updated_at?: string };
-        Update: Partial<Omit<Subscription, 'id'>>;
+        Insert: Partial<Subscription> & Pick<Subscription, 'id' | 'user_id'>;
+        Update: Partial<Subscription>;
+        Relationships: [];
       };
       usage_logs: {
         Row: UsageLog;
-        Insert: Omit<UsageLog, 'messages_sent' | 'hours_active' | 'api_tokens_used'> & { messages_sent?: number; hours_active?: number; api_tokens_used?: number };
-        Update: Partial<Omit<UsageLog, 'id'>>;
+        Insert: Partial<UsageLog> & Pick<UsageLog, 'id' | 'assistant_id' | 'date'>;
+        Update: Partial<UsageLog>;
+        Relationships: [];
+      };
+      provider_tokens: {
+        Row: ProviderToken;
+        Insert: Partial<ProviderToken> & Pick<ProviderToken, 'user_id' | 'provider' | 'access_token_encrypted'>;
+        Update: Partial<ProviderToken>;
+        Relationships: [];
+      };
+      waitlist: {
+        Row: { id: string; email: string; created_at: string };
+        Insert: { email: string; id?: string; created_at?: string };
+        Update: Partial<{ id: string; email: string; created_at: string }>;
+        Relationships: [];
       };
     };
     Views: Record<string, never>;
@@ -93,5 +118,6 @@ export interface Database {
       assistant_status: AssistantStatus;
       subscription_status: SubscriptionStatus;
     };
+    CompositeTypes: Record<string, never>;
   };
-}
+};

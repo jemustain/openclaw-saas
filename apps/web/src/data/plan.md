@@ -1,10 +1,10 @@
-# Claw4All — Implementation Plan
+# ShiftWorker — Implementation Plan
 
 ## Architecture Overview
 
 ```
 ┌─────────────────────────────────────────────┐
-│              Claw4All Portal                 │
+│              ShiftWorker Portal                 │
 │         (Next.js on Vercel — FREE)           │
 │                                              │
 │  ┌──────────┐ ┌───────────┐ ┌────────────┐  │
@@ -19,8 +19,8 @@
 └───────┼──────────────┼─────────────┼─────────┘
         │              │             │
    ┌────▼────┐   ┌─────▼────┐  ┌────▼─────┐
-   │ Hetzner │   │ Digital  │  │  Vultr   │
-   │   API   │   │ Ocean API│  │   API    │
+   │ Digital  │   │  (future) │  │ (future) │
+   │ Ocean API│   │  Hetzner  │  │  Vultr   │
    └────┬────┘   └─────┬────┘  └────┬─────┘
         │              │             │
    ┌────▼──────────────▼─────────────▼──────┐
@@ -39,7 +39,7 @@ Because we don't host anything, the entire portal can run on:
 - **Supabase Free Tier** — Auth + database (50K monthly active users)
 - **No servers to manage** — all provisioning is API calls to user's provider
 
-Total infrastructure cost to run Claw4All: **$0/mo** until significant scale.
+Total infrastructure cost to run ShiftWorker: **$0/mo** until significant scale.
 
 ## Tech Stack
 
@@ -50,7 +50,7 @@ Total infrastructure cost to run Claw4All: **$0/mo** until significant scale.
 | Database | Supabase (PostgreSQL) | Free tier |
 | Payments | Stripe | 2.9% + $0.30/txn |
 | Provisioning | Vercel Serverless Functions | Free tier (100K/mo) |
-| VPS APIs | Hetzner/DO/Vultr REST APIs | Free |
+| VPS APIs | DigitalOcean REST API (Hetzner/Vultr planned) | Free |
 | Sidecar Agent | Lightweight HTTP agent on user VPS | Bundled |
 | Monitoring | Sidecar heartbeat → Supabase | Free |
 
@@ -96,7 +96,7 @@ apps/
         dashboard/            # User dashboard
         marketplace/          # Skill marketplace
       lib/
-        providers/            # Hetzner, DO, Vultr API clients
+        providers/            # DigitalOcean (primary), Hetzner/Vultr (planned)
         provisioning/         # Cloud-init templates, setup logic
         sidecar/              # Sidecar API client
   sidecar/            # Sidecar agent (deployed to user VPS)
@@ -124,7 +124,7 @@ specs/
 
 ## Competitive Advantages
 
-| Us (Claw4All) | EZClaw / OpenClawd.ai | Emergent / Moltbot |
+| Us (ShiftWorker) | EZClaw / OpenClawd.ai | Emergent / Moltbot |
 |---|---|---|
 | User owns server | They own server | They own everything |
 | $0 to run the platform | Infrastructure costs | VC-funded burn |

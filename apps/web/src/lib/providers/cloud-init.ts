@@ -1,5 +1,5 @@
 /**
- * Generate cloud-init user data for a Claw4All instance.
+ * Generate cloud-init user data for a ShiftWorker instance.
  * Targets Oracle Cloud Always Free ARM (aarch64) instances by default.
  * Also works on x86_64 — NodeSource and npm install are arch-agnostic.
  */
@@ -28,7 +28,7 @@ export function generateCloudInit(opts: CloudInitOptions): string {
   const _arch = opts.architecture ?? "arm64";
 
   return `#cloud-config
-# Claw4All instance provisioning — managed, do not edit
+# ShiftWorker instance provisioning — managed, do not edit
 # Target: Oracle Cloud Always Free ARM instances (also works on x86_64)
 
 users:
@@ -48,7 +48,7 @@ packages:
   - unzip
 
 write_files:
-  - path: /etc/claw4all/sidecar.env
+  - path: /etc/shiftworker/sidecar.env
     permissions: "0600"
     content: |
       SIDECAR_TOKEN=${opts.sidecarToken}
@@ -82,7 +82,7 @@ runcmd:
     [Service]
     Type=simple
     User=${user}
-    EnvironmentFile=/etc/claw4all/sidecar.env
+    EnvironmentFile=/etc/shiftworker/sidecar.env
     ExecStart=/usr/bin/openclaw gateway start
     Restart=always
     RestartSec=5
