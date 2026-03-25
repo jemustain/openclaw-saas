@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { getSkillById, TIER_LABELS, type SkillTier } from "@/lib/skills/catalog";
@@ -14,9 +14,59 @@ const TIER_COLORS: Record<SkillTier, string> = {
 export default function SkillDetailPage() {
   const params = useParams();
   const skill = getSkillById(params.id as string);
-  const [enabled, setEnabled] = useState(false);
+  const [installed, setInstalled] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [actionInProgress, setActionInProgress] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const userTier: SkillTier = "free";
+
+  const fetchStatus = useCallback(async () => {
+    try {
+      const res = await fetch("/api/skills");
+      if (!res.ok) return;
+      const data = await res.json();
+      const names = new Set<string>(
+        (data.skills || []).map((s: { name: string }) => s.name),
+      );
+      setInstalled(names.has(params.id as string));
+    } catch {
+      // ignore
+    } finally {
+      setLoading(false);
+    }
+  }, [params.id]);
+
+  useEffect(() => {
+    fetchStatus();
+  }, [fetchStatus]);
+
+  async function handleToggle() {
+    if (actionInProgress || !skill) return;
+
+    const action = installed ? "remove" : "install";
+    setActionInProgress(true);
+    setError(null);
+
+    try {
+      const res = await fetch(`/api/skills/${skill.id}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action }),
+      });
+
+      if (!res.ok) {
+        const data = await res.json();
+        throw new Error(data.error || `Failed to ${action} skill`);
+      }
+
+      setInstalled(action === "install");
+    } catch (err: any) {
+      setError(err.message);
+    } finally {
+      setActionInProgress(false);
+    }
+  }
 
   if (!skill) {
     return (
@@ -61,6 +111,19 @@ export default function SkillDetailPage() {
         </div>
       </div>
 
+      {/* Error */}
+      {error && (
+        <div className="mb-6 bg-red-500/10 border border-red-500/30 text-red-400 rounded-lg px-4 py-3 text-sm">
+          {error}
+          <button
+            onClick={() => setError(null)}
+            className="ml-3 text-red-300 hover:text-red-200"
+          >
+            ✕
+          </button>
+        </div>
+      )}
+
       {/* Toggle / Upgrade */}
       <div className="bg-gray-900 border border-gray-800 rounded-xl p-5 mb-8">
         {locked ? (
@@ -80,34 +143,49 @@ export default function SkillDetailPage() {
               Upgrade
             </Link>
           </div>
+        ) : loading ? (
+          <div className="flex items-center gap-3">
+            <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-blue-500" />
+            <span className="text-gray-400">Checking status...</span>
+          </div>
         ) : (
           <div className="flex items-center justify-between">
             <div>
               <p className="font-medium mb-1">
-                {enabled ? "This skill is active" : "Enable this skill"}
+                {installed ? "This skill is installed" : "Install this skill"}
               </p>
               <p className="text-sm text-gray-400">
-                {enabled
+                {installed
                   ? "Your assistant can now use this skill."
-                  : "Turn it on to let your assistant use it."}
+                  : "Install it to let your assistant use it."}
               </p>
             </div>
             <button
-              onClick={() => setEnabled(!enabled)}
+              onClick={handleToggle}
+              disabled={actionInProgress}
               className="flex items-center gap-2"
               aria-label={`Toggle ${skill.name}`}
             >
-              <div
-                className={`w-12 h-6 rounded-full relative transition-colors ${
-                  enabled ? "bg-blue-600" : "bg-gray-700"
-                }`}
-              >
+              {actionInProgress ? (
+                <div className="flex items-center gap-2">
+                  <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-500" />
+                  <span className="text-sm text-gray-400">
+                    {installed ? "Removing..." : "Installing..."}
+                  </span>
+                </div>
+              ) : (
                 <div
-                  className={`absolute top-0.5 w-5 h-5 rounded-full bg-white transition-transform ${
-                    enabled ? "translate-x-6" : "translate-x-0.5"
+                  className={`w-12 h-6 rounded-full relative transition-colors cursor-pointer ${
+                    installed ? "bg-blue-600" : "bg-gray-700"
                   }`}
-                />
-              </div>
+                >
+                  <div
+                    className={`absolute top-0.5 w-5 h-5 rounded-full bg-white transition-transform ${
+                      installed ? "translate-x-6" : "translate-x-0.5"
+                    }`}
+                  />
+                </div>
+              )}
             </button>
           </div>
         )}

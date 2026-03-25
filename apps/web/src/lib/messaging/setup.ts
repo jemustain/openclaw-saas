@@ -1,15 +1,16 @@
 import { createTelegramBot } from './telegram-bot-factory';
 import { createClient } from '../supabase/server';
 
-const SIDECAR_PORT = 8787;
-
-interface MessagingSetupResult {
+export interface MessagingSetupResult {
   platform: string;
-  status: 'configured' | 'failed' | 'pending';
+  status: 'configured' | 'pending' | 'failed';
   botUsername?: string;
   botLink?: string;
+  qr?: string;
   error?: string;
 }
+
+const SIDECAR_PORT = 8787;
 
 /**
  * Call the sidecar on the user's VM to configure a messaging platform.
@@ -19,7 +20,7 @@ async function callSidecar(
   sidecarToken: string,
   platform: string,
   config: Record<string, unknown>,
-): Promise<{ status: string }> {
+): Promise<Record<string, any>> {
   const url = `http://${ipAddress}:${SIDECAR_PORT}/messaging/setup`;
   const res = await fetch(url, {
     method: 'POST',
@@ -28,6 +29,7 @@ async function callSidecar(
       Authorization: `Bearer ${sidecarToken}`,
     },
     body: JSON.stringify({ platform, config }),
+    signal: AbortSignal.timeout(35_000),
   });
 
   if (!res.ok) {
@@ -135,7 +137,7 @@ export async function setupWhatsAppForAssistant(
 
   const { data: assistant } = await (supabase as any)
     .from('assistants')
-    .select('ip_address, sidecar_token')
+    .select('ip_address, sidecar_token, whatsapp_connected')
     .eq('id', assistantId)
     .single();
 
@@ -147,6 +149,10 @@ export async function setupWhatsAppForAssistant(
     };
   }
 
+  if (assistant.whatsapp_connected) {
+    return { platform: 'whatsapp', status: 'configured' };
+  }
+
   try {
     const result = await callSidecar(
       assistant.ip_address,
@@ -154,9 +160,22 @@ export async function setupWhatsAppForAssistant(
       'whatsapp',
       {},
     );
+
+    if (result.status === 'connected') {
+      await (supabase as any)
+        .from('assistants')
+        .update({
+          whatsapp_connected: true,
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', assistantId);
+      return { platform: 'whatsapp', status: 'configured' };
+    }
+
     return {
       platform: 'whatsapp',
-      status: result.status as 'configured' | 'failed' | 'pending',
+      status: 'pending',
+      qr: result.qr as string,
     };
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : String(err);

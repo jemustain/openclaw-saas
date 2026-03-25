@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import type { Assistant } from '@/lib/supabase/types';
 import { onAssistantReady } from '@/lib/email/triggers';
+import { onAssistantReady } from '@/lib/email/triggers';
 
 export async function POST(
   request: NextRequest,
@@ -49,6 +50,11 @@ export async function POST(
   if (updateError) {
     return NextResponse.json({ error: 'Update failed' }, { status: 500 });
   }
+
+  // Send "assistant ready" email (fire-and-forget)
+  onAssistantReady(record.user_id).catch((err) =>
+    console.error('[email] Failed to send assistant-ready email:', err),
+  );
 
   // Send "assistant ready" email (fire-and-forget)
   onAssistantReady(record.user_id).catch((err) =>

@@ -59,62 +59,10 @@ async function getUserProviderToken(userId: string, provider: string): Promise<s
 }
 
 /**
-<<<<<<< HEAD
  * @deprecated Use getUserProviderToken instead
  */
 async function getUserDOToken(userId: string): Promise<string> {
   return getUserProviderToken(userId, 'digitalocean');
-}
-
-/**
- * Launch a new assistant VM on the user's DigitalOcean account.
- */
-export async function launchAssistant(userId: string): Promise<Assistant> {
-  const supabase: any = createClient();
-
-  // Read user record to determine hosting provider and VM size
-  const { data: user, error: userError } = await supabase
-    .from('users')
-    .select('hosting, vm_size')
-    .eq('id', userId)
-    .single();
-
-  if (userError) throw new Error(`Failed to read user: ${userError.message}`);
-
-  const hosting: string = user?.hosting ?? 'digitalocean';
-  const vmSize: string | null = user?.vm_size ?? null;
-
-  if (hosting === 'oracle') {
-    // Oracle uses the free-tier provider — handled separately
-    // TODO: integrate with Oracle provider once merged
-    throw new Error('Oracle Cloud provisioning is not yet available via this path');
-  }
-
-  // For Azure and DigitalOcean, get the provider token
-  const token = await getUserProviderToken(userId, hosting);
-
-  if (hosting === 'digitalocean') {
-    // Pre-flight: validate the DO account can create resources
-    const validation = await validateAccount(token);
-    if (!validation.ok) {
-      throw new Error(validation.error ?? 'DigitalOcean account validation failed');
-    }
-  }
-=======
- * Determine the cloud provider for a user.
- * Checks user's provider_preference, falls back to CLOUD_PROVIDER env or 'oracle'.
- */
-async function getProviderForUser(userId: string): Promise<'oracle' | 'digitalocean'> {
-  const supabase: any = createClient();
-  const { data } = await supabase
-    .from('users')
-    .select('provider_preference')
-    .eq('id', userId)
-    .single();
-
-  const pref = data?.provider_preference;
-  if (pref === 'oracle' || pref === 'digitalocean') return pref;
-  return (process.env.CLOUD_PROVIDER as 'oracle' | 'digitalocean') ?? 'oracle';
 }
 
 /**
@@ -125,14 +73,40 @@ function getOracleProvider(): OracleProvider {
 }
 
 /**
+ * Determine the cloud provider for a user.
+ * Checks user's provider_preference, falls back to CLOUD_PROVIDER env or 'oracle'.
+ */
+async function getProviderForUser(userId: string): Promise<'oracle' | 'digitalocean' | 'azure'> {
+  const supabase: any = createClient();
+  const { data } = await supabase
+    .from('users')
+    .select('provider_preference, hosting, vm_size')
+    .eq('id', userId)
+    .single();
+
+  const pref = data?.provider_preference ?? data?.hosting;
+  if (pref === 'oracle' || pref === 'digitalocean' || pref === 'azure') return pref;
+  return (process.env.CLOUD_PROVIDER as 'oracle' | 'digitalocean' | 'azure') ?? 'oracle';
+}
+
+/**
  * Launch a new assistant VM.
  * Oracle: uses our own OCI credentials (no user tokens needed).
- * DigitalOcean: uses the user's OAuth token.
+ * Azure/DigitalOcean: uses the user's OAuth token.
  */
 export async function launchAssistant(userId: string): Promise<Assistant> {
   const supabase: any = createClient();
   const provider = await getProviderForUser(userId);
->>>>>>> origin/main
+
+  // Read user record to get VM size preference
+  const { data: user, error: userError } = await supabase
+    .from('users')
+    .select('vm_size')
+    .eq('id', userId)
+    .single();
+
+  if (userError) throw new Error(`Failed to read user: ${userError.message}`);
+  const vmSize: string | null = user?.vm_size ?? null;
 
   const assistantId = randomUUID();
   const sidecarToken = randomUUID();
@@ -149,11 +123,7 @@ export async function launchAssistant(userId: string): Promise<Assistant> {
     .insert({
       id: assistantId,
       user_id: userId,
-<<<<<<< HEAD
-      provider: hosting,
-=======
       provider,
->>>>>>> origin/main
       status: 'provisioning' as AssistantStatus,
       sidecar_token: sidecarToken,
     })
@@ -163,32 +133,22 @@ export async function launchAssistant(userId: string): Promise<Assistant> {
   if (insertError) throw new Error(`Failed to create assistant: ${insertError.message}`);
 
   try {
-<<<<<<< HEAD
-    if (hosting === 'azure') {
-      // TODO: call Azure createVM with vmSize once azure provider is merged
-      throw new Error('Azure VM provisioning not yet implemented');
-    }
-
-    // DigitalOcean
-    const droplet = await createDroplet(token, {
-      name: `claw-${assistantId.slice(0, 8)}`,
-      cloudInit,
-      size: vmSize ?? undefined,
-    });
-=======
     if (provider === 'oracle') {
       const oracle = getOracleProvider();
       const server = await oracle.createServer({
         name: `claw-${assistantId.slice(0, 8)}`,
         cloudInit,
       });
->>>>>>> origin/main
 
       return await updateAssistantStatus(assistantId, 'provisioning', {
         vm_id: server.id,
         ip_address: server.publicIpv4,
         region: server.region,
       });
+    } else if (provider === 'azure') {
+      // TODO: call Azure createVM with vmSize once azure provider is implemented
+      const token = await getUserProviderToken(userId, 'azure');
+      throw new Error('Azure VM provisioning not yet implemented');
     } else {
       // DigitalOcean flow — requires user OAuth tokens
       const token = await getUserDOToken(userId);
@@ -200,6 +160,7 @@ export async function launchAssistant(userId: string): Promise<Assistant> {
       const droplet = await createDroplet(token, {
         name: `claw-${assistantId.slice(0, 8)}`,
         cloudInit,
+        size: vmSize ?? undefined,
       });
 
       return await updateAssistantStatus(assistantId, 'provisioning', {

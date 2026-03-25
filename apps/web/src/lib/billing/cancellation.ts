@@ -1,5 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { destroyAssistant, suspendAssistant } from "@/lib/vm/lifecycle";
+import { onSubscriptionCancelled } from "@/lib/email/triggers";
+import { onSubscriptionCancelled } from "@/lib/email/triggers";
 
 const GRACE_PERIOD_DAYS = 30;
 
@@ -51,6 +53,11 @@ export async function handleCancellation(userId: string): Promise<void> {
       console.error(`Failed to suspend assistant ${assistant.id}:`, err);
     }
   }
+
+  // Send cancellation email (fire-and-forget)
+  onSubscriptionCancelled(userId, gracePeriodEnds).catch((err) =>
+    console.error("[email] Failed to send subscription-cancelled email:", err),
+  );
 }
 
 /**

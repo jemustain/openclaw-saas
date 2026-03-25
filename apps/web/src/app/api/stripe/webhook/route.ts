@@ -6,6 +6,7 @@ import { createClient } from "@/lib/supabase/server";
 import { resumeAssistant } from "@/lib/vm/lifecycle";
 import { handleCancellation } from "@/lib/billing/cancellation";
 import { onSubscriptionConfirmed, onPaymentFailed as sendPaymentFailedEmail } from "@/lib/email/triggers";
+import { onSubscriptionConfirmed, onPaymentFailed as sendPaymentFailedEmail } from "@/lib/email/triggers";
 
 /**
  * POST /api/stripe/webhook
@@ -117,6 +118,11 @@ async function handleCheckoutCompleted(session: Stripe.Checkout.Session) {
   if (userError) {
     console.error("Failed to update user plan:", userError.message);
   }
+
+  // Send subscription confirmed email (fire-and-forget)
+  onSubscriptionConfirmed(userId).catch((err) =>
+    console.error("[email] Failed to send subscription-confirmed email:", err),
+  );
 
   // If upgrading from free, resume assistant for 24/7
   if (plan !== "free") {
@@ -239,6 +245,16 @@ async function handlePaymentFailed(invoice: Stripe.Invoice) {
     console.error("Failed to update subscription status:", error.message);
   }
 
-  // TODO: Send payment failed email notification
-  console.warn(`Payment failed for customer ${customerId} — user should be notified`);
+  // Send payment failed email
+  const { data: sub } = await supabase
+    .from("subscriptions")
+    .select("user_id")
+    .eq("stripe_customer_id", customerId)
+    .single();
+
+  if (sub?.user_id) {
+    sendPaymentFailedEmail(sub.user_id).catch((err) =>
+      console.error("[email] Failed to send payment-failed email:", err),
+    );
+  }
 }
