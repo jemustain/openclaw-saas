@@ -36,6 +36,11 @@ export interface Assistant {
   sidecar_token: string | null;
   created_at: string;
   updated_at: string;
+  telegram_bot_username: string | null;
+  telegram_bot_token: string | null;
+  whatsapp_connected: boolean;
+  discord_bot_token: string | null;
+  slack_bot_token: string | null;
 }
 
 export interface Subscription {
