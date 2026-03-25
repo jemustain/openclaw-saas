@@ -18,6 +18,8 @@ export interface User {
   email: string;
   name: string | null;
   plan: Plan;
+  hosting: string | null;
+  vm_size: string | null;
   timezone: string | null;
   window_start: number | null;
   onboarding_complete: boolean;
