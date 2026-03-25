@@ -95,5 +95,24 @@ export async function enforceFreeTierLimits(
   if (!msgCheck.allowed) {
     return { allowed: false, reason: "Daily message limit reached. Upgrade to Pro for unlimited messages." };
   }
+
+  // Also check hours_active for free tier
+  const limits = getLimitsForPlan(msgCheck.plan);
+  if (limits.hoursPerDay < 24) {
+    const supabase: any = await createClient();
+    const today = new Date().toISOString().slice(0, 10);
+    const { data: usage } = await supabase
+      .from("usage_logs")
+      .select("hours_active")
+      .eq("assistant_id", assistantId)
+      .eq("date", today)
+      .single();
+
+    const hoursUsed = usage?.hours_active ?? 0;
+    if (hoursUsed >= limits.hoursPerDay) {
+      return { allowed: false, reason: "Daily active hours limit reached. Upgrade to Pro for 24/7 uptime." };
+    }
+  }
+
   return { allowed: true };
 }
