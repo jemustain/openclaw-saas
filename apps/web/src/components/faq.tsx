@@ -17,11 +17,11 @@ const faqs = [
   },
   {
     q: "Is my data safe?",
-    a: "Your assistant runs on its own private cloud space. Nobody else can access it, and we never sell your data.",
+    a: "Your assistant runs on its own private Azure VM. Nobody else can access it, and we never sell your data.",
   },
   {
     q: "What happens on the free plan?",
-    a: "You get 8 hours a day with your assistant and 100 messages. Perfect for trying it out. Upgrade anytime for 24/7 access.",
+    a: "You get 8 hours a day with your assistant and 100 messages. Your Azure VM hosting starts at ~$4/mo (billed by Azure). Perfect for trying it out. Upgrade anytime for 24/7 access and managed maintenance.",
   },
   {
     q: "Can I cancel anytime?",

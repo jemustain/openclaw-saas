@@ -245,8 +245,8 @@ export default function Home() {
           Free to configure. Seriously.
         </h2>
         <p className="text-center text-slate-400 max-w-2xl mx-auto mb-16">
-          ShiftWorker sets up your AI assistant at no cost. You get $200 in
-          hosting credit to start — that covers up to 4 years of server time.
+          ShiftWorker sets up your AI assistant at no cost. You just need an
+          Azure subscription — hosting starts at ~$4/mo for the smallest VM.
           AI is free too, powered by Google Gemini.
         </p>
         <div className="grid gap-8 sm:grid-cols-2 max-w-3xl mx-auto">
@@ -257,13 +257,13 @@ export default function Home() {
               <span className="text-slate-400">to configure</span>
             </div>
             <p className="mt-2 text-sm text-slate-400">
-              We handle everything. You just need a Google account.
+              We handle everything. You just need a Microsoft account.
             </p>
             <ul className="mt-6 space-y-3">
               {[
                 "Full setup and configuration",
-                "Your own private server",
-                "$200 hosting credit (~4 years free)",
+                "Your own private Azure VM",
+                "Hosting from ~$4/mo (billed by Azure)",
                 "AI included via Google Gemini",
                 "WhatsApp + Telegram integration",
                 "All skills unlocked",
@@ -311,18 +311,9 @@ export default function Home() {
           </div>
         </div>
         <p className="mt-8 text-center text-sm text-slate-500 max-w-2xl mx-auto">
-          Free tier runs on Oracle Cloud&apos;s Always Free ARM servers — no hosting cost,
-          no credit card required. Pro tier runs on DigitalOcean for managed hosting.
+          Free tier runs on Microsoft Azure — hosting starts at ~$4/mo, billed
+          directly to your Azure subscription. Pro tier includes managed hosting and maintenance.
           AI is powered by Google Gemini Flash — free with your Google account.
-          {' '}
-          <a
-            href="https://cloud.digitalocean.com/account-referrals?i=091ab6c0-097d-4111-baab-ee4872bd796d"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="text-violet-400 hover:text-violet-300 underline underline-offset-2"
-          >
-            Pro users: sign up for DigitalOcean and get $200 in free credits
-          </a>.
         </p>
       </section>
 

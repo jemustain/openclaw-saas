@@ -13,7 +13,7 @@ export type { CloudInitOptions } from "./cloud-init";
 export * from "./azure";
 
 export function getProvider(name?: string): CloudProvider {
-  switch (name ?? process.env.CLOUD_PROVIDER ?? "oracle") {
+  switch (name ?? process.env.CLOUD_PROVIDER ?? "azure") {
     case "oracle":
       return new OracleProvider();
     case "hetzner":

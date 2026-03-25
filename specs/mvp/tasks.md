@@ -12,8 +12,8 @@
 - [x] T09: Rewrite landing page for managed model (no tech jargon)
 
 ## Phase 2: VM Orchestration (Week 2)
-- [ ] T10: Oracle Cloud API client — create VM with cloud-init
-- [ ] T11: Oracle Cloud API client — destroy VM, list VMs, get status
+- [x] T10: Azure API client — create VM with cloud-init
+- [x] T11: Azure API client — destroy VM, list VMs, get status
 - [ ] T12: Cloud-init template: install OpenClaw + sidecar agent
 - [ ] T13: Sidecar agent scaffold (Node.js, phones home on startup)
 - [ ] T14: Sidecar health endpoint + heartbeat to portal
@@ -21,7 +21,7 @@
 - [ ] T16: Serverless endpoint: POST /api/launch — provisions VM, records in DB
 - [ ] T17: Serverless endpoint: POST /api/suspend — stops VM (free tier off-hours)
 - [ ] T18: Serverless endpoint: POST /api/destroy — tears down VM
-- [ ] T19: Test full provisioning flow end-to-end on Oracle Cloud
+- [ ] T19: Test full provisioning flow end-to-end on Azure
 - [ ] T20: Free tier scheduler — start/stop VMs based on user timezone + 8h window
 
 ## Phase 3: Onboarding Flow (Week 3)

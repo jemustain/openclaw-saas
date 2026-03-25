@@ -1,5 +1,6 @@
 import { createClient } from '../supabase/server';
 import { createDroplet, destroyDroplet, powerOn, powerOff, validateAccount } from '../providers/digitalocean';
+import { createVM, destroyVM, powerOnVM, powerOffVM, validateAccount as validateAzureAccount, ensureResourceGroup, ensureNetworking } from '../providers/azure';
 import { OracleProvider } from '../providers/oracle';
 import { getProviderToken, refreshProviderToken } from '../providers/token-store';
 import { generateCloudInit } from '../providers/cloud-init';
@@ -86,7 +87,7 @@ async function getProviderForUser(userId: string): Promise<'oracle' | 'digitaloc
 
   const pref = data?.provider_preference ?? data?.hosting;
   if (pref === 'oracle' || pref === 'digitalocean' || pref === 'azure') return pref;
-  return (process.env.CLOUD_PROVIDER as 'oracle' | 'digitalocean' | 'azure') ?? 'oracle';
+  return (process.env.CLOUD_PROVIDER as 'oracle' | 'digitalocean' | 'azure') ?? 'azure';
 }
 
 /**
@@ -146,9 +147,23 @@ export async function launchAssistant(userId: string): Promise<Assistant> {
         region: server.region,
       });
     } else if (provider === 'azure') {
-      // TODO: call Azure createVM with vmSize once azure provider is implemented
       const token = await getUserProviderToken(userId, 'azure');
-      throw new Error('Azure VM provisioning not yet implemented');
+      const { subscriptionId } = await validateAzureAccount(token);
+      const resourceGroup = await ensureResourceGroup(token, subscriptionId);
+      const networking = await ensureNetworking(token, subscriptionId, resourceGroup);
+      const vm = await createVM(token, {
+        subscriptionId,
+        resourceGroup,
+        name: `claw-${assistantId.slice(0, 8)}`,
+        cloudInit,
+        vmSize: vmSize ?? 'Standard_B1s',
+      });
+
+      return await updateAssistantStatus(assistantId, 'provisioning', {
+        vm_id: vm.id,
+        ip_address: vm.publicIpv4,
+        region: vm.region,
+      });
     } else {
       // DigitalOcean flow — requires user OAuth tokens
       const token = await getUserDOToken(userId);
@@ -195,6 +210,9 @@ export async function suspendAssistant(assistantId: string): Promise<Assistant> 
   if (assistant.provider === 'oracle') {
     const oracle = getOracleProvider();
     await oracle.powerOff(assistant.vm_id);
+  } else if (assistant.provider === 'azure') {
+    const token = await getUserProviderToken(assistant.user_id, 'azure');
+    await powerOffVM(token, assistant.vm_id);
   } else {
     const token = await getUserDOToken(assistant.user_id);
     await powerOff(token, Number(assistant.vm_id));
@@ -223,6 +241,9 @@ export async function resumeAssistant(assistantId: string): Promise<Assistant> {
   if (assistant.provider === 'oracle') {
     const oracle = getOracleProvider();
     await oracle.powerOn(assistant.vm_id);
+  } else if (assistant.provider === 'azure') {
+    const token = await getUserProviderToken(assistant.user_id, 'azure');
+    await powerOnVM(token, assistant.vm_id);
   } else {
     const token = await getUserDOToken(assistant.user_id);
     await powerOn(token, Number(assistant.vm_id));
@@ -253,6 +274,9 @@ export async function destroyAssistant(assistantId: string): Promise<Assistant> 
       if (assistant.provider === 'oracle') {
         const oracle = getOracleProvider();
         await oracle.destroyServer(assistant.vm_id);
+      } else if (assistant.provider === 'azure') {
+        const token = await getUserProviderToken(assistant.user_id, 'azure');
+        await destroyVM(token, assistant.vm_id);
       } else {
         const token = await getUserDOToken(assistant.user_id);
         await destroyDroplet(token, Number(assistant.vm_id));

@@ -19,14 +19,14 @@
 └────────┼──────────────────────────┼───────────────┘
          │                          │
     ┌────▼─────┐             ┌──────▼───────┐
-    │ Digital  │             │   Stripe     │
-    │ Ocean    │             │   Billing    │
-    │ API (our │             └──────────────┘
+    │  Azure   │             │   Stripe     │
+    │  ARM API │             │   Billing    │
+    │  (user's │             └──────────────┘
     │ account) │
     └────┬─────┘
          │
     ┌────▼──────────────────────────────────┐
-    │    ShiftWorker-Managed VM Pool           │
+    │    User Azure VMs                      │
     │                                        │
     │  ┌──────────┐ ┌──────────┐ ┌────────┐ │
     │  │ User A's │ │ User B's │ │User C's│ │
@@ -37,11 +37,12 @@
 
 ## Key Architecture Decisions
 
-### We Own the Infrastructure
-- Single DigitalOcean account, provisioned via API with our credentials
-- Each user gets a dedicated VM (isolation, security, simplicity)
+### We Use the User's Azure Subscription
+- Users connect their Azure account via OAuth
+- Each user gets a dedicated VM in their own Azure subscription
 - We manage lifecycle: create, monitor, update, suspend, destroy
 - User never sees or accesses the VM directly
+- Billing goes directly through Azure (~$4/mo for smallest VM)
 
 ### Why Dedicated VMs (Not Shared/Containers)
 - OpenClaw expects a full Linux environment (browser, system tools)
@@ -57,7 +58,7 @@
 | Auth | Supabase Auth | Free tier |
 | Database | Supabase (PostgreSQL) | Free tier |
 | Payments | Stripe Subscriptions | 2.9% + $0.30/txn |
-| VM Provisioning | DigitalOcean API | ~$6/user/mo |
+| VM Provisioning | Azure ARM API | ~$4/user/mo (user pays Azure) |
 | VM Management | Sidecar agent on each VM | Bundled |
 | Background Jobs | Vercel Cron or Inngest | Free tier |
 | AI API Keys | Our keys, metered per user | ~$3-8/user/mo |
@@ -146,5 +147,5 @@ specs/
 | Setup time | 60 seconds | 30+ minutes | Varies |
 | Technical skill needed | None | Moderate | Low-Moderate |
 | Data isolation | Dedicated VM | Full control | Shared infra |
-| Cost | $12-25/mo | $5-10/mo + your time | $20-50/mo |
+| Cost | $12-25/mo + ~$4/mo Azure | $5-10/mo + your time | $20-50/mo |
 | Maintenance | We handle it | You handle it | They handle it |
