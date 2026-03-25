@@ -95,7 +95,7 @@ export default function OnboardingWizard() {
   const [direction, setDirection] = useState(1);
   const [animating, setAnimating] = useState(false);
   const [timezone, setTimezone] = useState('');
-  const [hosting, setHosting] = useState('digitalocean');
+  const [hosting, setHosting] = useState('oracle');
   const [plan, setPlan] = useState<'free' | 'pro'>('free');
   const [windowStart, setWindowStart] = useState(9);
   const [messengers, setMessengers] = useState<string[]>([]);
@@ -220,7 +220,7 @@ export default function OnboardingWizard() {
       const launchRes = await fetch('/api/launch', { method: 'POST' });
       if (!launchRes.ok) {
         const errData = await launchRes.json().catch(() => ({}));
-        addStatus(`⚠️ ${errData.error ?? 'Launch failed — please check your DigitalOcean account'}`);
+        addStatus(`⚠️ ${errData.error ?? 'Launch failed — please try again'}`);
         launchFailed = true;
       } else {
         addStatus('Assistant launched');
@@ -239,7 +239,7 @@ export default function OnboardingWizard() {
     addStatus('Provisioning your server — this usually takes 2–4 minutes...');
     let attempts = 0;
     const milestones = [
-      { at: 15, msg: 'Creating your server on DigitalOcean...' },
+      { at: 15, msg: `Creating your server on ${hosting === 'oracle' ? 'Oracle Cloud' : hosting === 'azure' ? 'Azure' : 'DigitalOcean'}...` },
       { at: 30, msg: 'Installing OpenClaw and dependencies...' },
       { at: 60, msg: 'Configuring your assistant...' },
       { at: 90, msg: 'Almost there — starting services...' },
@@ -693,7 +693,13 @@ export default function OnboardingWizard() {
             <div className="flex justify-between items-center">
               <BackBtn />
               <PrimaryBtn onClick={() => {
-                window.location.href = '/api/auth/digitalocean';
+                if (hosting === 'oracle') {
+                  next();
+                } else if (hosting === 'azure') {
+                  window.location.href = '/api/auth/azure';
+                } else {
+                  window.location.href = '/api/auth/digitalocean';
+                }
               }}>
                 {hosting === 'oracle' ? 'Next' : hosting === 'azure' ? 'Connect Azure' : 'Connect DigitalOcean'} <ArrowRight className="w-4 h-4" />
               </PrimaryBtn>
