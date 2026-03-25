@@ -44,35 +44,25 @@ async function updateAssistantStatus(
 }
 
 /**
- * Get a valid DO access token for the user, refreshing if expired.
+ * Get a valid provider access token for the user, refreshing if expired.
  */
-async function getUserDOToken(userId: string): Promise<string> {
-  const tokenData = await getProviderToken(userId, 'digitalocean');
-  if (!tokenData) throw new Error('DigitalOcean account not connected. Please connect via Settings.');
+async function getUserProviderToken(userId: string, provider: string): Promise<string> {
+  const tokenData = await getProviderToken(userId, provider);
+  if (!tokenData) throw new Error(`${provider} account not connected. Please connect via Settings.`);
 
   // Refresh if expired or expiring within 5 minutes
   if (tokenData.expiresAt && tokenData.expiresAt.getTime() < Date.now() + 5 * 60 * 1000) {
-    return await refreshProviderToken(userId, 'digitalocean');
+    return await refreshProviderToken(userId, provider);
   }
 
   return tokenData.accessToken;
 }
 
 /**
- * Determine the cloud provider for a user.
- * Checks user's provider_preference, falls back to CLOUD_PROVIDER env or 'oracle'.
+ * @deprecated Use getUserProviderToken instead
  */
-async function getProviderForUser(userId: string): Promise<'oracle' | 'digitalocean'> {
-  const supabase: any = createClient();
-  const { data } = await supabase
-    .from('users')
-    .select('provider_preference')
-    .eq('id', userId)
-    .single();
-
-  const pref = data?.provider_preference;
-  if (pref === 'oracle' || pref === 'digitalocean') return pref;
-  return (process.env.CLOUD_PROVIDER as 'oracle' | 'digitalocean') ?? 'oracle';
+async function getUserDOToken(userId: string): Promise<string> {
+  return getUserProviderToken(userId, 'digitalocean');
 }
 
 /**
@@ -83,13 +73,40 @@ function getOracleProvider(): OracleProvider {
 }
 
 /**
+ * Determine the cloud provider for a user.
+ * Checks user's provider_preference, falls back to CLOUD_PROVIDER env or 'oracle'.
+ */
+async function getProviderForUser(userId: string): Promise<'oracle' | 'digitalocean' | 'azure'> {
+  const supabase: any = createClient();
+  const { data } = await supabase
+    .from('users')
+    .select('provider_preference, hosting, vm_size')
+    .eq('id', userId)
+    .single();
+
+  const pref = data?.provider_preference ?? data?.hosting;
+  if (pref === 'oracle' || pref === 'digitalocean' || pref === 'azure') return pref;
+  return (process.env.CLOUD_PROVIDER as 'oracle' | 'digitalocean' | 'azure') ?? 'oracle';
+}
+
+/**
  * Launch a new assistant VM.
  * Oracle: uses our own OCI credentials (no user tokens needed).
- * DigitalOcean: uses the user's OAuth token.
+ * Azure/DigitalOcean: uses the user's OAuth token.
  */
 export async function launchAssistant(userId: string): Promise<Assistant> {
   const supabase: any = createClient();
   const provider = await getProviderForUser(userId);
+
+  // Read user record to get VM size preference
+  const { data: user, error: userError } = await supabase
+    .from('users')
+    .select('vm_size')
+    .eq('id', userId)
+    .single();
+
+  if (userError) throw new Error(`Failed to read user: ${userError.message}`);
+  const vmSize: string | null = user?.vm_size ?? null;
 
   const assistantId = randomUUID();
   const sidecarToken = randomUUID();
@@ -128,6 +145,10 @@ export async function launchAssistant(userId: string): Promise<Assistant> {
         ip_address: server.publicIpv4,
         region: server.region,
       });
+    } else if (provider === 'azure') {
+      // TODO: call Azure createVM with vmSize once azure provider is implemented
+      const token = await getUserProviderToken(userId, 'azure');
+      throw new Error('Azure VM provisioning not yet implemented');
     } else {
       // DigitalOcean flow — requires user OAuth tokens
       const token = await getUserDOToken(userId);
@@ -139,6 +160,7 @@ export async function launchAssistant(userId: string): Promise<Assistant> {
       const droplet = await createDroplet(token, {
         name: `claw-${assistantId.slice(0, 8)}`,
         cloudInit,
+        size: vmSize ?? undefined,
       });
 
       return await updateAssistantStatus(assistantId, 'provisioning', {

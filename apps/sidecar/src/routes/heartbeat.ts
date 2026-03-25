@@ -4,8 +4,16 @@ import { getTodayUsageSummary } from './usage';
 const router = Router();
 
 let heartbeatInterval: NodeJS.Timeout | null = null;
+let usageReportInterval: NodeJS.Timeout | null = null;
 let portalUrl: string | null = null;
 let vmId: string | null = null;
+
+/** Whether the portal has indicated this assistant is throttled */
+let throttled = false;
+
+export function isThrottled(): boolean {
+  return throttled;
+}
 
 async function collectHealthData() {
   const os = await import('os');
@@ -52,6 +60,44 @@ async function sendHeartbeat() {
   }
 }
 
+/**
+ * Report usage to the portal every 5 minutes.
+ * The portal responds with { throttled } so the sidecar knows to pause.
+ */
+async function reportUsageToPortal() {
+  if (!portalUrl || !vmId) return;
+
+  const sidecarToken = process.env.SIDECAR_TOKEN;
+  if (!sidecarToken) return;
+
+  try {
+    const usage = await getTodayUsageSummary();
+    const res = await fetch(`${portalUrl}/api/usage/record`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${sidecarToken}`,
+      },
+      body: JSON.stringify({
+        assistant_id: vmId,
+        messages_sent: usage.messages_sent,
+        hours_active: usage.hours_active,
+        api_tokens_used: usage.api_tokens_used,
+      }),
+    });
+
+    if (res.ok) {
+      const data = await res.json() as { throttled?: boolean; reason?: string };
+      throttled = data.throttled === true;
+      if (throttled) {
+        console.warn(`[usage] Throttled by portal: ${data.reason ?? 'limit reached'}`);
+      }
+    }
+  } catch (err) {
+    console.error('[usage] Failed to report usage:', (err as Error).message);
+  }
+}
+
 router.post('/heartbeat/register', (req: Request, res: Response) => {
   const { url, id } = req.body;
 
@@ -63,14 +109,19 @@ router.post('/heartbeat/register', (req: Request, res: Response) => {
   portalUrl = url;
   vmId = id;
 
-  // Clear existing interval if re-registering
+  // Clear existing intervals if re-registering
   if (heartbeatInterval) clearInterval(heartbeatInterval);
+  if (usageReportInterval) clearInterval(usageReportInterval);
 
-  // Send immediately, then every 60s
+  // Send heartbeat immediately, then every 60s
   sendHeartbeat();
   heartbeatInterval = setInterval(sendHeartbeat, 60_000);
 
-  res.json({ status: 'registered', portalUrl, vmId, intervalMs: 60_000 });
+  // Report usage immediately, then every 5 minutes
+  reportUsageToPortal();
+  usageReportInterval = setInterval(reportUsageToPortal, 5 * 60 * 1000);
+
+  res.json({ status: 'registered', portalUrl, vmId, heartbeatMs: 60_000, usageReportMs: 300_000 });
 });
 
 export default router;
