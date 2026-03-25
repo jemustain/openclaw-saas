@@ -7,8 +7,10 @@ export { generateCloudInit } from "./cloud-init";
 export type { CloudProvider, ServerInfo, CreateServerOptions } from "./types";
 export type { CloudInitOptions } from "./cloud-init";
 
-// Note: DigitalOcean provider is exported as functions, not a class implementing CloudProvider
+// Note: DigitalOcean and Azure providers are exported as functions, not a class implementing CloudProvider
 // See ./digitalocean.ts for the DO API client
+// See ./azure.ts for the Azure ARM API client
+export * from "./azure";
 
 export function getProvider(name?: string): CloudProvider {
   switch (name ?? process.env.CLOUD_PROVIDER ?? "oracle") {
