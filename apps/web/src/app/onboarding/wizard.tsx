@@ -653,21 +653,30 @@ export default function OnboardingWizard() {
             <h2 className="text-2xl font-bold text-center">Choose Your Hosting</h2>
             <p className="text-slate-400 text-center">Where should your AI assistant run?</p>
             <div className="grid gap-4">
-              <Card selected={hosting === 'digitalocean'} onClick={() => setHosting('digitalocean')}>
+              <Card selected={hosting === 'oracle'} onClick={() => { setHosting('oracle'); setVmSize(''); }}>
                 <div className="flex items-center gap-3">
                   <Cloud className="w-8 h-8 text-blue-400" />
                   <div>
-                    <div className="font-semibold">DigitalOcean</div>
-                    <div className="text-sm text-slate-400">Reliable cloud hosting, starting at $4/mo</div>
+                    <div className="font-semibold">Oracle Cloud <span className="text-xs text-green-400 ml-2">Free</span></div>
+                    <div className="text-sm text-slate-400">Always Free ARM server — no credit card, no hosting cost</div>
                   </div>
                 </div>
               </Card>
-              <Card disabled>
+              <Card selected={hosting === 'azure'} onClick={() => { setHosting('azure'); setVmSize(getDefaultSize('azure')); }}>
                 <div className="flex items-center gap-3">
-                  <Server className="w-8 h-8 text-blue-300" />
+                  <Server className="w-8 h-8 text-blue-500" />
                   <div>
-                    <div className="font-semibold">Azure <span className="text-xs text-slate-400 ml-2">Coming soon</span></div>
-                    <div className="text-sm text-slate-400">Microsoft Azure cloud</div>
+                    <div className="font-semibold">Microsoft Azure</div>
+                    <div className="text-sm text-slate-400">Choose your VM size — starts at ~$4/mo</div>
+                  </div>
+                </div>
+              </Card>
+              <Card selected={hosting === 'digitalocean'} onClick={() => { setHosting('digitalocean'); setVmSize(getDefaultSize('digitalocean')); }}>
+                <div className="flex items-center gap-3">
+                  <Sun className="w-8 h-8 text-amber-400" />
+                  <div>
+                    <div className="font-semibold">DigitalOcean</div>
+                    <div className="text-sm text-slate-400">Reliable cloud hosting — starts at ~$4/mo</div>
                   </div>
                 </div>
               </Card>
@@ -686,21 +695,28 @@ export default function OnboardingWizard() {
               <PrimaryBtn onClick={() => {
                 window.location.href = '/api/auth/digitalocean';
               }}>
-                Connect DigitalOcean <ArrowRight className="w-4 h-4" />
+                {hosting === 'oracle' ? 'Next' : hosting === 'azure' ? 'Connect Azure' : 'Connect DigitalOcean'} <ArrowRight className="w-4 h-4" />
               </PrimaryBtn>
             </div>
-            <p className="text-xs text-slate-500 text-center">
-              New to DigitalOcean?{' '}
-              <a
-                href="https://cloud.digitalocean.com/account-referrals?i=091ab6c0-097d-4111-baab-ee4872bd796d"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-violet-400 hover:underline"
-              >
-                Sign up with our referral link
-              </a>{' '}
-              for free credits.
-            </p>
+            {hosting === 'azure' && (
+              <p className="text-xs text-slate-500 text-center">
+                You&apos;ll sign in with your Microsoft account to connect Azure.
+              </p>
+            )}
+            {hosting === 'digitalocean' && (
+              <p className="text-xs text-slate-500 text-center">
+                New to DigitalOcean?{' '}
+                <a
+                  href="https://cloud.digitalocean.com/account-referrals?i=091ab6c0-097d-4111-baab-ee4872bd796d"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-violet-400 hover:underline"
+                >
+                  Sign up with our referral link
+                </a>{' '}
+                for free credits.
+              </p>
+            )}
           </div>
         )}
 
@@ -906,7 +922,7 @@ export default function OnboardingWizard() {
             <div className="bg-slate-900 border border-slate-800 rounded-xl p-6 text-left space-y-3 max-w-md mx-auto">
               <div className="flex justify-between text-sm">
                 <span className="text-slate-400">Hosting</span>
-                <span>DigitalOcean</span>
+                <span>{hosting === 'oracle' ? 'Oracle Cloud (Free)' : hosting === 'azure' ? 'Microsoft Azure' : 'DigitalOcean'}</span>
               </div>
               <div className="flex justify-between text-sm">
                 <span className="text-slate-400">Plan</span>

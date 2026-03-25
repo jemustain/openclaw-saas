@@ -1,8 +1,14 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect, useCallback } from "react";
 import Link from "next/link";
-import { SKILLS, CATEGORIES, TIER_LABELS, type SkillCategory, type SkillTier } from "@/lib/skills/catalog";
+import {
+  SKILLS,
+  CATEGORIES,
+  TIER_LABELS,
+  type SkillCategory,
+  type SkillTier,
+} from "@/lib/skills/catalog";
 
 const TIER_COLORS: Record<SkillTier, string> = {
   free: "bg-emerald-500/20 text-emerald-400 border-emerald-500/30",
@@ -13,29 +19,81 @@ const TIER_COLORS: Record<SkillTier, string> = {
 export default function SkillsPage() {
   const [search, setSearch] = useState("");
   const [category, setCategory] = useState<SkillCategory | "All">("All");
-  const [enabled, setEnabled] = useState<Set<string>>(() => new Set());
+  const [installedSkills, setInstalledSkills] = useState<Set<string>>(new Set());
+  const [loading, setLoading] = useState(true);
+  const [actionInProgress, setActionInProgress] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
 
-  // Simulate free-tier user
+  // TODO: get from user session; for now assume free
   const userTier: SkillTier = "free";
+
+  const fetchInstalled = useCallback(async () => {
+    try {
+      const res = await fetch("/api/skills");
+      if (!res.ok) throw new Error("Failed to fetch skills");
+      const data = await res.json();
+      const names = new Set<string>(
+        (data.skills || []).map((s: { name: string }) => s.name),
+      );
+      setInstalledSkills(names);
+    } catch {
+      // Assistant might not be running — that's OK
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchInstalled();
+  }, [fetchInstalled]);
 
   const filtered = useMemo(() => {
     return SKILLS.filter((s) => {
       if (category !== "All" && s.category !== category) return false;
       if (search) {
         const q = search.toLowerCase();
-        return s.name.toLowerCase().includes(q) || s.description.toLowerCase().includes(q);
+        return (
+          s.name.toLowerCase().includes(q) ||
+          s.description.toLowerCase().includes(q)
+        );
       }
       return true;
     });
   }, [search, category]);
 
-  function toggle(id: string, tier: SkillTier) {
+  async function toggleSkill(id: string, tier: SkillTier) {
     if (tier !== "free" && userTier === "free") return;
-    setEnabled((prev) => {
-      const next = new Set(prev);
-      next.has(id) ? next.delete(id) : next.add(id);
-      return next;
-    });
+    if (actionInProgress) return;
+
+    const isInstalled = installedSkills.has(id);
+    const action = isInstalled ? "remove" : "install";
+
+    setActionInProgress(id);
+    setError(null);
+
+    try {
+      const res = await fetch(`/api/skills/${id}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action }),
+      });
+
+      if (!res.ok) {
+        const data = await res.json();
+        throw new Error(data.error || `Failed to ${action} skill`);
+      }
+
+      setInstalledSkills((prev) => {
+        const next = new Set(prev);
+        if (action === "install") next.add(id);
+        else next.delete(id);
+        return next;
+      });
+    } catch (err: any) {
+      setError(err.message);
+    } finally {
+      setActionInProgress(null);
+    }
   }
 
   return (
@@ -47,6 +105,19 @@ export default function SkillsPage() {
           Browse and enable skills to teach your assistant new tricks.
         </p>
       </div>
+
+      {/* Error banner */}
+      {error && (
+        <div className="mb-6 bg-red-500/10 border border-red-500/30 text-red-400 rounded-lg px-4 py-3 text-sm">
+          {error}
+          <button
+            onClick={() => setError(null)}
+            className="ml-3 text-red-300 hover:text-red-200"
+          >
+            ✕
+          </button>
+        </div>
+      )}
 
       {/* Search */}
       <div className="mb-6">
@@ -77,20 +148,28 @@ export default function SkillsPage() {
       </div>
 
       {/* Grid */}
-      {filtered.length === 0 ? (
-        <p className="text-gray-500 text-center py-12">No skills match your search.</p>
+      {loading ? (
+        <div className="flex items-center justify-center py-12">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500" />
+          <span className="ml-3 text-gray-400">Loading skills...</span>
+        </div>
+      ) : filtered.length === 0 ? (
+        <p className="text-gray-500 text-center py-12">
+          No skills match your search.
+        </p>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {filtered.map((skill) => {
             const locked = skill.tier !== "free" && userTier === "free";
-            const isOn = enabled.has(skill.id);
+            const isInstalled = installedSkills.has(skill.id);
+            const isBusy = actionInProgress === skill.id;
 
             return (
               <div
                 key={skill.id}
                 className="relative bg-gray-900 border border-gray-800 rounded-xl p-5 flex flex-col gap-3 hover:border-gray-700 transition-colors"
               >
-                {/* Top row: icon + badge + toggle */}
+                {/* Top row */}
                 <div className="flex items-start justify-between">
                   <div className="flex items-center gap-3">
                     <span className="text-3xl">{skill.icon}</span>
@@ -102,7 +181,9 @@ export default function SkillsPage() {
                         {skill.name}
                       </Link>
                       {skill.popular && (
-                        <span className="ml-2 text-xs text-amber-400">⭐ Popular</span>
+                        <span className="ml-2 text-xs text-amber-400">
+                          ⭐ Popular
+                        </span>
                       )}
                     </div>
                   </div>
@@ -114,7 +195,9 @@ export default function SkillsPage() {
                 </div>
 
                 {/* Description */}
-                <p className="text-sm text-gray-400 leading-relaxed">{skill.description}</p>
+                <p className="text-sm text-gray-400 leading-relaxed">
+                  {skill.description}
+                </p>
 
                 {/* Toggle / Upgrade */}
                 <div className="mt-auto pt-2">
@@ -127,22 +210,38 @@ export default function SkillsPage() {
                     </Link>
                   ) : (
                     <button
-                      onClick={() => toggle(skill.id, skill.tier)}
-                      className="flex items-center gap-2 text-sm"
+                      onClick={() => toggleSkill(skill.id, skill.tier)}
+                      disabled={isBusy}
+                      className="flex items-center gap-2 text-sm disabled:opacity-50"
                       aria-label={`Toggle ${skill.name}`}
                     >
-                      <div
-                        className={`w-10 h-5 rounded-full relative transition-colors ${
-                          isOn ? "bg-blue-600" : "bg-gray-700"
-                        }`}
-                      >
-                        <div
-                          className={`absolute top-0.5 w-4 h-4 rounded-full bg-white transition-transform ${
-                            isOn ? "translate-x-5" : "translate-x-0.5"
-                          }`}
-                        />
-                      </div>
-                      <span className="text-gray-400">{isOn ? "Enabled" : "Disabled"}</span>
+                      {isBusy ? (
+                        <>
+                          <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-blue-500" />
+                          <span className="text-gray-400">
+                            {isInstalled ? "Removing..." : "Installing..."}
+                          </span>
+                        </>
+                      ) : (
+                        <>
+                          <div
+                            className={`w-10 h-5 rounded-full relative transition-colors ${
+                              isInstalled ? "bg-blue-600" : "bg-gray-700"
+                            }`}
+                          >
+                            <div
+                              className={`absolute top-0.5 w-4 h-4 rounded-full bg-white transition-transform ${
+                                isInstalled
+                                  ? "translate-x-5"
+                                  : "translate-x-0.5"
+                              }`}
+                            />
+                          </div>
+                          <span className="text-gray-400">
+                            {isInstalled ? "Installed" : "Not installed"}
+                          </span>
+                        </>
+                      )}
                     </button>
                   )}
                 </div>
