@@ -18,6 +18,8 @@ export interface User {
   email: string;
   name: string | null;
   plan: Plan;
+  hosting: string | null;
+  vm_size: string | null;
   timezone: string | null;
   window_start: number | null;
   onboarding_complete: boolean;
@@ -37,6 +39,11 @@ export interface Assistant {
   sidecar_token: string | null;
   created_at: string;
   updated_at: string;
+  telegram_bot_username: string | null;
+  telegram_bot_token: string | null;
+  whatsapp_connected: boolean;
+  discord_bot_token: string | null;
+  slack_bot_token: string | null;
 }
 
 export interface Subscription {

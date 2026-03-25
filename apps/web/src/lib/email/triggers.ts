@@ -4,12 +4,13 @@ import {
   welcomeEmail,
   assistantReadyEmail,
   paymentFailedEmail,
+  subscriptionConfirmedEmail,
   subscriptionCancelledEmail,
   usageLimitEmail,
 } from './templates';
 
 async function getUserEmail(userId: string): Promise<{ email: string; name: string } | null> {
-  const supabase: any = createClient();
+  const supabase: any = await createClient();
   const { data } = await supabase
     .from('users')
     .select('email, name')
@@ -25,10 +26,14 @@ export async function onUserSignup(userId: string) {
   await sendEmail(user.email, 'Welcome to ShiftWorker! 🎉', welcomeEmail(user.name));
 }
 
-export async function onAssistantReady(userId: string) {
+export async function onAssistantReady(userId: string, messengerLinks?: { whatsapp?: string; telegram?: string; slack?: string }) {
   const user = await getUserEmail(userId);
   if (!user) return;
-  await sendEmail(user.email, 'Your Assistant is Ready!', assistantReadyEmail(user.name));
+  await sendEmail(
+    user.email,
+    'Your AI Assistant is Ready! 🎉',
+    assistantReadyEmail(user.name, messengerLinks),
+  );
 }
 
 export async function onPaymentFailed(userId: string) {
@@ -37,10 +42,20 @@ export async function onPaymentFailed(userId: string) {
   await sendEmail(user.email, 'Payment Issue — Action Needed', paymentFailedEmail(user.name));
 }
 
-export async function onSubscriptionCancelled(userId: string) {
+export async function onSubscriptionConfirmed(userId: string) {
   const user = await getUserEmail(userId);
   if (!user) return;
-  await sendEmail(user.email, 'Your Subscription Has Been Cancelled', subscriptionCancelledEmail(user.name));
+  await sendEmail(user.email, 'Welcome to Pro! 🚀', subscriptionConfirmedEmail(user.name));
+}
+
+export async function onSubscriptionCancelled(userId: string, gracePeriodEnds?: string) {
+  const user = await getUserEmail(userId);
+  if (!user) return;
+  await sendEmail(
+    user.email,
+    'Your Subscription Has Been Cancelled',
+    subscriptionCancelledEmail(user.name, gracePeriodEnds),
+  );
 }
 
 export async function onUsageLimitReached(userId: string) {

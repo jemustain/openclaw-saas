@@ -53,7 +53,6 @@ const SKILLS: SkillDef[] = [
 const FREE_SKILLS = SKILLS.filter((s) => !s.pro);
 const PRO_SKILLS = SKILLS.filter((s) => s.pro);
 
-type MessengerSetupStatus = 'pending' | 'ready' | 'connected';
 
 const MESSENGER_SETUP_INFO: Record<string, { title: string; pendingMsg: string; readyMsg: string; icon: typeof QrCode }> = {
   whatsapp: {
@@ -96,7 +95,7 @@ export default function OnboardingWizard() {
   const [direction, setDirection] = useState(1);
   const [animating, setAnimating] = useState(false);
   const [timezone, setTimezone] = useState('');
-  const [hosting, setHosting] = useState('oracle');
+  const [hosting, setHosting] = useState('digitalocean');
   const [plan, setPlan] = useState<'free' | 'pro'>('free');
   const [windowStart, setWindowStart] = useState(9);
   const [messengers, setMessengers] = useState<string[]>([]);
@@ -105,6 +104,7 @@ export default function OnboardingWizard() {
   const [setupDone, setSetupDone] = useState(false);
   const [serverActive, setServerActive] = useState(false);
   const [proTooltip, setProTooltip] = useState<string | null>(null);
+  const [botLinks, setBotLinks] = useState<Record<string, string>>({});
 
   // Init from URL params and timezone
   useEffect(() => {
@@ -118,7 +118,7 @@ export default function OnboardingWizard() {
       const s = parseInt(stepParam, 10);
       if (s >= 0 && s < STEPS.length) setStep(s);
     }
-    if ((connected === 'digitalocean' || connected === 'oracle') && !stepParam) setStep(2);
+    if (connected === 'digitalocean' && !stepParam) setStep(2);
     if (upgraded === 'true' && !stepParam) {
       setPlan('pro');
       setStep(3);
@@ -207,7 +207,7 @@ export default function OnboardingWizard() {
       await fetch('/api/onboarding', {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ timezone, plan, windowStart, messengers, skills, hosting, onboardingComplete: false }),
+        body: JSON.stringify({ timezone, plan, windowStart, messengers, skills, onboardingComplete: false }),
       });
       addStatus('Preferences saved');
     } catch {
@@ -220,7 +220,7 @@ export default function OnboardingWizard() {
       const launchRes = await fetch('/api/launch', { method: 'POST' });
       if (!launchRes.ok) {
         const errData = await launchRes.json().catch(() => ({}));
-        addStatus(`⚠️ ${errData.error ?? 'Launch failed — please try again'}`);
+        addStatus(`⚠️ ${errData.error ?? 'Launch failed — please check your DigitalOcean account'}`);
         launchFailed = true;
       } else {
         addStatus('Assistant launched');
@@ -239,7 +239,7 @@ export default function OnboardingWizard() {
     addStatus('Provisioning your server — this usually takes 2–4 minutes...');
     let attempts = 0;
     const milestones = [
-      { at: 15, msg: `Creating your server on ${hosting === 'oracle' ? 'Oracle Cloud' : 'DigitalOcean'}...` },
+      { at: 15, msg: 'Creating your server on DigitalOcean...' },
       { at: 30, msg: 'Installing OpenClaw and dependencies...' },
       { at: 60, msg: 'Configuring your assistant...' },
       { at: 90, msg: 'Almost there — starting services...' },
@@ -251,6 +251,7 @@ export default function OnboardingWizard() {
         const data = await res.json();
         if (data.assistant?.status === 'active') {
           addStatus('✅ Assistant is online!');
+          addStatus('✅ Assistant is online! Setting up your messengers...');
           setServerActive(true);
           await fetch('/api/onboarding', {
             method: 'PATCH',
@@ -397,11 +398,112 @@ export default function OnboardingWizard() {
   };
 
   // Messenger setup card for Step 5
-  const MessengerSetupCard = ({ messengerId }: { messengerId: string }) => {
+  const MessengerSetupCard = ({ messengerId, isServerActive, onReady }: {
+    messengerId: string;
+    isServerActive: boolean;
+    onReady?: (platform: string, link: string) => void;
+  }) => {
     const info = MESSENGER_SETUP_INFO[messengerId];
+    const [status, setStatus] = useState<'waiting' | 'setting-up' | 'ready' | 'connected' | 'failed'>('waiting');
+    const [botLink, setBotLink] = useState<string | null>(null);
+    const [qrCode, setQrCode] = useState<string | null>(null);
+    const [error, setError] = useState<string | null>(null);
+    const [qrExpired, setQrExpired] = useState(false);
+
+    const triggerSetup = useCallback(async () => {
+      setStatus('setting-up');
+      setError(null);
+      setQrExpired(false);
+      try {
+        const res = await fetch('/api/messaging/setup', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ platform: messengerId }),
+        });
+        if (!res.ok) {
+          setError(`Setup failed (HTTP ${res.status})`);
+          setStatus('failed');
+          return;
+        }
+        const data = await res.json();
+
+        if (data.error) {
+          setError(data.error);
+          setStatus('failed');
+        } else if (data.botLink) {
+          setBotLink(data.botLink);
+          setStatus('ready');
+          onReady?.(messengerId, data.botLink);
+        } else if (data.qr) {
+          setQrCode(data.qr);
+          setStatus('ready');
+        } else if (data.status === 'configured' || data.status === 'connected') {
+          setStatus('connected');
+          if (data.botLink) onReady?.(messengerId, data.botLink);
+        } else {
+          // Generic success — mark as ready
+          setStatus('ready');
+        }
+      } catch {
+        setError('Failed to set up — please try again');
+        setStatus('failed');
+      }
+    }, [messengerId, onReady]);
+
+    // Auto-trigger setup when server comes online
+    useEffect(() => {
+      if (!isServerActive || status !== 'waiting') return;
+      triggerSetup();
+    }, [isServerActive, status, triggerSetup]);
+
+    // Poll for connection status when QR is shown (WhatsApp/Signal)
+    useEffect(() => {
+      if (status !== 'ready' || !qrCode) return;
+      let cancelled = false;
+      let attempts = 0;
+      const maxAttempts = 40; // ~2 min at 3s intervals
+
+      const poll = async () => {
+        while (!cancelled && attempts < maxAttempts) {
+          attempts++;
+          await new Promise((r) => setTimeout(r, 3000));
+          if (cancelled) return;
+          try {
+            const res = await fetch('/api/messaging/status');
+            if (!res.ok) continue;
+            const data = await res.json();
+            const plat = data.platforms?.[messengerId];
+            if (plat?.connected) {
+              setStatus('connected');
+              if (plat.botLink) onReady?.(messengerId, plat.botLink);
+              return;
+            }
+          } catch { /* ignore */ }
+        }
+        if (!cancelled && attempts >= maxAttempts) {
+          setQrExpired(true);
+        }
+      };
+      poll();
+      return () => { cancelled = true; };
+    }, [status, qrCode, messengerId, onReady]);
+
     if (!info) return null;
     const Icon = info.icon;
-    const status: MessengerSetupStatus = serverActive ? 'ready' : 'pending';
+
+    const badgeClass =
+      status === 'waiting' ? 'bg-slate-800 text-slate-400' :
+      status === 'setting-up' ? 'bg-amber-500/20 text-amber-400' :
+      status === 'connected' ? 'bg-violet-500/20 text-violet-400' :
+      status === 'failed' ? 'bg-red-500/20 text-red-400' :
+      'bg-green-500/20 text-green-400';
+
+    const badgeLabel =
+      status === 'waiting' ? 'Waiting…' :
+      status === 'setting-up' ? 'Setting up…' :
+      status === 'connected' ? 'Connected' :
+      status === 'failed' ? 'Failed' :
+      'Ready';
 
     return (
       <div className="border border-slate-800 rounded-xl p-4 bg-slate-900/50 space-y-3">
@@ -410,29 +512,103 @@ export default function OnboardingWizard() {
             <Icon className="w-5 h-5 text-violet-400" />
             <span className="font-medium text-sm">{info.title}</span>
           </div>
-          <span className={`text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full ${
-            status === 'pending'
-              ? 'bg-slate-800 text-slate-400'
-              : status === 'ready'
-                ? 'bg-green-500/20 text-green-400'
-                : 'bg-violet-500/20 text-violet-400'
-          }`}>
-            {status === 'pending' ? 'Waiting…' : status === 'ready' ? 'Ready' : 'Connected'}
+          <span className={`text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full ${badgeClass}`}>
+            {badgeLabel}
           </span>
         </div>
-        <p className="text-xs text-slate-400 leading-relaxed">
-          {status === 'pending' ? info.pendingMsg : info.readyMsg}
-        </p>
-        {status === 'ready' && messengerId === 'telegram' && (
-          <input
-            type="text"
-            placeholder="Paste your bot token here..."
-            className="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white placeholder:text-slate-500 focus:outline-none focus:border-violet-500"
-          />
+
+        {/* Waiting state */}
+        {status === 'waiting' && (
+          <p className="text-xs text-slate-400 leading-relaxed">{info.pendingMsg}</p>
         )}
-        {status === 'ready' && messengerId === 'whatsapp' && (
-          <div className="w-full h-32 bg-slate-800 rounded-lg flex items-center justify-center">
-            <QrCode className="w-12 h-12 text-slate-600" />
+
+        {/* Setting up state */}
+        {status === 'setting-up' && (
+          <div className="flex items-center gap-2 text-sm text-slate-300">
+            <Loader2 className="w-4 h-4 animate-spin text-violet-400" />
+            {messengerId === 'telegram' ? 'Creating your Telegram bot…' :
+             messengerId === 'whatsapp' ? 'Generating QR code…' :
+             `Configuring ${info.title}…`}
+          </div>
+        )}
+
+        {/* Ready state — Telegram: show bot link */}
+        {status === 'ready' && messengerId === 'telegram' && botLink && (
+          <div className="space-y-2">
+            <p className="text-xs text-green-400">✅ Bot created — tap to start chatting</p>
+            <a
+              href={botLink}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="block w-full text-center rounded-lg bg-blue-500 hover:bg-blue-400 py-3 text-sm font-medium transition"
+            >
+              Open in Telegram →
+            </a>
+          </div>
+        )}
+
+        {/* Ready state — WhatsApp/Signal: show QR code */}
+        {status === 'ready' && qrCode && !qrExpired && (messengerId === 'whatsapp' || messengerId === 'signal') && (
+          <div className="space-y-2">
+            <p className="text-xs text-slate-300">Scan with {info.title} to connect</p>
+            <img
+              src={qrCode.startsWith('data:') ? qrCode : `data:image/png;base64,${qrCode}`}
+              alt={`Scan QR code with ${info.title}`}
+              className="w-48 h-48 mx-auto rounded-lg"
+            />
+          </div>
+        )}
+
+        {/* QR expired */}
+        {status === 'ready' && qrExpired && (
+          <div className="space-y-2">
+            <p className="text-xs text-amber-400">QR code expired</p>
+            <button
+              type="button"
+              onClick={triggerSetup}
+              className="w-full text-center rounded-lg bg-slate-800 hover:bg-slate-700 py-2 text-sm font-medium transition border border-slate-700"
+            >
+              Regenerate QR Code
+            </button>
+          </div>
+        )}
+
+        {/* Ready state — Discord/Slack: show link */}
+        {status === 'ready' && botLink && messengerId !== 'telegram' && messengerId !== 'whatsapp' && messengerId !== 'signal' && (
+          <div className="space-y-2">
+            <p className="text-xs text-slate-300">{info.readyMsg}</p>
+            <a
+              href={botLink}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="block w-full text-center rounded-lg bg-violet-600 hover:bg-violet-500 py-2 text-sm font-medium transition"
+            >
+              Connect {info.title} →
+            </a>
+          </div>
+        )}
+
+        {/* Ready state — generic (no link, no QR) */}
+        {status === 'ready' && !botLink && !qrCode && (
+          <p className="text-xs text-slate-300">{info.readyMsg}</p>
+        )}
+
+        {/* Connected state */}
+        {status === 'connected' && (
+          <p className="text-xs text-green-400">✅ {info.title} is connected!</p>
+        )}
+
+        {/* Failed state */}
+        {status === 'failed' && (
+          <div className="space-y-2">
+            <p className="text-xs text-red-400">{error}</p>
+            <button
+              type="button"
+              onClick={triggerSetup}
+              className="w-full text-center rounded-lg bg-slate-800 hover:bg-slate-700 py-2 text-sm font-medium transition border border-slate-700"
+            >
+              Retry
+            </button>
           </div>
         )}
       </div>
@@ -477,26 +653,12 @@ export default function OnboardingWizard() {
             <h2 className="text-2xl font-bold text-center">Choose Your Hosting</h2>
             <p className="text-slate-400 text-center">Where should your AI assistant run?</p>
             <div className="grid gap-4">
-              <Card selected={hosting === 'oracle'} onClick={() => setHosting('oracle')}>
+              <Card selected={hosting === 'digitalocean'} onClick={() => setHosting('digitalocean')}>
                 <div className="flex items-center gap-3">
-                  <Sun className="w-8 h-8 text-amber-400" />
+                  <Cloud className="w-8 h-8 text-blue-400" />
                   <div>
-                    <div className="font-semibold">Oracle Cloud — Free Tier</div>
-                    <div className="text-sm text-slate-400">Always Free ARM server — no credit card, no hosting cost</div>
-                  </div>
-                </div>
-              </Card>
-              <Card disabled>
-                <div className="flex items-center gap-3">
-                  <Cloud className="w-8 h-8 text-blue-400 opacity-50" />
-                  <div>
-                    <div className="font-semibold text-slate-400">
-                      DigitalOcean{' '}
-                      <span className="ml-2 inline-flex items-center gap-1 bg-violet-500/20 text-violet-400 text-[10px] font-bold px-2 py-0.5 rounded-full">
-                        <Lock className="w-2.5 h-2.5" /> Pro — Coming Soon
-                      </span>
-                    </div>
-                    <div className="text-sm text-slate-500">Managed cloud hosting (requires Pro plan)</div>
+                    <div className="font-semibold">DigitalOcean</div>
+                    <div className="text-sm text-slate-400">Reliable cloud hosting, starting at $4/mo</div>
                   </div>
                 </div>
               </Card>
@@ -521,12 +683,14 @@ export default function OnboardingWizard() {
             </div>
             <div className="flex justify-between items-center">
               <BackBtn />
-              <PrimaryBtn onClick={next} disabled={!hosting}>
-                Next <ArrowRight className="w-4 h-4" />
+              <PrimaryBtn onClick={() => {
+                window.location.href = '/api/auth/digitalocean';
+              }}>
+                Connect DigitalOcean <ArrowRight className="w-4 h-4" />
               </PrimaryBtn>
             </div>
             <p className="text-xs text-slate-500 text-center">
-              Interested in DigitalOcean for the future?{' '}
+              New to DigitalOcean?{' '}
               <a
                 href="https://cloud.digitalocean.com/account-referrals?i=091ab6c0-097d-4111-baab-ee4872bd796d"
                 target="_blank"
@@ -535,7 +699,7 @@ export default function OnboardingWizard() {
               >
                 Sign up with our referral link
               </a>{' '}
-              for free credits when it&apos;s available.
+              for free credits.
             </p>
           </div>
         )}
@@ -584,9 +748,6 @@ export default function OnboardingWizard() {
                 </div>
               </Card>
             </div>
-            <p className="text-xs text-slate-500 text-center">
-              Oracle Cloud free hosting is included with both plans — no hosting fees ever.
-            </p>
             <div className="flex justify-between items-center">
               <BackBtn />
               <PrimaryBtn onClick={async () => {
@@ -724,7 +885,12 @@ export default function OnboardingWizard() {
                 </h3>
                 <div className="space-y-3">
                   {messengers.map((id) => (
-                    <MessengerSetupCard key={id} messengerId={id} />
+                    <MessengerSetupCard
+                      key={id}
+                      messengerId={id}
+                      isServerActive={serverActive}
+                      onReady={(platform, link) => setBotLinks((prev) => ({ ...prev, [platform]: link }))}
+                    />
                   ))}
                 </div>
               </div>
@@ -740,7 +906,7 @@ export default function OnboardingWizard() {
             <div className="bg-slate-900 border border-slate-800 rounded-xl p-6 text-left space-y-3 max-w-md mx-auto">
               <div className="flex justify-between text-sm">
                 <span className="text-slate-400">Hosting</span>
-                <span>{hosting === 'oracle' ? 'Oracle Cloud (Free)' : 'DigitalOcean'}</span>
+                <span>DigitalOcean</span>
               </div>
               <div className="flex justify-between text-sm">
                 <span className="text-slate-400">Plan</span>
@@ -765,6 +931,41 @@ export default function OnboardingWizard() {
                 <span>{skills.map((s) => SKILLS.find((x) => x.id === s)?.label).join(', ') || 'None'}</span>
               </div>
             </div>
+
+            {/* Messenger quick links */}
+            <div className="flex flex-col gap-3 max-w-md mx-auto w-full">
+              {messengers.includes('telegram') && botLinks.telegram && (
+                <a
+                  href={botLinks.telegram}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="block w-full text-center rounded-full bg-blue-500 hover:bg-blue-400 py-3 font-medium transition"
+                >
+                  Open in Telegram →
+                </a>
+              )}
+              {messengers.includes('whatsapp') && botLinks.whatsapp && (
+                <a
+                  href={botLinks.whatsapp}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="block w-full text-center rounded-full bg-green-600 hover:bg-green-500 py-3 font-medium transition"
+                >
+                  Open in WhatsApp →
+                </a>
+              )}
+              {messengers.includes('discord') && botLinks.discord && (
+                <a
+                  href={botLinks.discord}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="block w-full text-center rounded-full bg-indigo-600 hover:bg-indigo-500 py-3 font-medium transition"
+                >
+                  Open Discord →
+                </a>
+              )}
+            </div>
+
             <PrimaryBtn onClick={() => router.push('/dashboard')}>
               Go to Dashboard <ArrowRight className="w-4 h-4" />
             </PrimaryBtn>
