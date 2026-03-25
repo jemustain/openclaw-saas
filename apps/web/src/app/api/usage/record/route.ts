@@ -53,7 +53,7 @@ export async function POST(req: NextRequest) {
 
   const today = new Date().toISOString().slice(0, 10);
 
-  // Upsert usage for today using the unique constraint
+  // Upsert usage for today
   const { data: existing } = await supabase
     .from("usage_logs")
     .select("id, messages_sent, hours_active, api_tokens_used")

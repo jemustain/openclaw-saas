@@ -87,7 +87,7 @@ async function reportUsageToPortal() {
     });
 
     if (res.ok) {
-      const data = await res.json();
+      const data = await res.json() as { throttled?: boolean; reason?: string };
       throttled = data.throttled === true;
       if (throttled) {
         console.warn(`[usage] Throttled by portal: ${data.reason ?? 'limit reached'}`);
