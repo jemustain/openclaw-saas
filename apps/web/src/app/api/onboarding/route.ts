@@ -9,7 +9,7 @@ export async function PATCH(request: NextRequest) {
   }
 
   const body = await request.json();
-  const { timezone, plan, windowStart, messengers, skills, onboardingComplete } = body;
+  const { timezone, hosting, plan, vmSize, windowStart, messengers, skills, onboardingComplete } = body;
 
   const supabase: any = createClient();
 
@@ -19,7 +19,10 @@ export async function PATCH(request: NextRequest) {
   if (windowStart !== undefined) update.window_start = windowStart;
   if (messengers !== undefined) update.messengers = messengers;
   if (skills !== undefined) update.skills = skills;
+  if (hosting !== undefined) update.hosting = hosting;
+  if (vmSize !== undefined) update.vm_size = vmSize;
   if (onboardingComplete !== undefined) update.onboarding_complete = onboardingComplete;
+  if (hosting !== undefined) update.provider_preference = hosting;
 
   const { error } = await supabase
     .from('users')

@@ -62,6 +62,7 @@ runcmd:
   - ufw allow 22/tcp
   - ufw allow 443/tcp
   - ufw allow 3000/tcp
+  - ufw allow 8787/tcp   # Sidecar API
   - ufw --force enable
 
   # Node.js via NodeSource (supports both aarch64 and x86_64)
