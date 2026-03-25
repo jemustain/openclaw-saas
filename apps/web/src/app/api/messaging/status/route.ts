@@ -1,65 +1,88 @@
-import { NextResponse } from "next/server";
-import { getSession } from "@/lib/auth/session";
-import { createClient } from "@/lib/supabase/server";
+import { createClient } from '@/lib/supabase/server';
+import { NextResponse } from 'next/server';
 
-export interface MessengerStatus {
-  messenger: string;
-  connected: boolean;
-  configured: boolean;
-  botLink?: string | null;
-}
+const SIDECAR_PORT = 8787;
 
 export async function GET() {
-  const session = await getSession();
-  if (!session)
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  try {
+    const supabase = await createClient();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
 
-  const supabase: any = createClient();
-
-  // Get user's selected messengers
-  const { data: user } = await supabase
-    .from("users")
-    .select("messengers")
-    .eq("id", session.userId)
-    .single();
-
-  const messengers: string[] = user?.messengers ?? [];
-
-  // Get user's active assistant to check messenger configs
-  const { data: assistant } = await supabase
-    .from("assistants")
-    .select("id, status, telegram_bot_token, telegram_bot_username")
-    .eq("user_id", session.userId)
-    .neq("status", "destroyed")
-    .order("created_at", { ascending: false })
-    .limit(1)
-    .single();
-
-  const statuses: MessengerStatus[] = messengers.map((m: string) => {
-    const base: MessengerStatus = {
-      messenger: m,
-      connected: false,
-      configured: false,
-      botLink: null,
-    };
-
-    if (!assistant || assistant.status !== "active") return base;
-
-    if (m === "telegram") {
-      const hasToken = !!assistant.telegram_bot_token;
-      const username = assistant.telegram_bot_username;
-      return {
-        ...base,
-        configured: hasToken,
-        connected: hasToken && assistant.status === "active",
-        botLink: username ? `https://t.me/${username}` : null,
-      };
+    if (!user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    // For other messengers, check if configured in assistant metadata
-    // For now, return not configured until we add support
-    return base;
-  });
+    // Get the user's active assistant
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { data: assistant } = await (supabase as any)
+      .from('assistants')
+      .select(
+        'id, ip_address, sidecar_token, telegram_bot_username, telegram_bot_token, whatsapp_connected',
+      )
+      .eq('user_id', user.id)
+      .in('status', ['running', 'provisioning'])
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .single();
 
-  return NextResponse.json({ statuses });
+    if (!assistant) {
+      return NextResponse.json(
+        { error: 'No active assistant found' },
+        { status: 404 },
+      );
+    }
+
+    // Build platform status from stored data
+    const platforms: Record<
+      string,
+      { configured: boolean; connected: boolean; botLink?: string }
+    > = {
+      telegram: {
+        configured: !!assistant.telegram_bot_username,
+        connected: false,
+        ...(assistant.telegram_bot_username && {
+          botLink: `https://t.me/${assistant.telegram_bot_username}`,
+        }),
+      },
+      whatsapp: {
+        configured: !!assistant.whatsapp_connected,
+        connected: !!assistant.whatsapp_connected,
+      },
+    };
+
+    // Try to get live status from sidecar
+    if (assistant.ip_address && assistant.sidecar_token) {
+      try {
+        const res = await fetch(
+          `http://${assistant.ip_address}:${SIDECAR_PORT}/messaging/status`,
+          {
+            headers: {
+              Authorization: `Bearer ${assistant.sidecar_token}`,
+            },
+            signal: AbortSignal.timeout(5000),
+          },
+        );
+        if (res.ok) {
+          const live = await res.json();
+          // Merge live connection status
+          if (live.telegram?.connected !== undefined) {
+            platforms.telegram.connected = live.telegram.connected;
+          }
+          if (live.whatsapp?.connected !== undefined) {
+            platforms.whatsapp.connected = live.whatsapp.connected;
+          }
+        }
+      } catch {
+        // Sidecar unreachable — use stored status only
+      }
+    }
+
+    return NextResponse.json({ platforms });
+  } catch (err: unknown) {
+    console.error('Messaging status error:', err);
+    const message = err instanceof Error ? err.message : String(err);
+    return NextResponse.json({ error: message }, { status: 500 });
+  }
 }
