@@ -68,6 +68,8 @@ export default function Home() {
           <span className="text-lg font-semibold">Claude / GPT</span>
           <span className="text-slate-700">•</span>
           <span className="text-lg font-semibold">WhatsApp & Telegram</span>
+          <span className="text-slate-700">•</span>
+          <span className="text-lg font-semibold">Oracle Cloud</span>
         </div>
       </section>
 

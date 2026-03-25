@@ -20,7 +20,7 @@ Think "Superhuman for AI assistants." Simple signup, instant value, zero technic
 **Acceptance Criteria:**
 - User signs up with email or Google
 - Clicks "Launch my assistant"
-- We provision an OpenClaw VM on our Hetzner account via API (invisible to user)
+- We provision an OpenClaw VM on our Oracle Cloud account via API (invisible to user)
 - User sees a friendly progress indicator ("Setting things up…" → "Almost ready…" → "Done!")
 - Total time: < 90 seconds
 - User is prompted to connect a messaging app
@@ -97,15 +97,15 @@ Think "Superhuman for AI assistants." Simple signup, instant value, zero technic
 - API access for power users
 
 ### Unit Economics (per user)
-- Hetzner CX22 VM: ~€4.50/mo ($5/mo)
+- Oracle Cloud Always Free ARM: $0/mo (free tier)
 - AI API usage (Anthropic/OpenAI): ~$3-8/mo avg
-- Our margin at $12/mo Starter: ~$0-4/mo (break-even to slight margin)
-- Our margin at $25/mo Pro: ~$12-17/mo (healthy margin)
-- Free tier cost: $5/mo subsidized (offset by conversion to paid)
+- Our margin at $12/mo Starter: ~$4-9/mo (healthy margin)
+- Our margin at $25/mo Pro: ~$17-22/mo (excellent margin)
+- Free tier cost: $0/mo compute (Oracle Always Free), only AI API costs
 
 ### Revenue Targets
-- 100 paid users = ~$1,500/mo revenue, ~$700/mo margin
-- 1,000 paid users = ~$15,000/mo revenue, ~$7,000/mo margin
+- 100 paid users = ~$1,500/mo revenue, ~$1,200/mo margin
+- 1,000 paid users = ~$15,000/mo revenue, ~$12,000/mo margin
 - Free tier converts at ~10-20% assumed
 
 ---

@@ -1,5 +1,7 @@
 /**
  * Generate cloud-init user data for a Claw4All instance.
+ * Targets Oracle Cloud Always Free ARM (aarch64) instances by default.
+ * Also works on x86_64 — NodeSource and npm install are arch-agnostic.
  */
 
 export interface CloudInitOptions {
@@ -15,15 +17,19 @@ export interface CloudInitOptions {
   openclawVersion?: string;
   /** Node.js major version. Default: 22 */
   nodeVersion?: number;
+  /** Target architecture. Default: "arm64" (Oracle Cloud Always Free) */
+  architecture?: "arm64" | "amd64";
 }
 
 export function generateCloudInit(opts: CloudInitOptions): string {
   const user = opts.username ?? "claw";
   const nodeVersion = opts.nodeVersion ?? 22;
   const ocVersion = opts.openclawVersion ?? "latest";
+  const _arch = opts.architecture ?? "arm64";
 
   return `#cloud-config
 # Claw4All instance provisioning — managed, do not edit
+# Target: Oracle Cloud Always Free ARM instances (also works on x86_64)
 
 users:
   - name: ${user}
@@ -58,7 +64,7 @@ runcmd:
   - ufw allow 3000/tcp
   - ufw --force enable
 
-  # Node.js via NodeSource
+  # Node.js via NodeSource (supports both aarch64 and x86_64)
   - curl -fsSL https://deb.nodesource.com/setup_${nodeVersion}.x | bash -
   - apt-get install -y nodejs
 
