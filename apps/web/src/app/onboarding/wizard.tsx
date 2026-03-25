@@ -12,21 +12,7 @@ import {
   QrCode, Bot, Smartphone,
 } from 'lucide-react';
 
-const STEPS = ['Welcome', 'Hosting', 'Server Size', 'Plan', 'Messengers', 'Skills', 'Setup & Connect', 'Ready'];
-
-const AZURE_SIZES = [
-  { id: 'Standard_B1s', label: 'Basic', cpu: '1 vCPU', ram: '1 GB', price: '~$4/mo', recommended: true },
-  { id: 'Standard_B1ms', label: 'Standard', cpu: '1 vCPU', ram: '2 GB', price: '~$15/mo', recommended: false },
-  { id: 'Standard_B2s', label: 'Performance', cpu: '2 vCPU', ram: '4 GB', price: '~$30/mo', recommended: false },
-  { id: 'Standard_B2ms', label: 'Power', cpu: '2 vCPU', ram: '8 GB', price: '~$60/mo', recommended: false },
-];
-
-const DO_SIZES = [
-  { id: 's-1vcpu-1gb', label: 'Basic', cpu: '1 vCPU', ram: '1 GB', price: '~$6/mo', recommended: true },
-  { id: 's-1vcpu-2gb', label: 'Standard', cpu: '1 vCPU', ram: '2 GB', price: '~$12/mo', recommended: false },
-  { id: 's-2vcpu-2gb', label: 'Performance', cpu: '2 vCPU', ram: '2 GB', price: '~$18/mo', recommended: false },
-  { id: 's-2vcpu-4gb', label: 'Power', cpu: '2 vCPU', ram: '4 GB', price: '~$24/mo', recommended: false },
-];
+const STEPS = ['Welcome', 'Hosting', 'Plan', 'Messengers', 'Skills', 'Setup & Connect', 'Ready'];
 
 const MESSENGERS = [
   { id: 'whatsapp', label: 'WhatsApp', icon: MessageCircle },
@@ -67,7 +53,6 @@ const SKILLS: SkillDef[] = [
 const FREE_SKILLS = SKILLS.filter((s) => !s.pro);
 const PRO_SKILLS = SKILLS.filter((s) => s.pro);
 
-type MessengerSetupStatus = 'pending' | 'ready' | 'connected';
 
 const MESSENGER_SETUP_INFO: Record<string, { title: string; pendingMsg: string; readyMsg: string; icon: typeof QrCode }> = {
   whatsapp: {
@@ -102,24 +87,6 @@ const MESSENGER_SETUP_INFO: Record<string, { title: string; pendingMsg: string; 
   },
 };
 
-function getSizesForHosting(hosting: string) {
-  if (hosting === 'azure') return AZURE_SIZES;
-  if (hosting === 'digitalocean') return DO_SIZES;
-  return [];
-}
-
-function getDefaultSize(hosting: string) {
-  const sizes = getSizesForHosting(hosting);
-  return sizes.length > 0 ? sizes[0].id : '';
-}
-
-function getSizeLabel(hosting: string, sizeId: string) {
-  const sizes = getSizesForHosting(hosting);
-  const size = sizes.find((s) => s.id === sizeId);
-  if (!size) return sizeId;
-  return `${size.label} (${size.cpu}, ${size.ram})`;
-}
-
 export default function OnboardingWizard() {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -128,9 +95,8 @@ export default function OnboardingWizard() {
   const [direction, setDirection] = useState(1);
   const [animating, setAnimating] = useState(false);
   const [timezone, setTimezone] = useState('');
-  const [hosting, setHosting] = useState('oracle');
+  const [hosting, setHosting] = useState('digitalocean');
   const [plan, setPlan] = useState<'free' | 'pro'>('free');
-  const [vmSize, setVmSize] = useState('');
   const [windowStart, setWindowStart] = useState(9);
   const [messengers, setMessengers] = useState<string[]>([]);
   const [skills, setSkills] = useState<string[]>([]);
@@ -138,6 +104,7 @@ export default function OnboardingWizard() {
   const [setupDone, setSetupDone] = useState(false);
   const [serverActive, setServerActive] = useState(false);
   const [proTooltip, setProTooltip] = useState<string | null>(null);
+  const [botLinks, setBotLinks] = useState<Record<string, string>>({});
 
   // Init from URL params and timezone
   useEffect(() => {
@@ -151,13 +118,10 @@ export default function OnboardingWizard() {
       const s = parseInt(stepParam, 10);
       if (s >= 0 && s < STEPS.length) setStep(s);
     }
-    if (connected === 'digitalocean' || connected === 'azure') {
-      setHosting(connected);
-      if (!stepParam) setStep(2); // Go to Server Size step
-    }
+    if (connected === 'digitalocean' && !stepParam) setStep(2);
     if (upgraded === 'true' && !stepParam) {
       setPlan('pro');
-      setStep(4);
+      setStep(3);
       setMessengers(MESSENGERS.map((m) => m.id));
       setSkills(SKILLS.filter((s) => !s.pro).map((s) => s.id));
     }
@@ -172,19 +136,8 @@ export default function OnboardingWizard() {
     }, 200);
   }, [step]);
 
-  const next = () => {
-    let nextStep = step + 1;
-    // Skip Server Size step for Oracle
-    if (nextStep === 2 && hosting === 'oracle') nextStep = 3;
-    goTo(nextStep);
-  };
-
-  const back = () => {
-    let prevStep = step - 1;
-    // Skip Server Size step for Oracle
-    if (prevStep === 2 && hosting === 'oracle') prevStep = 1;
-    goTo(prevStep);
-  };
+  const next = () => goTo(step + 1);
+  const back = () => goTo(step - 1);
 
   const selectPlan = (p: 'free' | 'pro') => {
     setPlan(p);
@@ -235,13 +188,13 @@ export default function OnboardingWizard() {
 
   // Timer for setup step
   useEffect(() => {
-    if (step !== 6 || setupDone) return;
+    if (step !== 5 || setupDone) return;
     const interval = setInterval(() => setElapsedSecs((s) => s + 1), 1000);
     return () => clearInterval(interval);
   }, [step, setupDone]);
 
   const saveAndLaunch = async () => {
-    goTo(6);
+    goTo(5);
     setServerActive(false);
     const statuses: string[] = [];
     const addStatus = (s: string) => {
@@ -254,7 +207,7 @@ export default function OnboardingWizard() {
       await fetch('/api/onboarding', {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ timezone, hosting, plan, vmSize, windowStart, messengers, skills, onboardingComplete: false }),
+        body: JSON.stringify({ timezone, plan, windowStart, messengers, skills, onboardingComplete: false }),
       });
       addStatus('Preferences saved');
     } catch {
@@ -267,7 +220,7 @@ export default function OnboardingWizard() {
       const launchRes = await fetch('/api/launch', { method: 'POST' });
       if (!launchRes.ok) {
         const errData = await launchRes.json().catch(() => ({}));
-        addStatus(`⚠️ ${errData.error ?? 'Launch failed — please check your hosting account'}`);
+        addStatus(`⚠️ ${errData.error ?? 'Launch failed — please check your DigitalOcean account'}`);
         launchFailed = true;
       } else {
         addStatus('Assistant launched');
@@ -279,15 +232,14 @@ export default function OnboardingWizard() {
 
     if (launchFailed) {
       setSetupDone(true);
-      setTimeout(() => goTo(7), 2000);
+      setTimeout(() => goTo(6), 2000);
       return;
     }
 
-    const providerName = hosting === 'oracle' ? 'Oracle Cloud' : hosting === 'azure' ? 'Azure' : 'DigitalOcean';
     addStatus('Provisioning your server — this usually takes 2–4 minutes...');
     let attempts = 0;
     const milestones = [
-      { at: 15, msg: `Creating your server on ${providerName}...` },
+      { at: 15, msg: 'Creating your server on DigitalOcean...' },
       { at: 30, msg: 'Installing OpenClaw and dependencies...' },
       { at: 60, msg: 'Configuring your assistant...' },
       { at: 90, msg: 'Almost there — starting services...' },
@@ -299,6 +251,7 @@ export default function OnboardingWizard() {
         const data = await res.json();
         if (data.assistant?.status === 'active') {
           addStatus('✅ Assistant is online!');
+          addStatus('✅ Assistant is online! Setting up your messengers...');
           setServerActive(true);
           await fetch('/api/onboarding', {
             method: 'PATCH',
@@ -306,20 +259,20 @@ export default function OnboardingWizard() {
             body: JSON.stringify({ onboardingComplete: true }),
           });
           setSetupDone(true);
-          setTimeout(() => goTo(7), 2000);
+          setTimeout(() => goTo(6), 2000);
           return;
         }
         if (data.assistant?.status === 'destroyed' || data.assistant?.status === 'destroying') {
           addStatus('⚠️ Server provisioning failed — please try again from your dashboard');
           setSetupDone(true);
-          setTimeout(() => goTo(7), 2000);
+          setTimeout(() => goTo(6), 2000);
           return;
         }
         // No assistant found at all after some attempts = likely failed
         if (!data.assistant && attempts > 10) {
           addStatus('⚠️ Something went wrong — please try launching from your dashboard');
           setSetupDone(true);
-          setTimeout(() => goTo(7), 2000);
+          setTimeout(() => goTo(6), 2000);
           return;
         }
       } catch { /* ignore */ }
@@ -335,7 +288,7 @@ export default function OnboardingWizard() {
       }
       addStatus('Taking longer than expected — you can check progress on your dashboard');
       setSetupDone(true);
-      setTimeout(() => goTo(7), 1000);
+      setTimeout(() => goTo(6), 1000);
     };
     await poll();
   };
@@ -444,12 +397,113 @@ export default function OnboardingWizard() {
     );
   };
 
-  // Messenger setup card for Step 6
-  const MessengerSetupCard = ({ messengerId }: { messengerId: string }) => {
+  // Messenger setup card for Step 5
+  const MessengerSetupCard = ({ messengerId, isServerActive, onReady }: {
+    messengerId: string;
+    isServerActive: boolean;
+    onReady?: (platform: string, link: string) => void;
+  }) => {
     const info = MESSENGER_SETUP_INFO[messengerId];
+    const [status, setStatus] = useState<'waiting' | 'setting-up' | 'ready' | 'connected' | 'failed'>('waiting');
+    const [botLink, setBotLink] = useState<string | null>(null);
+    const [qrCode, setQrCode] = useState<string | null>(null);
+    const [error, setError] = useState<string | null>(null);
+    const [qrExpired, setQrExpired] = useState(false);
+
+    const triggerSetup = useCallback(async () => {
+      setStatus('setting-up');
+      setError(null);
+      setQrExpired(false);
+      try {
+        const res = await fetch('/api/messaging/setup', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ platform: messengerId }),
+        });
+        if (!res.ok) {
+          setError(`Setup failed (HTTP ${res.status})`);
+          setStatus('failed');
+          return;
+        }
+        const data = await res.json();
+
+        if (data.error) {
+          setError(data.error);
+          setStatus('failed');
+        } else if (data.botLink) {
+          setBotLink(data.botLink);
+          setStatus('ready');
+          onReady?.(messengerId, data.botLink);
+        } else if (data.qr) {
+          setQrCode(data.qr);
+          setStatus('ready');
+        } else if (data.status === 'configured' || data.status === 'connected') {
+          setStatus('connected');
+          if (data.botLink) onReady?.(messengerId, data.botLink);
+        } else {
+          // Generic success — mark as ready
+          setStatus('ready');
+        }
+      } catch {
+        setError('Failed to set up — please try again');
+        setStatus('failed');
+      }
+    }, [messengerId, onReady]);
+
+    // Auto-trigger setup when server comes online
+    useEffect(() => {
+      if (!isServerActive || status !== 'waiting') return;
+      triggerSetup();
+    }, [isServerActive, status, triggerSetup]);
+
+    // Poll for connection status when QR is shown (WhatsApp/Signal)
+    useEffect(() => {
+      if (status !== 'ready' || !qrCode) return;
+      let cancelled = false;
+      let attempts = 0;
+      const maxAttempts = 40; // ~2 min at 3s intervals
+
+      const poll = async () => {
+        while (!cancelled && attempts < maxAttempts) {
+          attempts++;
+          await new Promise((r) => setTimeout(r, 3000));
+          if (cancelled) return;
+          try {
+            const res = await fetch('/api/messaging/status');
+            if (!res.ok) continue;
+            const data = await res.json();
+            const plat = data.platforms?.[messengerId];
+            if (plat?.connected) {
+              setStatus('connected');
+              if (plat.botLink) onReady?.(messengerId, plat.botLink);
+              return;
+            }
+          } catch { /* ignore */ }
+        }
+        if (!cancelled && attempts >= maxAttempts) {
+          setQrExpired(true);
+        }
+      };
+      poll();
+      return () => { cancelled = true; };
+    }, [status, qrCode, messengerId, onReady]);
+
     if (!info) return null;
     const Icon = info.icon;
-    const status: MessengerSetupStatus = serverActive ? 'ready' : 'pending';
+
+    const badgeClass =
+      status === 'waiting' ? 'bg-slate-800 text-slate-400' :
+      status === 'setting-up' ? 'bg-amber-500/20 text-amber-400' :
+      status === 'connected' ? 'bg-violet-500/20 text-violet-400' :
+      status === 'failed' ? 'bg-red-500/20 text-red-400' :
+      'bg-green-500/20 text-green-400';
+
+    const badgeLabel =
+      status === 'waiting' ? 'Waiting…' :
+      status === 'setting-up' ? 'Setting up…' :
+      status === 'connected' ? 'Connected' :
+      status === 'failed' ? 'Failed' :
+      'Ready';
 
     return (
       <div className="border border-slate-800 rounded-xl p-4 bg-slate-900/50 space-y-3">
@@ -458,29 +512,103 @@ export default function OnboardingWizard() {
             <Icon className="w-5 h-5 text-violet-400" />
             <span className="font-medium text-sm">{info.title}</span>
           </div>
-          <span className={`text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full ${
-            status === 'pending'
-              ? 'bg-slate-800 text-slate-400'
-              : status === 'ready'
-                ? 'bg-green-500/20 text-green-400'
-                : 'bg-violet-500/20 text-violet-400'
-          }`}>
-            {status === 'pending' ? 'Waiting…' : status === 'ready' ? 'Ready' : 'Connected'}
+          <span className={`text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full ${badgeClass}`}>
+            {badgeLabel}
           </span>
         </div>
-        <p className="text-xs text-slate-400 leading-relaxed">
-          {status === 'pending' ? info.pendingMsg : info.readyMsg}
-        </p>
-        {status === 'ready' && messengerId === 'telegram' && (
-          <input
-            type="text"
-            placeholder="Paste your bot token here..."
-            className="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white placeholder:text-slate-500 focus:outline-none focus:border-violet-500"
-          />
+
+        {/* Waiting state */}
+        {status === 'waiting' && (
+          <p className="text-xs text-slate-400 leading-relaxed">{info.pendingMsg}</p>
         )}
-        {status === 'ready' && messengerId === 'whatsapp' && (
-          <div className="w-full h-32 bg-slate-800 rounded-lg flex items-center justify-center">
-            <QrCode className="w-12 h-12 text-slate-600" />
+
+        {/* Setting up state */}
+        {status === 'setting-up' && (
+          <div className="flex items-center gap-2 text-sm text-slate-300">
+            <Loader2 className="w-4 h-4 animate-spin text-violet-400" />
+            {messengerId === 'telegram' ? 'Creating your Telegram bot…' :
+             messengerId === 'whatsapp' ? 'Generating QR code…' :
+             `Configuring ${info.title}…`}
+          </div>
+        )}
+
+        {/* Ready state — Telegram: show bot link */}
+        {status === 'ready' && messengerId === 'telegram' && botLink && (
+          <div className="space-y-2">
+            <p className="text-xs text-green-400">✅ Bot created — tap to start chatting</p>
+            <a
+              href={botLink}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="block w-full text-center rounded-lg bg-blue-500 hover:bg-blue-400 py-3 text-sm font-medium transition"
+            >
+              Open in Telegram →
+            </a>
+          </div>
+        )}
+
+        {/* Ready state — WhatsApp/Signal: show QR code */}
+        {status === 'ready' && qrCode && !qrExpired && (messengerId === 'whatsapp' || messengerId === 'signal') && (
+          <div className="space-y-2">
+            <p className="text-xs text-slate-300">Scan with {info.title} to connect</p>
+            <img
+              src={qrCode.startsWith('data:') ? qrCode : `data:image/png;base64,${qrCode}`}
+              alt={`Scan QR code with ${info.title}`}
+              className="w-48 h-48 mx-auto rounded-lg"
+            />
+          </div>
+        )}
+
+        {/* QR expired */}
+        {status === 'ready' && qrExpired && (
+          <div className="space-y-2">
+            <p className="text-xs text-amber-400">QR code expired</p>
+            <button
+              type="button"
+              onClick={triggerSetup}
+              className="w-full text-center rounded-lg bg-slate-800 hover:bg-slate-700 py-2 text-sm font-medium transition border border-slate-700"
+            >
+              Regenerate QR Code
+            </button>
+          </div>
+        )}
+
+        {/* Ready state — Discord/Slack: show link */}
+        {status === 'ready' && botLink && messengerId !== 'telegram' && messengerId !== 'whatsapp' && messengerId !== 'signal' && (
+          <div className="space-y-2">
+            <p className="text-xs text-slate-300">{info.readyMsg}</p>
+            <a
+              href={botLink}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="block w-full text-center rounded-lg bg-violet-600 hover:bg-violet-500 py-2 text-sm font-medium transition"
+            >
+              Connect {info.title} →
+            </a>
+          </div>
+        )}
+
+        {/* Ready state — generic (no link, no QR) */}
+        {status === 'ready' && !botLink && !qrCode && (
+          <p className="text-xs text-slate-300">{info.readyMsg}</p>
+        )}
+
+        {/* Connected state */}
+        {status === 'connected' && (
+          <p className="text-xs text-green-400">✅ {info.title} is connected!</p>
+        )}
+
+        {/* Failed state */}
+        {status === 'failed' && (
+          <div className="space-y-2">
+            <p className="text-xs text-red-400">{error}</p>
+            <button
+              type="button"
+              onClick={triggerSetup}
+              className="w-full text-center rounded-lg bg-slate-800 hover:bg-slate-700 py-2 text-sm font-medium transition border border-slate-700"
+            >
+              Retry
+            </button>
           </div>
         )}
       </div>
@@ -491,18 +619,14 @@ export default function OnboardingWizard() {
     <div className="min-h-screen bg-slate-950 text-white flex flex-col items-center justify-center p-4">
       {/* Progress dots */}
       <div className="flex gap-2 mb-8">
-        {STEPS.map((_, i) => {
-          // Hide Server Size dot when Oracle is selected
-          if (i === 2 && hosting === 'oracle') return null;
-          return (
-            <div
-              key={i}
-              className={`w-2.5 h-2.5 rounded-full transition-colors ${
-                i === step ? 'bg-violet-600' : i < step ? 'bg-violet-600/50' : 'bg-slate-700'
-              }`}
-            />
-          );
-        })}
+        {STEPS.map((_, i) => (
+          <div
+            key={i}
+            className={`w-2.5 h-2.5 rounded-full transition-colors ${
+              i === step ? 'bg-violet-600' : i < step ? 'bg-violet-600/50' : 'bg-slate-700'
+            }`}
+          />
+        ))}
       </div>
 
       <div
@@ -529,52 +653,12 @@ export default function OnboardingWizard() {
             <h2 className="text-2xl font-bold text-center">Choose Your Hosting</h2>
             <p className="text-slate-400 text-center">Where should your AI assistant run?</p>
             <div className="grid gap-4">
-<<<<<<< HEAD
-              <Card selected={hosting === 'oracle'} onClick={() => { setHosting('oracle'); setVmSize(''); }}>
+              <Card selected={hosting === 'digitalocean'} onClick={() => setHosting('digitalocean')}>
                 <div className="flex items-center gap-3">
-                  <Server className="w-8 h-8 text-red-400" />
+                  <Cloud className="w-8 h-8 text-blue-400" />
                   <div>
-                    <div className="font-semibold">Oracle Cloud <span className="text-xs text-green-400 ml-2">Free</span></div>
-                    <div className="text-sm text-slate-400">Always Free ARM server — no credit card, no hosting cost</div>
-                  </div>
-                </div>
-              </Card>
-              <Card selected={hosting === 'azure'} onClick={() => { setHosting('azure'); setVmSize(getDefaultSize('azure')); }}>
-                <div className="flex items-center gap-3">
-                  <Server className="w-8 h-8 text-blue-500" />
-                  <div>
-                    <div className="font-semibold">Microsoft Azure</div>
-                    <div className="text-sm text-slate-400">Choose your VM size — starts at ~$4/mo</div>
-                  </div>
-                </div>
-              </Card>
-              <Card selected={hosting === 'digitalocean'} onClick={() => { setHosting('digitalocean'); setVmSize(getDefaultSize('digitalocean')); }}>
-=======
-              <Card selected={hosting === 'oracle'} onClick={() => setHosting('oracle')}>
->>>>>>> origin/main
-                <div className="flex items-center gap-3">
-                  <Sun className="w-8 h-8 text-amber-400" />
-                  <div>
-<<<<<<< HEAD
                     <div className="font-semibold">DigitalOcean</div>
-                    <div className="text-sm text-slate-400">Reliable cloud hosting — starts at ~$4/mo</div>
-=======
-                    <div className="font-semibold">Oracle Cloud — Free Tier</div>
-                    <div className="text-sm text-slate-400">Always Free ARM server — no credit card, no hosting cost</div>
-                  </div>
-                </div>
-              </Card>
-              <Card disabled>
-                <div className="flex items-center gap-3">
-                  <Cloud className="w-8 h-8 text-blue-400 opacity-50" />
-                  <div>
-                    <div className="font-semibold text-slate-400">
-                      DigitalOcean{' '}
-                      <span className="ml-2 inline-flex items-center gap-1 bg-violet-500/20 text-violet-400 text-[10px] font-bold px-2 py-0.5 rounded-full">
-                        <Lock className="w-2.5 h-2.5" /> Pro — Coming Soon
-                      </span>
-                    </div>
-                    <div className="text-sm text-slate-500">Managed cloud hosting (requires Pro plan)</div>
+                    <div className="text-sm text-slate-400">Reliable cloud hosting, starting at $4/mo</div>
                   </div>
                 </div>
               </Card>
@@ -584,7 +668,6 @@ export default function OnboardingWizard() {
                   <div>
                     <div className="font-semibold">Azure <span className="text-xs text-slate-400 ml-2">Coming soon</span></div>
                     <div className="text-sm text-slate-400">Microsoft Azure cloud</div>
->>>>>>> origin/main
                   </div>
                 </div>
               </Card>
@@ -600,45 +683,14 @@ export default function OnboardingWizard() {
             </div>
             <div className="flex justify-between items-center">
               <BackBtn />
-<<<<<<< HEAD
               <PrimaryBtn onClick={() => {
-                if (hosting === 'azure') {
-                  window.location.href = '/api/auth/azure';
-                } else if (hosting === 'digitalocean') {
-                  window.location.href = '/api/auth/digitalocean';
-                } else {
-                  next();
-                }
+                window.location.href = '/api/auth/digitalocean';
               }}>
-                {hosting === 'oracle' ? 'Next' : hosting === 'azure' ? 'Connect Azure' : 'Connect DigitalOcean'} <ArrowRight className="w-4 h-4" />
-              </PrimaryBtn>
-            </div>
-            {hosting === 'azure' && (
-              <p className="text-xs text-slate-500 text-center">
-                You&apos;ll sign in with your Microsoft account to connect Azure.
-              </p>
-            )}
-            {hosting === 'digitalocean' && (
-              <p className="text-xs text-slate-500 text-center">
-                New to DigitalOcean?{' '}
-                <a
-                  href="https://cloud.digitalocean.com/account-referrals?i=091ab6c0-097d-4111-baab-ee4872bd796d"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-violet-400 hover:underline"
-                >
-                  Sign up with our referral link
-                </a>{' '}
-                for free credits.
-              </p>
-            )}
-=======
-              <PrimaryBtn onClick={next} disabled={!hosting}>
-                Next <ArrowRight className="w-4 h-4" />
+                Connect DigitalOcean <ArrowRight className="w-4 h-4" />
               </PrimaryBtn>
             </div>
             <p className="text-xs text-slate-500 text-center">
-              Interested in DigitalOcean for the future?{' '}
+              New to DigitalOcean?{' '}
               <a
                 href="https://cloud.digitalocean.com/account-referrals?i=091ab6c0-097d-4111-baab-ee4872bd796d"
                 target="_blank"
@@ -647,48 +699,13 @@ export default function OnboardingWizard() {
               >
                 Sign up with our referral link
               </a>{' '}
-              for free credits when it&apos;s available.
+              for free credits.
             </p>
->>>>>>> origin/main
           </div>
         )}
 
-        {/* Step 2: Server Size (only for Azure / DigitalOcean) */}
+        {/* Step 2: Plan */}
         {step === 2 && (
-          <div className="space-y-6">
-            <h2 className="text-2xl font-bold text-center">Choose Your Server Size</h2>
-            <p className="text-slate-400 text-center">
-              Pick a server for your {hosting === 'azure' ? 'Azure' : 'DigitalOcean'} deployment.
-            </p>
-            <div className="grid sm:grid-cols-2 gap-4">
-              {getSizesForHosting(hosting).map((size) => (
-                <Card key={size.id} selected={vmSize === size.id} onClick={() => setVmSize(size.id)}>
-                  <div className="space-y-2">
-                    <div className="flex items-center gap-2">
-                      <span className="font-semibold">{size.label}</span>
-                      {size.recommended && (
-                        <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full bg-green-500/20 text-green-400">
-                          Recommended
-                        </span>
-                      )}
-                    </div>
-                    <div className="text-sm text-slate-400">{size.cpu} · {size.ram}</div>
-                    <div className="text-lg font-bold text-violet-400">{size.price}</div>
-                  </div>
-                </Card>
-              ))}
-            </div>
-            <div className="flex justify-between items-center">
-              <BackBtn />
-              <PrimaryBtn onClick={next} disabled={!vmSize}>
-                Next <ArrowRight className="w-4 h-4" />
-              </PrimaryBtn>
-            </div>
-          </div>
-        )}
-
-        {/* Step 3: Plan */}
-        {step === 3 && (
           <div className="space-y-6">
             <h2 className="text-2xl font-bold text-center">Choose Your Plan</h2>
             <div className="grid sm:grid-cols-2 gap-4">
@@ -731,9 +748,6 @@ export default function OnboardingWizard() {
                 </div>
               </Card>
             </div>
-            <p className="text-xs text-slate-500 text-center">
-              Oracle Cloud free hosting is included with both plans — no hosting fees ever.
-            </p>
             <div className="flex justify-between items-center">
               <BackBtn />
               <PrimaryBtn onClick={async () => {
@@ -757,8 +771,8 @@ export default function OnboardingWizard() {
           </div>
         )}
 
-        {/* Step 4: Messengers */}
-        {step === 4 && (
+        {/* Step 3: Messengers */}
+        {step === 3 && (
           <div className="space-y-6">
             <h2 className="text-2xl font-bold text-center">Choose Your Messenger{plan === 'free' ? '' : 's'}</h2>
             <p className="text-slate-400 text-center">
@@ -786,8 +800,8 @@ export default function OnboardingWizard() {
           </div>
         )}
 
-        {/* Step 5: Skills */}
-        {step === 5 && (
+        {/* Step 4: Skills */}
+        {step === 4 && (
           <div className="space-y-6">
             <h2 className="text-2xl font-bold text-center">Choose Your Skills</h2>
             <p className="text-slate-400 text-center">
@@ -827,8 +841,8 @@ export default function OnboardingWizard() {
           </div>
         )}
 
-        {/* Step 6: Setup & Connect (provisioning + messenger setup) */}
-        {step === 6 && (
+        {/* Step 5: Setup & Connect (provisioning + messenger setup) */}
+        {step === 5 && (
           <div className="space-y-6">
             <h2 className="text-2xl font-bold text-center">Setting Up Your Assistant</h2>
             {!setupDone && (
@@ -871,7 +885,12 @@ export default function OnboardingWizard() {
                 </h3>
                 <div className="space-y-3">
                   {messengers.map((id) => (
-                    <MessengerSetupCard key={id} messengerId={id} />
+                    <MessengerSetupCard
+                      key={id}
+                      messengerId={id}
+                      isServerActive={serverActive}
+                      onReady={(platform, link) => setBotLinks((prev) => ({ ...prev, [platform]: link }))}
+                    />
                   ))}
                 </div>
               </div>
@@ -879,26 +898,16 @@ export default function OnboardingWizard() {
           </div>
         )}
 
-        {/* Step 7: Ready */}
-        {step === 7 && (
+        {/* Step 6: Ready */}
+        {step === 6 && (
           <div className="text-center space-y-6">
             <Sparkles className="w-16 h-16 text-violet-500 mx-auto" />
             <h1 className="text-3xl font-bold">You&apos;re All Set!</h1>
             <div className="bg-slate-900 border border-slate-800 rounded-xl p-6 text-left space-y-3 max-w-md mx-auto">
               <div className="flex justify-between text-sm">
                 <span className="text-slate-400">Hosting</span>
-<<<<<<< HEAD
-                <span>{hosting === 'oracle' ? 'Oracle Cloud (Free)' : hosting === 'azure' ? 'Microsoft Azure' : 'DigitalOcean'}</span>
-=======
-                <span>{hosting === 'oracle' ? 'Oracle Cloud (Free)' : 'DigitalOcean'}</span>
->>>>>>> origin/main
+                <span>DigitalOcean</span>
               </div>
-              {hosting !== 'oracle' && vmSize && (
-                <div className="flex justify-between text-sm">
-                  <span className="text-slate-400">Server</span>
-                  <span>{getSizeLabel(hosting, vmSize)}</span>
-                </div>
-              )}
               <div className="flex justify-between text-sm">
                 <span className="text-slate-400">Plan</span>
                 <span className="capitalize">{plan}</span>
@@ -922,6 +931,41 @@ export default function OnboardingWizard() {
                 <span>{skills.map((s) => SKILLS.find((x) => x.id === s)?.label).join(', ') || 'None'}</span>
               </div>
             </div>
+
+            {/* Messenger quick links */}
+            <div className="flex flex-col gap-3 max-w-md mx-auto w-full">
+              {messengers.includes('telegram') && botLinks.telegram && (
+                <a
+                  href={botLinks.telegram}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="block w-full text-center rounded-full bg-blue-500 hover:bg-blue-400 py-3 font-medium transition"
+                >
+                  Open in Telegram →
+                </a>
+              )}
+              {messengers.includes('whatsapp') && botLinks.whatsapp && (
+                <a
+                  href={botLinks.whatsapp}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="block w-full text-center rounded-full bg-green-600 hover:bg-green-500 py-3 font-medium transition"
+                >
+                  Open in WhatsApp →
+                </a>
+              )}
+              {messengers.includes('discord') && botLinks.discord && (
+                <a
+                  href={botLinks.discord}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="block w-full text-center rounded-full bg-indigo-600 hover:bg-indigo-500 py-3 font-medium transition"
+                >
+                  Open Discord →
+                </a>
+              )}
+            </div>
+
             <PrimaryBtn onClick={() => router.push('/dashboard')}>
               Go to Dashboard <ArrowRight className="w-4 h-4" />
             </PrimaryBtn>
