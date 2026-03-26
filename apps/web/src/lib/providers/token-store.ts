@@ -99,13 +99,13 @@ function getRefreshConfig(provider: string, refreshToken: string): { url: string
   switch (provider) {
     case 'azure':
       return {
-        url: 'https://login.microsoftonline.com/common/oauth2/v2.0/token',
+        url: 'https://login.microsoftonline.com/organizations/oauth2/v2.0/token',
         body: {
           grant_type: 'refresh_token',
           refresh_token: refreshToken,
           client_id: process.env.AZURE_CLIENT_ID!,
           client_secret: process.env.AZURE_CLIENT_SECRET!,
-          scope: 'https://management.azure.com/.default offline_access',
+          scope: 'https://management.azure.com/user_impersonation offline_access',
         },
       };
     case 'digitalocean':
