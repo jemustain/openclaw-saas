@@ -78,12 +78,31 @@ export async function refreshProviderToken(userId: string, provider: string) {
   const existing = await getProviderToken(userId, provider);
   if (!existing?.refreshToken) throw new Error('No refresh token available');
 
-  const { url, body } = getRefreshConfig(provider, existing.refreshToken);
+  // For Azure, use the tenant-specific endpoint
+  let refreshUrl: string;
+  let refreshBody: Record<string, string>;
 
-  const res = await fetch(url, {
+  if (provider === 'azure') {
+    const tenantData = await getProviderToken(userId, 'azure_tenant');
+    const tenantId = tenantData?.accessToken ?? 'common'; // accessToken field stores the tenant ID
+    refreshUrl = `https://login.microsoftonline.com/${tenantId}/oauth2/v2.0/token`;
+    refreshBody = {
+      grant_type: 'refresh_token',
+      refresh_token: existing.refreshToken,
+      client_id: process.env.AZURE_CLIENT_ID!,
+      client_secret: process.env.AZURE_CLIENT_SECRET!,
+      scope: 'https://management.azure.com/.default offline_access',
+    };
+  } else {
+    const config = getRefreshConfig(provider, existing.refreshToken);
+    refreshUrl = config.url;
+    refreshBody = config.body;
+  }
+
+  const res = await fetch(refreshUrl, {
     method: 'POST',
     headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-    body: new URLSearchParams(body),
+    body: new URLSearchParams(refreshBody),
   });
 
   if (!res.ok) throw new Error(`Token refresh failed for ${provider}: ${res.status}`);

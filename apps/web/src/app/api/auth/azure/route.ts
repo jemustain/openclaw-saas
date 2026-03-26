@@ -12,19 +12,18 @@ export async function GET() {
   // Anti-CSRF state token
   const state = crypto.randomBytes(32).toString('hex');
 
+  // Step 1: Use /common with openid scope only — this accepts ALL Microsoft account types
+  // (personal, work, school). We'll get the tenant ID from the id_token in the callback,
+  // then request ARM tokens via the tenant-specific endpoint.
   const params = new URLSearchParams({
     client_id: clientId,
     response_type: 'code',
     redirect_uri: redirectUri,
-    scope: 'https://management.azure.com/.default offline_access openid profile',
+    scope: 'openid profile offline_access',
     state,
-    // Prompt account selection so users can pick their Azure-linked account
     prompt: 'select_account',
   });
 
-  // Use /common — works for both single-tenant and multi-tenant org accounts.
-  // Personal Microsoft accounts (outlook.com, gmail) get an Azure AD directory
-  // when they create a subscription, making them org accounts for ARM purposes.
   const response = NextResponse.redirect(
     `https://login.microsoftonline.com/common/oauth2/v2.0/authorize?${params.toString()}`,
   );
