@@ -64,29 +64,46 @@ export async function GET(request: NextRequest) {
     return NextResponse.redirect(new URL('/onboarding?error=no_tenant', request.url));
   }
 
-  // Step 2: Use the refresh token to get an ARM management token
-  // We use the tenant-specific endpoint so the token is scoped to the user's Azure tenant.
-  // The app registration needs Azure Service Management > user_impersonation permission.
-  const armRes = await fetch(`https://login.microsoftonline.com/${tenantId}/oauth2/v2.0/token`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-    body: new URLSearchParams({
-      grant_type: 'refresh_token',
-      refresh_token: identityData.refresh_token,
-      client_id: clientId,
-      client_secret: clientSecret,
-      scope: 'https://management.azure.com/.default offline_access',
-    }),
-  });
+  // Step 2: Use the refresh token to get an ARM management token.
+  // For personal Microsoft accounts, the tid from /consumers is the consumer tenant
+  // (9188040d-...) which can't issue ARM tokens. We must use /organizations instead,
+  // which lets Microsoft route to the user's actual Azure AD tenant.
+  // If that fails, fall back to the specific tenant ID.
+  let armData: any = null;
 
-  if (!armRes.ok) {
-    const errorBody = await armRes.text().catch(() => 'no body');
-    console.error(`Azure ARM token request failed: ${armRes.status}`, errorBody);
-    // Don't silently continue - redirect with a clear error so the user knows
-    return NextResponse.redirect(new URL('/onboarding?error=azure_no_subscription', request.url));
+  // Try /organizations first - this works for personal accounts with Azure subscriptions
+  const armEndpoints = [
+    'https://login.microsoftonline.com/organizations/oauth2/v2.0/token',
+    `https://login.microsoftonline.com/${tenantId}/oauth2/v2.0/token`,
+  ];
+
+  for (const endpoint of armEndpoints) {
+    const armRes = await fetch(endpoint, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: new URLSearchParams({
+        grant_type: 'refresh_token',
+        refresh_token: identityData.refresh_token,
+        client_id: clientId,
+        client_secret: clientSecret,
+        scope: 'https://management.azure.com/.default offline_access',
+      }),
+    });
+
+    if (armRes.ok) {
+      armData = await armRes.json();
+      console.log(`ARM token obtained via ${endpoint}`);
+      break;
+    } else {
+      const errorBody = await armRes.text().catch(() => 'no body');
+      console.warn(`ARM token request failed via ${endpoint}: ${armRes.status}`, errorBody);
+    }
   }
 
-  const armData = await armRes.json();
+  if (!armData) {
+    console.error('All ARM token endpoints failed');
+    return NextResponse.redirect(new URL('/onboarding?error=azure_no_subscription', request.url));
+  }
 
   // Get current user from session
   const session = await getSession();
@@ -107,11 +124,15 @@ export async function GET(request: NextRequest) {
     expiresAt,
   );
 
-  // Store the tenant ID for future token refreshes
+  // Store the tenant ID for future token refreshes.
+  // Use the tid from the ARM token (actual Azure AD tenant), not the consumer tenant.
+  const armTokenClaims = armData.access_token ? decodeJwt(armData.access_token) : {};
+  const azureTenantId = (armTokenClaims.tid as string) ?? tenantId;
+
   await saveProviderToken(
     session.userId,
     'azure_tenant',
-    tenantId,
+    azureTenantId,
     null,
     null,
   );
