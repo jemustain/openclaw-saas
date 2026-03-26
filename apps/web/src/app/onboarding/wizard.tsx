@@ -125,6 +125,7 @@ export default function OnboardingWizard() {
   const [setupDone, setSetupDone] = useState(false);
   const [serverActive, setServerActive] = useState(false);
   const [proTooltip, setProTooltip] = useState<string | null>(null);
+  const [onboardingError, setOnboardingError] = useState<string | null>(null);
   const [botLinks, setBotLinks] = useState<Record<string, string>>({});
 
   // Init from URL params and timezone
@@ -134,6 +135,20 @@ export default function OnboardingWizard() {
     const stepParam = searchParams.get('step');
     const connected = searchParams.get('connected');
     const upgraded = searchParams.get('upgraded');
+    const errorParam = searchParams.get('error');
+
+    if (errorParam) {
+      const errorMessages: Record<string, string> = {
+        azure_no_subscription: 'Could not connect to Azure. Make sure you have an active Azure subscription with your Microsoft account.',
+        token_exchange: 'Sign-in failed. Please try again.',
+        missing_code: 'Sign-in was incomplete. Please try again.',
+        invalid_state: 'Sign-in verification failed. Please try again.',
+        no_tenant: 'Could not determine your Azure tenant. Please try again.',
+      };
+      setOnboardingError(errorMessages[errorParam] ?? 'Something went wrong. Please try again.');
+      setStep(1); // Go back to hosting step
+      return;
+    }
 
     if (stepParam) {
       const s = parseInt(stepParam, 10);
@@ -677,6 +692,11 @@ export default function OnboardingWizard() {
           <div className="space-y-6">
             <h2 className="text-2xl font-bold text-center">Choose Your Hosting</h2>
             <p className="text-slate-400 text-center">Where should your AI assistant run?</p>
+            {onboardingError && (
+              <div className="bg-red-900/30 border border-red-700 rounded-lg p-4 text-sm text-red-300 text-center">
+                {onboardingError}
+              </div>
+            )}
             <div className="grid gap-4">
               <Card selected={hosting === 'azure'} onClick={() => { setHosting('azure'); setVmSize(getDefaultSize('azure')); }}>
                 <div className="flex items-center gap-3">
