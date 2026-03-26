@@ -84,7 +84,7 @@ export async function refreshProviderToken(userId: string, provider: string) {
 
   if (provider === 'azure') {
     const tenantData = await getProviderToken(userId, 'azure_tenant');
-    const tenantId = tenantData?.accessToken ?? 'common'; // accessToken field stores the tenant ID
+    const tenantId = tenantData?.accessToken ?? 'organizations'; // accessToken field stores the tenant ID
     refreshUrl = `https://login.microsoftonline.com/${tenantId}/oauth2/v2.0/token`;
     refreshBody = {
       grant_type: 'refresh_token',
