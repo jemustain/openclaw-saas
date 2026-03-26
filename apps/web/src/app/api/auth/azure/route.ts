@@ -16,17 +16,17 @@ export async function GET() {
     client_id: clientId,
     response_type: 'code',
     redirect_uri: redirectUri,
-    scope: 'https://management.azure.com/user_impersonation offline_access openid profile',
+    scope: 'https://management.azure.com/.default offline_access openid profile',
     state,
     // Prompt account selection so users can pick their Azure-linked account
     prompt: 'select_account',
   });
 
-  // Use /organizations endpoint — ARM API requires work/school (Azure AD) accounts.
-  // Personal Microsoft accounts get auto-upgraded to org accounts when they create
-  // an Azure subscription, so this works for all Azure subscribers.
+  // Use /common — works for both single-tenant and multi-tenant org accounts.
+  // Personal Microsoft accounts (outlook.com, gmail) get an Azure AD directory
+  // when they create a subscription, making them org accounts for ARM purposes.
   const response = NextResponse.redirect(
-    `https://login.microsoftonline.com/organizations/oauth2/v2.0/authorize?${params.toString()}`,
+    `https://login.microsoftonline.com/common/oauth2/v2.0/authorize?${params.toString()}`,
   );
   response.cookies.set('azure_oauth_state', state, {
     httpOnly: true,
