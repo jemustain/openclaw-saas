@@ -12,22 +12,22 @@ export async function GET() {
   // Anti-CSRF state token
   const state = crypto.randomBytes(32).toString('hex');
 
-  // Use /common endpoint - this handles BOTH personal and work/school accounts.
-  // We only request identity scopes here. The callback will exchange the refresh
-  // token for ARM tokens. Using /common (not /consumers) is critical because
-  // /consumers issues refresh tokens that can only work in the consumer context,
-  // but /common issues tokens that can be exchanged across tenants.
+  // Use the specific Azure AD tenant endpoint. Personal Microsoft accounts that
+  // are members of this tenant can authenticate here and get ARM-scoped tokens.
+  // We request ARM scope directly so the code exchange gives us ARM tokens.
+  const azureTenantId = process.env.AZURE_TENANT_ID?.trim() || 'organizations';
+
   const params = new URLSearchParams({
     client_id: clientId,
     response_type: 'code',
     redirect_uri: redirectUri,
-    scope: 'openid profile offline_access',
+    scope: 'openid profile offline_access https://management.azure.com/user_impersonation',
     state,
     prompt: 'consent',
   });
 
   const response = NextResponse.redirect(
-    `https://login.microsoftonline.com/common/oauth2/v2.0/authorize?${params.toString()}`,
+    `https://login.microsoftonline.com/${azureTenantId}/oauth2/v2.0/authorize?${params.toString()}`,
   );
   response.cookies.set('azure_oauth_state', state, {
     httpOnly: true,
