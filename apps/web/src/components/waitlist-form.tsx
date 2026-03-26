@@ -25,7 +25,7 @@ export function WaitlistForm() {
         setMessage(data.error || 'Something went wrong.');
       } else {
         setStatus('success');
-        setMessage(data.message);
+        setMessage(data.message || "You're on the list! We'll keep you posted.");
         setEmail('');
       }
     } catch {
@@ -58,7 +58,7 @@ export function WaitlistForm() {
           disabled={status === 'loading'}
           className="w-full sm:w-auto rounded-full bg-violet-600 px-8 py-3 font-medium hover:bg-violet-500 transition whitespace-nowrap disabled:opacity-50 disabled:cursor-not-allowed"
         >
-          {status === 'loading' ? 'Joining...' : 'Join Waitlist'}
+          {status === 'loading' ? 'Subscribing...' : 'Get Updates'}
         </button>
       </div>
       {status === 'error' && (
