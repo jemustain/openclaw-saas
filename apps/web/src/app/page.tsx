@@ -78,10 +78,10 @@ export default function Home() {
             Sign In
           </a>
           <a
-            href="#get-started"
+            href="/auth/signin"
             className="rounded-full bg-violet-600 px-4 py-2 text-xs sm:text-sm font-medium text-white hover:bg-violet-500 transition"
           >
-            Get Started
+            Sign Up
           </a>
         </div>
       </nav>
@@ -105,7 +105,7 @@ export default function Home() {
         </p>
         <div className="mt-10 flex flex-col sm:flex-row items-center justify-center gap-4">
           <a
-            href="#get-started"
+            href="/auth/signin"
             className="rounded-full bg-violet-600 px-8 py-3 text-lg font-medium hover:bg-violet-500 transition"
           >
             Launch My Assistant
@@ -275,7 +275,7 @@ export default function Home() {
               ))}
             </ul>
             <a
-              href="#get-started"
+              href="/auth/signin"
               className="mt-8 block w-full rounded-full py-2.5 text-sm font-medium text-center border border-slate-700 text-slate-300 hover:border-slate-500 hover:text-white transition"
             >
               Get Started Free
@@ -303,7 +303,7 @@ export default function Home() {
               ))}
             </ul>
             <a
-              href="#get-started"
+              href="/auth/signin"
               className="mt-8 block w-full rounded-full py-2.5 text-sm font-medium text-center bg-violet-600 hover:bg-violet-500 text-white transition"
             >
               Go Pro
@@ -320,16 +320,16 @@ export default function Home() {
       {/* FAQ */}
       <FAQ />
 
-      {/* CTA */}
-      <section id="get-started" className="mx-auto max-w-4xl px-6 py-24 text-center">
+      {/* Newsletter */}
+      <section id="updates" className="mx-auto max-w-4xl px-6 py-24 text-center">
         <h2 className="text-3xl font-bold sm:text-4xl mb-4">
-          Ready to meet your assistant?
+          Stay in the loop
         </h2>
         <p className="text-slate-400 max-w-xl mx-auto mb-8">
-          Join the waitlist and be first in line when we launch.
+          Get notified when we add new cloud providers, features, and integrations.
         </p>
         <WaitlistForm />
-        <p className="text-xs text-slate-600 mt-3">No spam. We&apos;ll email you once when it&apos;s ready.</p>
+        <p className="text-xs text-slate-600 mt-3">No spam. Just product updates when they matter.</p>
       </section>
 
       {/* Footer */}
