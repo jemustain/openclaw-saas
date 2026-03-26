@@ -89,9 +89,9 @@ export async function refreshProviderToken(userId: string, provider: string) {
     refreshBody = {
       grant_type: 'refresh_token',
       refresh_token: existing.refreshToken,
-      client_id: process.env.AZURE_CLIENT_ID!,
-      client_secret: process.env.AZURE_CLIENT_SECRET!,
-      scope: 'https://management.azure.com/.default offline_access',
+      client_id: process.env.AZURE_CLIENT_ID!.trim(),
+      client_secret: process.env.AZURE_CLIENT_SECRET!.trim(),
+      scope: 'openid profile offline_access https://management.azure.com/user_impersonation',
     };
   } else {
     const config = getRefreshConfig(provider, existing.refreshToken);
@@ -122,9 +122,9 @@ function getRefreshConfig(provider: string, refreshToken: string): { url: string
         body: {
           grant_type: 'refresh_token',
           refresh_token: refreshToken,
-          client_id: process.env.AZURE_CLIENT_ID!,
-          client_secret: process.env.AZURE_CLIENT_SECRET!,
-          scope: 'https://management.azure.com/.default offline_access',
+          client_id: process.env.AZURE_CLIENT_ID!.trim(),
+          client_secret: process.env.AZURE_CLIENT_SECRET!.trim(),
+          scope: 'openid profile offline_access https://management.azure.com/user_impersonation',
         },
       };
     case 'digitalocean':

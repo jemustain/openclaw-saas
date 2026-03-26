@@ -12,16 +12,17 @@ export async function GET() {
   // Anti-CSRF state token
   const state = crypto.randomBytes(32).toString('hex');
 
-  // Step 1: Use /common with openid scope only — this accepts ALL Microsoft account types
-  // (personal, work, school). We'll get the tenant ID from the id_token in the callback,
-  // then request ARM tokens via the tenant-specific endpoint.
+  // Request ARM management scope upfront so the user consents during sign-in.
+  // Using /common works for personal, work, and school accounts.
+  // We request user_impersonation (not .default) because .default doesn't work
+  // in the authorization URL for delegated flows.
   const params = new URLSearchParams({
     client_id: clientId,
     response_type: 'code',
     redirect_uri: redirectUri,
-    scope: 'openid profile offline_access',
+    scope: 'openid profile offline_access https://management.azure.com/user_impersonation',
     state,
-    prompt: 'select_account',
+    prompt: 'consent',
   });
 
   const response = NextResponse.redirect(

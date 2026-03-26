@@ -32,9 +32,9 @@ export async function GET(request: NextRequest) {
   const clientSecret = process.env.AZURE_CLIENT_SECRET!.trim();
   const redirectUri = process.env.AZURE_REDIRECT_URI!.trim();
 
-  // Step 1: Exchange code for identity tokens via /common
-  // This gives us an id_token with the user's tenant ID
-  const identityRes = await fetch('https://login.microsoftonline.com/common/oauth2/v2.0/token', {
+  // Exchange code for tokens - the code was issued with ARM scope, so
+  // the access_token will be an ARM management token directly.
+  const tokenRes = await fetch('https://login.microsoftonline.com/common/oauth2/v2.0/token', {
     method: 'POST',
     headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
     body: new URLSearchParams({
@@ -43,51 +43,21 @@ export async function GET(request: NextRequest) {
       client_id: clientId,
       client_secret: clientSecret,
       redirect_uri: redirectUri,
-      scope: 'openid profile offline_access',
+      scope: 'openid profile offline_access https://management.azure.com/user_impersonation',
     }),
   });
 
-  if (!identityRes.ok) {
-    const errorBody = await identityRes.text().catch(() => 'no body');
-    console.error(`Azure identity token exchange failed: ${identityRes.status}`, errorBody);
+  if (!tokenRes.ok) {
+    const errorBody = await tokenRes.text().catch(() => 'no body');
+    console.error(`Azure token exchange failed: ${tokenRes.status}`, errorBody);
     return NextResponse.redirect(new URL('/onboarding?error=token_exchange', request.url));
   }
 
-  const identityData = await identityRes.json();
+  const tokenData = await tokenRes.json();
 
-  // Extract tenant ID from the id_token
-  const idTokenClaims = identityData.id_token ? decodeJwt(identityData.id_token) : {};
+  // Extract tenant ID from the id_token for future token refreshes
+  const idTokenClaims = tokenData.id_token ? decodeJwt(tokenData.id_token) : {};
   const tenantId = idTokenClaims.tid as string | undefined;
-
-  if (!tenantId) {
-    console.error('No tenant ID found in id_token');
-    return NextResponse.redirect(new URL('/onboarding?error=no_tenant', request.url));
-  }
-
-  // Step 2: Request ARM token using the tenant-specific endpoint
-  // This works because the user's personal account is associated with an Azure AD tenant
-  const armRes = await fetch(`https://login.microsoftonline.com/${tenantId}/oauth2/v2.0/token`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-    body: new URLSearchParams({
-      grant_type: 'refresh_token',
-      refresh_token: identityData.refresh_token,
-      client_id: clientId,
-      client_secret: clientSecret,
-      scope: 'https://management.azure.com/.default offline_access',
-    }),
-  });
-
-  if (!armRes.ok) {
-    const errorBody = await armRes.text().catch(() => 'no body');
-    console.error(`Azure ARM token request failed: ${armRes.status}`, errorBody);
-    // Fall back to identity token — user may not have an Azure subscription yet
-    // They can still proceed through onboarding
-  }
-
-  const armData = armRes.ok ? await armRes.json() : null;
-  const accessToken = armData?.access_token ?? identityData.access_token;
-  const refreshToken = armData?.refresh_token ?? identityData.refresh_token;
 
   // Get current user from session
   const session = await getSession();
@@ -95,38 +65,41 @@ export async function GET(request: NextRequest) {
     return NextResponse.redirect(new URL('/auth/signin', request.url));
   }
 
-  // Store encrypted tokens (ARM token if available, otherwise identity token)
-  const expiresIn = armData?.expires_in ?? identityData.expires_in;
-  const expiresAt = expiresIn ? new Date(Date.now() + expiresIn * 1000) : null;
+  // Store encrypted tokens (ARM-scoped access token)
+  const expiresAt = tokenData.expires_in
+    ? new Date(Date.now() + tokenData.expires_in * 1000)
+    : null;
 
   await saveProviderToken(
     session.userId,
     'azure',
-    accessToken,
-    refreshToken,
+    tokenData.access_token,
+    tokenData.refresh_token,
     expiresAt,
   );
 
-  // Store the tenant ID for future token refreshes
-  await saveProviderToken(
-    session.userId,
-    'azure_tenant',
-    tenantId,
-    null,
-    null,
-  );
+  // Store the tenant ID for future token refreshes (if available)
+  if (tenantId) {
+    await saveProviderToken(
+      session.userId,
+      'azure_tenant',
+      tenantId,
+      null,
+      null,
+    );
+  }
 
   // Verify the account works by listing subscriptions
-  if (armData) {
-    try {
-      const subs = await listSubscriptions(accessToken);
-      const active = subs.find((s) => s.state === 'Enabled');
-      if (active) {
-        console.log(`Azure connected: subscription ${active.id} (${active.displayName}) tenant ${tenantId}`);
-      }
-    } catch (e) {
-      console.error('Azure subscription check failed (non-fatal):', e);
+  try {
+    const subs = await listSubscriptions(tokenData.access_token);
+    const active = subs.find((s) => s.state === 'Enabled');
+    if (active) {
+      console.log(`Azure connected: subscription ${active.id} (${active.displayName}) tenant ${tenantId}`);
+    } else {
+      console.warn('Azure connected but no active subscription found');
     }
+  } catch (e) {
+    console.error('Azure subscription check failed (non-fatal):', e);
   }
 
   // Clear the state cookie
