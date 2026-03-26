@@ -17,6 +17,9 @@ Complete reference for all environment variables used by ShiftWorker.
 | `RESEND_API_KEY` | Resend email API key | Resend → API Keys | `re_abc123...` |
 | `NEXT_PUBLIC_APP_URL` | Your app's public URL | Your domain / Vercel URL | `https://shiftworker.ai` |
 | `CRON_SECRET` | Secret for authenticating cron job endpoints | Generate: `openssl rand -hex 32` | `a1b2c3d4e5f6...` |
+| `AZURE_CLIENT_ID` | Azure app registration client ID | Azure Portal → App registrations → ShiftWorker | `d64e14f7-25b4-...` |
+| `AZURE_CLIENT_SECRET` | Azure app client secret | Azure Portal → App registrations → Certificates & secrets | `abc123...` |
+| `AZURE_REDIRECT_URI` | Azure OAuth callback URL | Must match app registration | `https://shiftworker.ai/api/auth/azure/callback` |
 
 ## Optional Variables
 
