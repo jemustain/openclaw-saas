@@ -32,9 +32,9 @@ export async function GET(request: NextRequest) {
   const clientSecret = process.env.AZURE_CLIENT_SECRET!.trim();
   const redirectUri = process.env.AZURE_REDIRECT_URI!.trim();
 
-  // Step 1: Exchange code for identity tokens via /consumers
-  // This gives us an id_token with the user's tenant ID and a refresh_token
-  const identityRes = await fetch('https://login.microsoftonline.com/consumers/oauth2/v2.0/token', {
+  // Step 1: Exchange code for identity tokens via /common
+  // Using /common (matching the authorize endpoint) is required.
+  const identityRes = await fetch('https://login.microsoftonline.com/common/oauth2/v2.0/token', {
     method: 'POST',
     headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
     body: new URLSearchParams({
