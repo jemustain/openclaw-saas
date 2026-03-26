@@ -139,7 +139,11 @@ export default function OnboardingWizard() {
       const s = parseInt(stepParam, 10);
       if (s >= 0 && s < STEPS.length) setStep(s);
     }
-    if (connected === 'digitalocean' && !stepParam) setStep(2);
+    if ((connected === 'digitalocean' || connected === 'azure') && !stepParam) {
+      setHosting(connected);
+      setVmSize(getDefaultSize(connected));
+      setStep(2);
+    }
     if (upgraded === 'true' && !stepParam) {
       setPlan('pro');
       setStep(3);
