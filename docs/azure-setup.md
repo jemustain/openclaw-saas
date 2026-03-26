@@ -6,15 +6,20 @@ ShiftWorker uses Azure OAuth to let users connect their Azure subscriptions for 
 
 ## Azure App Registration Details
 
+**Note:** There are TWO app registrations. The production one is ShiftWorker-v2 (renamed to ShiftWorker).
+
 | Field | Value |
 |-------|-------|
 | App Name | ShiftWorker |
-| Application (client) ID | `d64e14f7-25b4-4796-95e2-ed137edd8cf4` |
+| Application (client) ID | `0f2b6e21-a1f7-4f73-8a45-fc3cede31dc0` |
 | Directory (tenant) ID | `943cf1f9-5f5b-41cf-8f2d-a8ddafb483c1` |
-| Sign-in audience | Accounts in any organizational directory and personal Microsoft accounts (`AzureADandPersonalMicrosoftAccount`) |
+| Sign-in audience | Accounts in any organizational directory and personal Microsoft accounts |
 | Redirect URI | `https://shiftworker.ai/api/auth/azure/callback` |
-| Client secret | Stored in Vercel env vars (expires **9/21/2026**) |
+| Client secret | Stored in Vercel env vars |
 | Registered under | agentrichings@gmail.com (Default Directory) |
+| Publisher domain | shiftworker.ai (verified) |
+
+There is also an older registration (`d64e14f7-25b4-4796-95e2-ed137edd8cf4`) that is NOT used in production.
 
 ## Required Vercel Environment Variables
 
