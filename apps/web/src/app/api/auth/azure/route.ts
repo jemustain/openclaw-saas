@@ -12,21 +12,22 @@ export async function GET() {
   // Anti-CSRF state token
   const state = crypto.randomBytes(32).toString('hex');
 
-  // Request ARM management scope upfront so the user consents during sign-in.
-  // Using /common works for personal, work, and school accounts.
-  // We request user_impersonation (not .default) because .default doesn't work
-  // in the authorization URL for delegated flows.
+  // Use /consumers endpoint for personal Microsoft accounts.
+  // We request identity-only scopes here because personal accounts
+  // can't request ARM scope directly in the authorize URL.
+  // The callback will exchange the refresh token for ARM tokens
+  // via the user's tenant-specific endpoint.
   const params = new URLSearchParams({
     client_id: clientId,
     response_type: 'code',
     redirect_uri: redirectUri,
-    scope: 'openid profile offline_access https://management.azure.com/user_impersonation',
+    scope: 'openid profile offline_access',
     state,
     prompt: 'consent',
   });
 
   const response = NextResponse.redirect(
-    `https://login.microsoftonline.com/common/oauth2/v2.0/authorize?${params.toString()}`,
+    `https://login.microsoftonline.com/consumers/oauth2/v2.0/authorize?${params.toString()}`,
   );
   response.cookies.set('azure_oauth_state', state, {
     httpOnly: true,
