@@ -12,11 +12,11 @@ export async function GET() {
   // Anti-CSRF state token
   const state = crypto.randomBytes(32).toString('hex');
 
-  // Use /consumers endpoint for personal Microsoft accounts.
-  // We request identity-only scopes here because personal accounts
-  // can't request ARM scope directly in the authorize URL.
-  // The callback will exchange the refresh token for ARM tokens
-  // via the user's tenant-specific endpoint.
+  // Use /common endpoint - this handles BOTH personal and work/school accounts.
+  // We only request identity scopes here. The callback will exchange the refresh
+  // token for ARM tokens. Using /common (not /consumers) is critical because
+  // /consumers issues refresh tokens that can only work in the consumer context,
+  // but /common issues tokens that can be exchanged across tenants.
   const params = new URLSearchParams({
     client_id: clientId,
     response_type: 'code',
@@ -27,7 +27,7 @@ export async function GET() {
   });
 
   const response = NextResponse.redirect(
-    `https://login.microsoftonline.com/consumers/oauth2/v2.0/authorize?${params.toString()}`,
+    `https://login.microsoftonline.com/common/oauth2/v2.0/authorize?${params.toString()}`,
   );
   response.cookies.set('azure_oauth_state', state, {
     httpOnly: true,
