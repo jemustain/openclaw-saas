@@ -24,6 +24,19 @@ ShiftWorker uses Azure OAuth to let users connect their Azure subscriptions for 
 | `AZURE_CLIENT_SECRET` | Client secret value (from Azure portal) |
 | `AZURE_REDIRECT_URI` | Must be `https://shiftworker.ai/api/auth/azure/callback` |
 
+## Required API Permissions
+
+In the Azure portal under **App registrations → ShiftWorker → API permissions**, ensure these delegated permissions are configured:
+
+| API | Permission | Type |
+|-----|-----------|------|
+| Microsoft Graph | `openid` | Delegated |
+| Microsoft Graph | `profile` | Delegated |
+| Microsoft Graph | `offline_access` | Delegated |
+| Azure Service Management | `user_impersonation` | Delegated |
+
+The `user_impersonation` permission on Azure Service Management is required to manage VMs on behalf of the user. Without it, the OAuth flow will fail to obtain ARM management tokens.
+
 ## OAuth Flow
 
 1. User clicks **Connect Azure** in the ShiftWorker dashboard
