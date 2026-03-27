@@ -23,7 +23,7 @@ const COMPUTE_API = '2024-07-01';
 const NETWORK_API = '2024-05-01';
 const RESOURCE_API = '2024-07-01';
 
-const DEFAULT_REGION = 'eastus';
+const DEFAULT_REGION = 'centralus';
 const RG_NAME = 'shiftworker-rg';
 const VNET_NAME = 'shiftworker-vnet';
 const SUBNET_NAME = 'default';
@@ -360,7 +360,7 @@ export async function advanceProvisioning(assistant: Assistant): Promise<Assista
       const vmBody = {
         location: pd.region ?? DEFAULT_REGION,
         properties: {
-          hardwareProfile: { vmSize: vmSize ?? 'Standard_B2ats_v2' },
+          hardwareProfile: { vmSize: vmSize ?? 'Standard_D2as_v5' },
           storageProfile: {
             imageReference: DEFAULT_IMAGE,
             osDisk: {
