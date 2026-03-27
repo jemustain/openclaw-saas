@@ -123,7 +123,7 @@ export function AssistantCard({ assistant }: { assistant: Assistant | null }) {
           </button>
         )}
 
-        {current && status !== "offline" && !confirmDestroy && (
+        {current && !confirmDestroy && (
           <button
             onClick={() => setConfirmDestroy(true)}
             className="rounded-lg bg-red-900/50 px-4 py-2 text-sm text-red-300 hover:bg-red-900 disabled:opacity-50"
@@ -151,7 +151,7 @@ export function AssistantCard({ assistant }: { assistant: Assistant | null }) {
           </div>
         )}
 
-        {status === "offline" && (
+        {(!current || status === "offline") && !confirmDestroy && (
           <button
             disabled={!!loading}
             onClick={() => act("/api/assistant/launch")}
