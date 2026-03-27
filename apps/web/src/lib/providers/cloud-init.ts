@@ -21,7 +21,9 @@ export function generateCloudInit(opts: CloudInitOptions): string {
   const user = opts.username ?? "claw";
   const nodeVersion = opts.nodeVersion ?? 22;
   const ocVersion = opts.openclawVersion ?? "latest";
-  const portalUrl = opts.portalUrl.replace(/\/+$/, ''); // trim trailing slashes
+  const portalUrl = opts.portalUrl.replace(/\/+$/, '').replace(/\s+/g, ''); // trim slashes and ALL whitespace
+  const sidecarToken = opts.sidecarToken.replace(/\s+/g, '');
+  const instanceId = opts.instanceId.replace(/\s+/g, '');
 
   // Using write_files for the systemd service (avoids heredoc YAML issues)
   // and simple runcmd entries (no multi-line blocks that break YAML parsing)
@@ -46,9 +48,9 @@ write_files:
   - path: /etc/shiftworker/sidecar.env
     permissions: "0600"
     content: |
-      SIDECAR_TOKEN=${opts.sidecarToken}
+      SIDECAR_TOKEN=${sidecarToken}
       PORTAL_URL=${portalUrl}
-      INSTANCE_ID=${opts.instanceId}
+      INSTANCE_ID=${instanceId}
   - path: /etc/systemd/system/openclaw-sidecar.service
     permissions: "0644"
     content: |
@@ -79,6 +81,6 @@ runcmd:
   - npm install -g openclaw@${ocVersion}
   - systemctl daemon-reload
   - systemctl enable --now openclaw-sidecar
-  - curl -sf -X POST "${portalUrl}/api/instances/${opts.instanceId}/phone-home" -H "Authorization: Bearer ${opts.sidecarToken}" -H "Content-Type: application/json" -d '{"status":"ready"}'
+  - curl -sf -X POST "${portalUrl}/api/instances/${instanceId}/phone-home" -H "Authorization: Bearer ${sidecarToken}" -H "Content-Type: application/json" -d '{"status":"ready"}'
 `;
 }
