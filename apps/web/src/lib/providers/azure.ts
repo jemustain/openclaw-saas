@@ -479,22 +479,25 @@ export async function validateAccount(
       return { ok: false, error: 'No active Azure subscription found. Please ensure you have an enabled subscription.' };
     }
 
-    // Check that Microsoft.Compute provider is registered
-    try {
-      const provider = await azureFetch(
-        token,
-        `/subscriptions/${active.id}/providers/Microsoft.Compute?api-version=${RESOURCE_API}`,
-      );
-      if (provider?.registrationState !== 'Registered') {
-        // Try to register it
-        await azureFetch(
+    // Ensure required resource providers are registered
+    const requiredProviders = ['Microsoft.Compute', 'Microsoft.Network'];
+    for (const providerName of requiredProviders) {
+      try {
+        const provider = await azureFetch(
           token,
-          `/subscriptions/${active.id}/providers/Microsoft.Compute/register?api-version=${RESOURCE_API}`,
-          { method: 'POST' },
+          `/subscriptions/${active.id}/providers/${providerName}?api-version=${RESOURCE_API}`,
         );
+        if (provider?.registrationState !== 'Registered') {
+          await azureFetch(
+            token,
+            `/subscriptions/${active.id}/providers/${providerName}/register?api-version=${RESOURCE_API}`,
+            { method: 'POST' },
+          );
+          console.log(`Registered provider ${providerName}`);
+        }
+      } catch (e) {
+        return { ok: false, error: `Could not register ${providerName} provider. Please ensure it is available in your subscription.` };
       }
-    } catch {
-      return { ok: false, error: 'Could not verify Microsoft.Compute provider. Please ensure it is registered in your subscription.' };
     }
 
     return { ok: true, subscriptionId: active.id };
