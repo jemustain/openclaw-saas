@@ -4,7 +4,7 @@ import { createVM, destroyVM, powerOnVM, powerOffVM, validateAccount as validate
 import { OracleProvider } from '../providers/oracle';
 import { getProviderToken, refreshProviderToken } from '../providers/token-store';
 import { generateCloudInit } from '../providers/cloud-init';
-import type { Assistant, AssistantStatus } from '../supabase/types';
+import type { Assistant, AssistantStatus, ProvisioningStep } from '../supabase/types';
 import { randomUUID } from 'crypto';
 
 const RG_NAME = 'shiftworker-rg';
@@ -164,26 +164,18 @@ export async function launchAssistant(userId: string): Promise<Assistant> {
         region: server.region,
       });
     } else if (provider === 'azure') {
-      const token = await getUserProviderToken(userId, 'azure');
-      const validation = await validateAzureAccount(token);
-      if (!validation.ok || !validation.subscriptionId) {
-        throw new Error(validation.error ?? 'No active Azure subscription found');
-      }
-      const subscriptionId = validation.subscriptionId;
-      const resourceGroup = await ensureResourceGroup(token, subscriptionId);
-      const networking = await ensureNetworking(token, subscriptionId, resourceGroup);
-      const vm = await createVM(token, {
-        subscriptionId,
-        resourceGroup,
-        name: `claw-${assistantId.slice(0, 8)}`,
-        cloudInit,
-        vmSize: vmSize ?? 'Standard_B1s',
-      });
-
+      // Azure provisioning is done step-by-step to stay within Vercel's
+      // 10-second function timeout.  We just record the first step here
+      // and return immediately — subsequent calls to advanceProvisioning()
+      // (triggered by the status-polling endpoint) will walk through the
+      // remaining steps.
       return await updateAssistantStatus(assistantId, 'provisioning', {
-        vm_id: vm.id,
-        ip_address: vm.publicIpv4,
-        region: vm.region,
+        provisioning_step: 'validate' as ProvisioningStep,
+        provisioning_data: {
+          vmName: `claw-${assistantId.slice(0, 8)}`,
+          vmSize: vmSize ?? 'Standard_B1s',
+          cloudInit,
+        } as any,
       });
     } else {
       // DigitalOcean flow — requires user OAuth tokens

@@ -11,6 +11,21 @@ export type AssistantStatus =
   | 'destroying'
   | 'destroyed';
 
+/**
+ * Steps for async Azure VM provisioning.
+ * Each step is a single Azure API call that completes within ~10 seconds.
+ */
+export type ProvisioningStep =
+  | 'validate'
+  | 'create_rg'
+  | 'create_nsg'
+  | 'create_vnet'
+  | 'create_ip'
+  | 'create_nic'
+  | 'create_vm'
+  | 'wait_vm'
+  | 'done';
+
 export type SubscriptionStatus = 'active' | 'past_due' | 'cancelled' | 'trialing';
 
 export interface User {
@@ -37,6 +52,8 @@ export interface Assistant {
   status: AssistantStatus;
   ip_address: string | null;
   sidecar_token: string | null;
+  provisioning_step: ProvisioningStep | null;
+  provisioning_data: Record<string, unknown> | null;
   created_at: string;
   updated_at: string;
   telegram_bot_username: string | null;

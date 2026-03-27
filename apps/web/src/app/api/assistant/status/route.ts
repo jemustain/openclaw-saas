@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { getSession } from '@/lib/auth/session';
 import { createClient } from '@/lib/supabase/server';
+import { advanceProvisioning } from '@/lib/vm/provisioning-steps';
 
 export async function GET() {
   try {
@@ -21,6 +22,24 @@ export async function GET() {
 
     if (error || !assistant) {
       return NextResponse.json({ assistant: null });
+    }
+
+    // If the assistant is mid-provisioning on Azure, advance one step.
+    // Each step is a single API call that fits within the 10s timeout.
+    if (
+      assistant.status === 'provisioning' &&
+      assistant.provider === 'azure' &&
+      assistant.provisioning_step &&
+      assistant.provisioning_step !== 'done'
+    ) {
+      try {
+        const updated = await advanceProvisioning(assistant);
+        return NextResponse.json({ assistant: updated });
+      } catch (err) {
+        console.error('Provisioning step failed:', err);
+        // Return current state — next poll will retry
+        return NextResponse.json({ assistant });
+      }
     }
 
     return NextResponse.json({ assistant });
