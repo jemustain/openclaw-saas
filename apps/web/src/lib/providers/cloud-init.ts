@@ -69,18 +69,18 @@ write_files:
       WantedBy=multi-user.target
 
 runcmd:
-  - ufw default deny incoming
-  - ufw default allow outgoing
-  - ufw allow 22/tcp
-  - ufw allow 443/tcp
-  - ufw allow 3000/tcp
-  - ufw allow 8787/tcp
-  - ufw --force enable
-  - curl -fsSL https://deb.nodesource.com/setup_${nodeVersion}.x | bash -
-  - apt-get install -y nodejs
-  - npm install -g openclaw@${ocVersion}
-  - systemctl daemon-reload
-  - systemctl enable --now openclaw-sidecar
-  - curl -sf -X POST "${portalUrl}/api/instances/${instanceId}/phone-home" -H "Authorization: Bearer ${sidecarToken}" -H "Content-Type: application/json" -d '{"status":"ready"}'
+  - ["ufw", "default", "deny", "incoming"]
+  - ["ufw", "default", "allow", "outgoing"]
+  - ["ufw", "allow", "22/tcp"]
+  - ["ufw", "allow", "443/tcp"]
+  - ["ufw", "allow", "3000/tcp"]
+  - ["ufw", "allow", "8787/tcp"]
+  - ["ufw", "--force", "enable"]
+  - ["bash", "-c", "curl -fsSL https://deb.nodesource.com/setup_${nodeVersion}.x | bash -"]
+  - ["apt-get", "install", "-y", "nodejs"]
+  - ["npm", "install", "-g", "openclaw@${ocVersion}"]
+  - ["systemctl", "daemon-reload"]
+  - ["systemctl", "enable", "--now", "openclaw-sidecar"]
+  - ["bash", "-c", "curl -sf -X POST '${portalUrl}/api/instances/${instanceId}/phone-home' -H 'Authorization: Bearer ${sidecarToken}' -H 'Content-Type: application/json' -d '{\"status\":\"ready\"}'"]
 `;
 }
