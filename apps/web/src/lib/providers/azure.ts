@@ -7,8 +7,8 @@ const DEFAULT_REGION = 'westus2';
 const DEFAULT_VM_SIZE = 'Standard_B1s';
 const DEFAULT_IMAGE = {
   publisher: 'Canonical',
-  offer: '0001-com-ubuntu-server-noble',
-  sku: '24_04-lts',
+  offer: 'ubuntu-24_04-lts',
+  sku: 'server',
   version: 'latest',
 };
 const RG_NAME = 'shiftworker-rg';
