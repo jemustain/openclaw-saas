@@ -136,20 +136,26 @@ export async function advanceProvisioning(assistant: Assistant): Promise<Assista
     case 'create_rg': {
       const { subscriptionId } = pd;
       const path = `/subscriptions/${subscriptionId}/resourceGroups/${RG_NAME}?api-version=${RESOURCE_API}`;
+      const region = pd.region ?? DEFAULT_REGION;
 
-      // Check if RG already exists (from previous provision attempt)
+      // Check if RG exists in a different region - delete it first
       try {
         const existing = await azureFetch(token, path);
-        if (existing?.location) {
-          // RG exists - use its existing location for all resources
+        if (existing?.location && existing.location !== region) {
+          // Wrong region - delete it (async, Azure handles cleanup)
+          await azureFetch(token, path, { method: 'DELETE' });
+          // Stay on this step - next poll will retry after deletion
+          return assistant;
+        }
+        if (existing?.location === region) {
+          // Already exists in correct region - move on
           return await updateAssistant(assistant.id, {
             provisioning_step: 'create_nsg' as ProvisioningStep,
-            provisioning_data: { ...pd, region: existing.location },
+            provisioning_data: { ...pd, region },
           });
         }
-      } catch { /* doesn't exist yet, create it */ }
+      } catch { /* doesn't exist, create it */ }
 
-      const region = pd.region ?? DEFAULT_REGION;
       await azureFetch(token, path, {
         method: 'PUT',
         body: JSON.stringify({ location: region }),
