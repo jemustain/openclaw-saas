@@ -4,11 +4,11 @@ const NETWORK_API = '2024-05-01';
 const RESOURCE_API = '2024-07-01';
 
 const DEFAULT_REGION = 'eastus';
-const DEFAULT_VM_SIZE = 'Standard_B1s';
+const DEFAULT_VM_SIZE = 'Standard_B2s';
 const DEFAULT_IMAGE = {
   publisher: 'Canonical',
   offer: 'ubuntu-24_04-lts',
-  sku: 'server-gen1',
+  sku: 'server',
   version: 'latest',
 };
 const RG_NAME = 'shiftworker-rg';

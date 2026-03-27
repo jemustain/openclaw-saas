@@ -32,7 +32,7 @@ const NSG_NAME = 'shiftworker-nsg';
 const DEFAULT_IMAGE = {
   publisher: 'Canonical',
   offer: 'ubuntu-24_04-lts',
-  sku: 'server-gen1',
+  sku: 'server',
   version: 'latest',
 };
 
@@ -360,7 +360,7 @@ export async function advanceProvisioning(assistant: Assistant): Promise<Assista
       const vmBody = {
         location: pd.region ?? DEFAULT_REGION,
         properties: {
-          hardwareProfile: { vmSize: vmSize ?? 'Standard_B1s' },
+          hardwareProfile: { vmSize: vmSize ?? 'Standard_B2s' },
           storageProfile: {
             imageReference: DEFAULT_IMAGE,
             osDisk: {
