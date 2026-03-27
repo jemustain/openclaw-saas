@@ -54,7 +54,7 @@ write_files:
       Type=simple
       User=${user}
       EnvironmentFile=/etc/shiftworker/sidecar.env
-      ExecStart=/usr/bin/openclaw gateway run --bind lan --port 8787
+      ExecStart=/usr/bin/openclaw gateway run --bind lan --port 8787 --allow-unconfigured
       Restart=always
       RestartSec=5
       [Install]
