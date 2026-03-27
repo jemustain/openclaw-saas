@@ -353,7 +353,7 @@ export async function advanceProvisioning(assistant: Assistant): Promise<Assista
       // Generate SSH key pair in OpenSSH format
       const crypto = await import('crypto');
       const { generateKeyPairSync } = crypto;
-      const { publicKey } = generateKeyPairSync('ed25519', {
+      const { publicKey, privateKey } = generateKeyPairSync('ed25519', {
         publicKeyEncoding: { type: 'spki', format: 'pem' },
         privateKeyEncoding: { type: 'pkcs8', format: 'pem' },
       });
@@ -414,6 +414,7 @@ export async function advanceProvisioning(assistant: Assistant): Promise<Assista
 
       return await updateAssistant(assistant.id, {
         provisioning_step: 'wait_vm' as ProvisioningStep,
+        provisioning_data: { ...pd, sshPrivateKey: privateKey },
       });
     }
 
@@ -452,7 +453,7 @@ export async function advanceProvisioning(assistant: Assistant): Promise<Assista
       return await updateAssistant(assistant.id, {
         status: 'provisioning', // still provisioning until sidecar checks in
         provisioning_step: 'done' as ProvisioningStep,
-        provisioning_data: null,
+        provisioning_data: pd.sshPrivateKey ? { sshPrivateKey: pd.sshPrivateKey } : null,
         vm_id: vmId,
         ip_address: publicIpv4,
         region: pd.region ?? DEFAULT_REGION,
