@@ -36,9 +36,23 @@ export async function GET() {
         const updated = await advanceProvisioning(assistant);
         return NextResponse.json({ assistant: updated });
       } catch (err) {
-        console.error('Provisioning step failed:', err);
-        // Return current state — next poll will retry
-        return NextResponse.json({ assistant });
+        const errMsg = err instanceof Error ? err.message : String(err);
+        console.error('Provisioning step failed:', errMsg);
+        // Store error in provisioning_data for debugging
+        try {
+          const supabaseUpdate: any = createClient();
+          const existingData = assistant.provisioning_data || {};
+          await supabaseUpdate
+            .from('assistants')
+            .update({
+              provisioning_data: { ...existingData, lastError: errMsg, lastErrorAt: new Date().toISOString() },
+            })
+            .eq('id', assistant.id);
+        } catch { /* best effort */ }
+        // Return current state with error info
+        return NextResponse.json({
+          assistant: { ...assistant, _provisioningError: errMsg },
+        });
       }
     }
 
