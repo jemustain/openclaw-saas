@@ -76,6 +76,23 @@ write_files:
       npm install -g openclaw@${ocVersion}
       # Set up OpenClaw gateway for the claw user
       su - ${user} -c "openclaw gateway install" || true
+      # Configure gateway for LAN binding (required for sidecar to accept remote connections)
+      python3 -c "
+import json, os
+config_path = '/home/${user}/.openclaw/openclaw.json'
+if os.path.exists(config_path):
+    with open(config_path) as f:
+        config = json.load(f)
+else:
+    config = {}
+gw = config.setdefault('gateway', {})
+gw['mode'] = 'local'
+gw['bind'] = 'lan'
+gw['controlUi'] = {'dangerouslyAllowHostHeaderOriginFallback': True}
+with open(config_path, 'w') as f:
+    json.dump(config, f, indent=2)
+os.chown(config_path, os.stat('/home/${user}').st_uid, os.stat('/home/${user}').st_gid)
+"
       systemctl daemon-reload
       systemctl enable --now openclaw-sidecar
       source /etc/shiftworker/sidecar.env
