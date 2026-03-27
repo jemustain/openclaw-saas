@@ -9,7 +9,7 @@ export async function PATCH(request: NextRequest) {
   }
 
   const body = await request.json();
-  const { timezone, hosting, plan, vmSize, windowStart, messengers, skills, onboardingComplete } = body;
+  const { timezone, hosting, plan, vmSize, windowStart, messengers, skills, onboardingComplete, azureSubscriptionId } = body;
 
   const supabase: any = createClient();
 
@@ -23,6 +23,7 @@ export async function PATCH(request: NextRequest) {
   if (vmSize !== undefined) update.vm_size = vmSize;
   if (onboardingComplete !== undefined) update.onboarding_complete = onboardingComplete;
   if (hosting !== undefined) update.provider_preference = hosting;
+  if (azureSubscriptionId !== undefined) update.azure_subscription_id = azureSubscriptionId;
 
   const { error } = await supabase
     .from('users')
