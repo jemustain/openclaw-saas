@@ -3,8 +3,8 @@ const COMPUTE_API = '2024-07-01';
 const NETWORK_API = '2024-05-01';
 const RESOURCE_API = '2024-07-01';
 
-const DEFAULT_REGION = 'westus3';
-const DEFAULT_VM_SIZE = 'Standard_B1ms';
+const DEFAULT_REGION = 'southcentralus';
+const DEFAULT_VM_SIZE = 'Standard_D2als_v7';
 const DEFAULT_IMAGE = {
   publisher: 'Canonical',
   offer: 'ubuntu-24_04-lts',
