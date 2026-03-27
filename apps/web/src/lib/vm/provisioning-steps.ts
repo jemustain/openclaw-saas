@@ -136,12 +136,27 @@ export async function advanceProvisioning(assistant: Assistant): Promise<Assista
     case 'create_rg': {
       const { subscriptionId } = pd;
       const path = `/subscriptions/${subscriptionId}/resourceGroups/${RG_NAME}?api-version=${RESOURCE_API}`;
+
+      // Check if RG already exists (from previous provision attempt)
+      try {
+        const existing = await azureFetch(token, path);
+        if (existing?.location) {
+          // RG exists - use its existing location for all resources
+          return await updateAssistant(assistant.id, {
+            provisioning_step: 'create_nsg' as ProvisioningStep,
+            provisioning_data: { ...pd, region: existing.location },
+          });
+        }
+      } catch { /* doesn't exist yet, create it */ }
+
+      const region = pd.region ?? DEFAULT_REGION;
       await azureFetch(token, path, {
         method: 'PUT',
-        body: JSON.stringify({ location: DEFAULT_REGION }),
+        body: JSON.stringify({ location: region }),
       });
       return await updateAssistant(assistant.id, {
         provisioning_step: 'create_nsg' as ProvisioningStep,
+        provisioning_data: { ...pd, region },
       });
     }
 
@@ -161,7 +176,7 @@ export async function advanceProvisioning(assistant: Assistant): Promise<Assista
       await azureFetch(token, nsgPath, {
         method: 'PUT',
         body: JSON.stringify({
-          location: DEFAULT_REGION,
+          location: pd.region ?? DEFAULT_REGION,
           properties: {
             securityRules: [
               {
@@ -220,7 +235,7 @@ export async function advanceProvisioning(assistant: Assistant): Promise<Assista
       await azureFetch(token, vnetPath, {
         method: 'PUT',
         body: JSON.stringify({
-          location: DEFAULT_REGION,
+          location: pd.region ?? DEFAULT_REGION,
           properties: {
             addressSpace: { addressPrefixes: ['10.0.0.0/16'] },
             subnets: [{
@@ -258,7 +273,7 @@ export async function advanceProvisioning(assistant: Assistant): Promise<Assista
       await azureFetch(token, ipPath, {
         method: 'PUT',
         body: JSON.stringify({
-          location: DEFAULT_REGION,
+          location: pd.region ?? DEFAULT_REGION,
           properties: { publicIPAllocationMethod: 'Static' },
           sku: { name: 'Standard' },
         }),
@@ -291,7 +306,7 @@ export async function advanceProvisioning(assistant: Assistant): Promise<Assista
       await azureFetch(token, nicPath, {
         method: 'PUT',
         body: JSON.stringify({
-          location: DEFAULT_REGION,
+          location: pd.region ?? DEFAULT_REGION,
           properties: {
             ipConfigurations: [{
               name: 'primary',
@@ -343,7 +358,7 @@ export async function advanceProvisioning(assistant: Assistant): Promise<Assista
       const sshPublicKey = `ssh-rsa ${pubKeyBase64} shiftworker@azure`;
 
       const vmBody = {
-        location: DEFAULT_REGION,
+        location: pd.region ?? DEFAULT_REGION,
         properties: {
           hardwareProfile: { vmSize: vmSize ?? 'Standard_B1s' },
           storageProfile: {
@@ -421,7 +436,7 @@ export async function advanceProvisioning(assistant: Assistant): Promise<Assista
         provisioning_data: null,
         vm_id: vmId,
         ip_address: publicIpv4,
-        region: DEFAULT_REGION,
+        region: pd.region ?? DEFAULT_REGION,
       });
     }
 
