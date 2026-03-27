@@ -1,28 +1,25 @@
 import { createClient } from '@/lib/supabase/server';
+import { getSession } from '@/lib/auth/session';
 import { NextResponse } from 'next/server';
 
 const SIDECAR_PORT = 8787;
 
 export async function GET() {
   try {
-    const supabase = await createClient();
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-
-    if (!user) {
+    const session = await getSession();
+    if (!session) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
     // Get the user's active assistant
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { data: assistant } = await (supabase as any)
+    const supabase: any = createClient();
+    const { data: assistant } = await supabase
       .from('assistants')
       .select(
         'id, ip_address, sidecar_token, telegram_bot_username, telegram_bot_token, whatsapp_connected',
       )
-      .eq('user_id', user.id)
-      .in('status', ['running', 'provisioning'])
+      .eq('user_id', session.userId)
+      .in('status', ['active', 'running', 'provisioning'])
       .order('created_at', { ascending: false })
       .limit(1)
       .single();
