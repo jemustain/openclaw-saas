@@ -1,6 +1,7 @@
 import { NextRequest } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { isInWindow, powerOnDroplet, powerOffDroplet } from '@/lib/vm/scheduler';
+import { advanceProvisioning } from '@/lib/vm/provisioning-steps';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -12,6 +13,36 @@ export async function GET(request: NextRequest) {
   }
 
   const supabase = createClient();
+
+  // ---- Advance any stuck Azure provisioning assistants ----
+  let provisioning_advanced = 0;
+  try {
+    const { data: provisioningAssistants } = await supabase
+      .from('assistants' as never)
+      .select('*')
+      .eq('status', 'provisioning')
+      .eq('provider', 'azure')
+      .not('provisioning_step', 'is', null) as unknown as {
+        data: Array<any> | null;
+      };
+
+    if (provisioningAssistants) {
+      for (const assistant of provisioningAssistants) {
+        if (assistant.provisioning_step && assistant.provisioning_step !== 'done') {
+          try {
+            await advanceProvisioning(assistant);
+            provisioning_advanced++;
+          } catch (err) {
+            console.error(`Failed to advance provisioning for ${assistant.id}:`, err);
+          }
+        }
+      }
+    }
+  } catch (err) {
+    console.error('Failed to process provisioning assistants:', err);
+  }
+
+  // ---- Existing window-based scheduling ----
 
   // Get all free users with a configured window who completed onboarding
   const { data: users, error: usersError } = await supabase
@@ -99,6 +130,7 @@ export async function GET(request: NextRequest) {
   return Response.json({
     message: 'VM scheduler complete',
     processed: users.length,
+    provisioning_advanced,
     powered_on,
     powered_off,
     skipped,
