@@ -338,15 +338,10 @@ export default function OnboardingWizard() {
         const res = await fetch('/api/assistant/status');
         const data = await res.json();
         if (data.assistant?.status === 'active') {
-          addStatus('✅ Server is online! Connecting your messengers...');
+          addStatus('✅ Server is online!');
           setServerActive(true);
-          await fetch('/api/onboarding', {
-            method: 'PATCH',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ onboardingComplete: true }),
-          });
           setSetupDone(true);
-          setTimeout(() => goTo(7), 2000);
+          // Don't auto-advance — let user set up messengers first
           return;
         }
         if (data.assistant?.status === 'destroyed' || data.assistant?.status === 'destroying') {
@@ -1034,10 +1029,17 @@ export default function OnboardingWizard() {
         {/* Step 6: Setup & Connect (provisioning + messenger setup) */}
         {step === 6 && (
           <div className="space-y-6">
-            <h2 className="text-2xl font-bold text-center">Setting Up Your Assistant</h2>
+            <h2 className="text-2xl font-bold text-center">
+              {setupDone && serverActive ? 'Connect Your Messengers' : 'Setting Up Your Assistant'}
+            </h2>
             {!setupDone && (
               <p className="text-sm text-slate-400 text-center">
                 {Math.floor(elapsedSecs / 60)}:{String(elapsedSecs % 60).padStart(2, '0')} elapsed · typically takes 2–4 minutes
+              </p>
+            )}
+            {setupDone && serverActive && (
+              <p className="text-sm text-slate-400 text-center">
+                Your server is online. Connect at least one messenger so you can talk to your assistant.
               </p>
             )}
 
@@ -1085,6 +1087,36 @@ export default function OnboardingWizard() {
                 </div>
               </div>
             </div>
+
+            {/* Continue button appears when server is active */}
+            {setupDone && serverActive && (
+              <div className="flex flex-col items-center gap-3 pt-2">
+                <p className="text-sm text-green-400 font-medium">
+                  ✅ Your server is ready! Set up your messengers above, or continue to your dashboard.
+                </p>
+                <PrimaryBtn
+                  onClick={async () => {
+                    await fetch('/api/onboarding', {
+                      method: 'PATCH',
+                      headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify({ onboardingComplete: true }),
+                    });
+                    goTo(7);
+                  }}
+                >
+                  Continue to Dashboard <ArrowRight className="w-4 h-4" />
+                </PrimaryBtn>
+              </div>
+            )}
+
+            {/* Error state: show go to dashboard */}
+            {setupDone && !serverActive && (
+              <div className="flex justify-center pt-2">
+                <PrimaryBtn onClick={() => goTo(7)}>
+                  Continue <ArrowRight className="w-4 h-4" />
+                </PrimaryBtn>
+              </div>
+            )}
           </div>
         )}
 
