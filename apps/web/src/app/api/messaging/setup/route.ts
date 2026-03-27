@@ -35,7 +35,7 @@ export async function POST(request: Request) {
         .from('assistants')
         .select('id')
         .eq('user_id', session.userId)
-        .in('status', ['active', 'running', 'provisioning'])
+        .in('status', ['active', 'provisioning'])
         .order('created_at', { ascending: false })
         .limit(1)
         .single();

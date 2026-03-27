@@ -123,7 +123,7 @@ export default function AdminUsersPage() {
                   <td className="p-3">
                     {u.assistant_status ? (
                       <span className={`px-2 py-0.5 rounded-full text-xs ${
-                        u.assistant_status === 'running' ? 'bg-green-900/50 text-green-400' :
+                        u.assistant_status === 'active' ? 'bg-green-900/50 text-green-400' :
                         u.assistant_status === 'suspended' ? 'bg-yellow-900/50 text-yellow-400' :
                         'bg-slate-800 text-slate-400'
                       }`}>
@@ -193,7 +193,7 @@ export default function AdminUsersPage() {
                   >
                     {selectedUser.plan === 'pro' ? 'Downgrade to Free' : 'Upgrade to Pro'}
                   </button>
-                  {selectedUser.assistant_status === 'running' && (
+                  {selectedUser.assistant_status === 'active' && (
                     <button
                       disabled={actionLoading}
                       onClick={() => handleAction(selectedUser.id, 'suspend-assistant')}
