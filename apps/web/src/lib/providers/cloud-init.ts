@@ -1,7 +1,5 @@
 /**
  * Generate cloud-init user data for a ShiftWorker instance.
- * Targets Oracle Cloud Always Free ARM (aarch64) instances by default.
- * Also works on x86_64 — NodeSource and npm install are arch-agnostic.
  */
 
 export interface CloudInitOptions {
@@ -17,20 +15,17 @@ export interface CloudInitOptions {
   openclawVersion?: string;
   /** Node.js major version. Default: 22 */
   nodeVersion?: number;
-  /** Target architecture. Default: "arm64" (Oracle Cloud Always Free) */
-  architecture?: "arm64" | "amd64";
 }
 
 export function generateCloudInit(opts: CloudInitOptions): string {
   const user = opts.username ?? "claw";
   const nodeVersion = opts.nodeVersion ?? 22;
   const ocVersion = opts.openclawVersion ?? "latest";
-  const _arch = opts.architecture ?? "arm64";
+  const portalUrl = opts.portalUrl.replace(/\/+$/, ''); // trim trailing slashes
 
+  // Using write_files for the systemd service (avoids heredoc YAML issues)
+  // and simple runcmd entries (no multi-line blocks that break YAML parsing)
   return `#cloud-config
-# ShiftWorker instance provisioning — managed, do not edit
-# Target: Oracle Cloud Always Free ARM instances (also works on x86_64)
-
 users:
   - name: ${user}
     groups: sudo
@@ -39,7 +34,7 @@ users:
     ssh_authorized_keys: []
 
 package_update: true
-package_upgrade: true
+package_upgrade: false
 
 packages:
   - ufw
@@ -52,53 +47,38 @@ write_files:
     permissions: "0600"
     content: |
       SIDECAR_TOKEN=${opts.sidecarToken}
-      PORTAL_URL=${opts.portalUrl}
+      PORTAL_URL=${portalUrl}
       INSTANCE_ID=${opts.instanceId}
+  - path: /etc/systemd/system/openclaw-sidecar.service
+    permissions: "0644"
+    content: |
+      [Unit]
+      Description=OpenClaw Sidecar Agent
+      After=network-online.target
+      Wants=network-online.target
+      [Service]
+      Type=simple
+      User=${user}
+      EnvironmentFile=/etc/shiftworker/sidecar.env
+      ExecStart=/usr/bin/openclaw gateway start
+      Restart=always
+      RestartSec=5
+      [Install]
+      WantedBy=multi-user.target
 
 runcmd:
-  # Firewall — allow only SSH + HTTPS + OpenClaw gateway
   - ufw default deny incoming
   - ufw default allow outgoing
   - ufw allow 22/tcp
   - ufw allow 443/tcp
   - ufw allow 3000/tcp
-  - ufw allow 8787/tcp   # Sidecar API
+  - ufw allow 8787/tcp
   - ufw --force enable
-
-  # Node.js via NodeSource (supports both aarch64 and x86_64)
   - curl -fsSL https://deb.nodesource.com/setup_${nodeVersion}.x | bash -
   - apt-get install -y nodejs
-
-  # OpenClaw
   - npm install -g openclaw@${ocVersion}
-
-  # Sidecar agent
-  - |
-    cat > /etc/systemd/system/openclaw-sidecar.service <<'EOF'
-    [Unit]
-    Description=OpenClaw Sidecar Agent
-    After=network-online.target
-    Wants=network-online.target
-
-    [Service]
-    Type=simple
-    User=${user}
-    EnvironmentFile=/etc/shiftworker/sidecar.env
-    ExecStart=/usr/bin/openclaw gateway start
-    Restart=always
-    RestartSec=5
-
-    [Install]
-    WantedBy=multi-user.target
-    EOF
   - systemctl daemon-reload
   - systemctl enable --now openclaw-sidecar
-
-  # Phone home
-  - |
-    curl -sf -X POST "${opts.portalUrl}/api/instances/${opts.instanceId}/phone-home" \\
-      -H "Authorization: Bearer ${opts.sidecarToken}" \\
-      -H "Content-Type: application/json" \\
-      -d '{"status":"ready"}'
+  - curl -sf -X POST "${portalUrl}/api/instances/${opts.instanceId}/phone-home" -H "Authorization: Bearer ${opts.sidecarToken}" -H "Content-Type: application/json" -d '{"status":"ready"}'
 `;
 }
