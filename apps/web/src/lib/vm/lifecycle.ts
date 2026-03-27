@@ -173,7 +173,7 @@ export async function launchAssistant(userId: string): Promise<Assistant> {
         provisioning_step: 'validate' as ProvisioningStep,
         provisioning_data: {
           vmName: `claw-${assistantId.slice(0, 8)}`,
-          vmSize: vmSize ?? 'Standard_DS1_v2',
+          vmSize: vmSize ?? 'Standard_B2ats_v2',
           cloudInit,
         } as any,
       });
