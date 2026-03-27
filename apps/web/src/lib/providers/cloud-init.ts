@@ -74,6 +74,8 @@ write_files:
       curl -fsSL https://deb.nodesource.com/setup_${nodeVersion}.x | bash -
       apt-get install -y nodejs
       npm install -g openclaw@${ocVersion}
+      # Set up OpenClaw gateway for the claw user
+      su - ${user} -c "openclaw gateway install" || true
       systemctl daemon-reload
       systemctl enable --now openclaw-sidecar
       source /etc/shiftworker/sidecar.env
