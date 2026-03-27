@@ -8,7 +8,7 @@ const DEFAULT_VM_SIZE = 'Standard_B1s';
 const DEFAULT_IMAGE = {
   publisher: 'Canonical',
   offer: 'ubuntu-24_04-lts',
-  sku: 'server',
+  sku: 'server-gen1',
   version: 'latest',
 };
 const RG_NAME = 'shiftworker-rg';

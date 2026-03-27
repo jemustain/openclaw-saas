@@ -32,7 +32,7 @@ const NSG_NAME = 'shiftworker-nsg';
 const DEFAULT_IMAGE = {
   publisher: 'Canonical',
   offer: 'ubuntu-24_04-lts',
-  sku: 'server',
+  sku: 'server-gen1',
   version: 'latest',
 };
 
