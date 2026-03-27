@@ -1,4 +1,5 @@
 import { createClient } from '@/lib/supabase/server';
+import { getSession } from '@/lib/auth/session';
 import {
   setupTelegramForAssistant,
   setupWhatsAppForAssistant,
@@ -7,12 +8,8 @@ import { NextResponse } from 'next/server';
 
 export async function POST(request: Request) {
   try {
-    const supabase = await createClient();
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-
-    if (!user) {
+    const session = await getSession();
+    if (!session) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
@@ -31,14 +28,14 @@ export async function POST(request: Request) {
     }
 
     // Find the assistant — use provided ID or get the user's active one
+    const supabase: any = createClient();
     let targetAssistantId = assistantId;
     if (!targetAssistantId) {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const { data: assistant } = await (supabase as any)
+      const { data: assistant } = await supabase
         .from('assistants')
         .select('id')
-        .eq('user_id', user.id)
-        .in('status', ['running', 'provisioning'])
+        .eq('user_id', session.userId)
+        .in('status', ['active', 'running', 'provisioning'])
         .order('created_at', { ascending: false })
         .limit(1)
         .single();
@@ -57,7 +54,7 @@ export async function POST(request: Request) {
       case 'telegram':
         result = await setupTelegramForAssistant(
           targetAssistantId!,
-          user.id,
+          session.userId,
           displayName,
         );
         break;
