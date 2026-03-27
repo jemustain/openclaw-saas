@@ -59,6 +59,25 @@ write_files:
       RestartSec=5
       [Install]
       WantedBy=multi-user.target
+  - path: /opt/shiftworker/patch-config.py
+    permissions: "0755"
+    content: |
+      #!/usr/bin/env python3
+      import json, os, sys, pwd
+      user = sys.argv[1] if len(sys.argv) > 1 else "claw"
+      config_path = os.path.join("/home", user, ".openclaw", "openclaw.json")
+      config = {}
+      if os.path.exists(config_path):
+          with open(config_path) as f:
+              config = json.load(f)
+      gw = config.setdefault("gateway", {})
+      gw["mode"] = "local"
+      gw["bind"] = "lan"
+      gw["controlUi"] = {"dangerouslyAllowHostHeaderOriginFallback": True}
+      with open(config_path, "w") as f:
+          json.dump(config, f, indent=2)
+      pw = pwd.getpwnam(user)
+      os.chown(config_path, pw.pw_uid, pw.pw_gid)
   - path: /opt/shiftworker/setup.sh
     permissions: "0755"
     content: |
@@ -77,22 +96,7 @@ write_files:
       # Set up OpenClaw gateway for the claw user
       su - ${user} -c "openclaw gateway install" || true
       # Configure gateway for LAN binding (required for sidecar to accept remote connections)
-      python3 -c "
-import json, os
-config_path = '/home/${user}/.openclaw/openclaw.json'
-if os.path.exists(config_path):
-    with open(config_path) as f:
-        config = json.load(f)
-else:
-    config = {}
-gw = config.setdefault('gateway', {})
-gw['mode'] = 'local'
-gw['bind'] = 'lan'
-gw['controlUi'] = {'dangerouslyAllowHostHeaderOriginFallback': True}
-with open(config_path, 'w') as f:
-    json.dump(config, f, indent=2)
-os.chown(config_path, os.stat('/home/${user}').st_uid, os.stat('/home/${user}').st_gid)
-"
+      python3 /opt/shiftworker/patch-config.py ${user}
       systemctl daemon-reload
       systemctl enable --now openclaw-sidecar
       source /etc/shiftworker/sidecar.env
