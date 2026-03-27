@@ -3,17 +3,11 @@
  */
 
 export interface CloudInitOptions {
-  /** Auth token the sidecar uses to talk to the portal. */
   sidecarToken: string;
-  /** Portal URL the instance phones home to on completion. */
   portalUrl: string;
-  /** Instance ID for phone-home identification. */
   instanceId: string;
-  /** Non-root username to create. Default: "claw" */
   username?: string;
-  /** OpenClaw version/tag to install. Default: "latest" */
   openclawVersion?: string;
-  /** Node.js major version. Default: 22 */
   nodeVersion?: number;
 }
 
@@ -21,12 +15,10 @@ export function generateCloudInit(opts: CloudInitOptions): string {
   const user = opts.username ?? "claw";
   const nodeVersion = opts.nodeVersion ?? 22;
   const ocVersion = opts.openclawVersion ?? "latest";
-  const portalUrl = opts.portalUrl.replace(/\/+$/, '').replace(/\s+/g, ''); // trim slashes and ALL whitespace
+  const portalUrl = opts.portalUrl.replace(/\/+$/, '').replace(/\s+/g, '');
   const sidecarToken = opts.sidecarToken.replace(/\s+/g, '');
   const instanceId = opts.instanceId.replace(/\s+/g, '');
 
-  // Using write_files for the systemd service (avoids heredoc YAML issues)
-  // and simple runcmd entries (no multi-line blocks that break YAML parsing)
   return `#cloud-config
 users:
   - name: ${user}
@@ -67,20 +59,30 @@ write_files:
       RestartSec=5
       [Install]
       WantedBy=multi-user.target
+  - path: /opt/shiftworker/setup.sh
+    permissions: "0755"
+    content: |
+      #!/bin/bash
+      set -ex
+      ufw default deny incoming
+      ufw default allow outgoing
+      ufw allow 22/tcp
+      ufw allow 443/tcp
+      ufw allow 3000/tcp
+      ufw allow 8787/tcp
+      ufw --force enable
+      curl -fsSL https://deb.nodesource.com/setup_${nodeVersion}.x | bash -
+      apt-get install -y nodejs
+      npm install -g openclaw@${ocVersion}
+      systemctl daemon-reload
+      systemctl enable --now openclaw-sidecar
+      source /etc/shiftworker/sidecar.env
+      curl -sf -X POST "$PORTAL_URL/api/instances/$INSTANCE_ID/phone-home" \\
+        -H "Authorization: Bearer $SIDECAR_TOKEN" \\
+        -H "Content-Type: application/json" \\
+        -d '{"status":"ready"}' || true
 
 runcmd:
-  - ["ufw", "default", "deny", "incoming"]
-  - ["ufw", "default", "allow", "outgoing"]
-  - ["ufw", "allow", "22/tcp"]
-  - ["ufw", "allow", "443/tcp"]
-  - ["ufw", "allow", "3000/tcp"]
-  - ["ufw", "allow", "8787/tcp"]
-  - ["ufw", "--force", "enable"]
-  - ["bash", "-c", "curl -fsSL https://deb.nodesource.com/setup_${nodeVersion}.x | bash -"]
-  - ["apt-get", "install", "-y", "nodejs"]
-  - ["npm", "install", "-g", "openclaw@${ocVersion}"]
-  - ["systemctl", "daemon-reload"]
-  - ["systemctl", "enable", "--now", "openclaw-sidecar"]
-  - ["bash", "-c", "curl -sf -X POST '${portalUrl}/api/instances/${instanceId}/phone-home' -H 'Authorization: Bearer ${sidecarToken}' -H 'Content-Type: application/json' -d '{\"status\":\"ready\"}'"]
+  - [bash, /opt/shiftworker/setup.sh]
 `;
 }
