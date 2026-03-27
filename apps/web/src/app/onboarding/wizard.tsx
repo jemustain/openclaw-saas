@@ -263,8 +263,7 @@ export default function OnboardingWizard() {
         addStatus(`⚠️ ${errData.error ?? 'Launch failed — please try again'}`);
         launchFailed = true;
       } else {
-        addStatus('Assistant launched');
-      }
+        }
     } catch {
       addStatus('⚠️ Launch request failed — check your connection');
       launchFailed = true;
@@ -417,10 +416,10 @@ export default function OnboardingWizard() {
             </div>
             <div className={`min-w-0 ${skill.pro ? 'pr-12' : ''}`}>
               <div className="font-medium text-sm leading-tight">{skill.label}</div>
-              <div className={`text-xs mt-0.5 leading-snug ${isLocked ? 'text-slate-600' : 'text-slate-400'}`}>
+              <div className={`text-sm sm:text-xs mt-0.5 leading-snug ${isLocked ? 'text-slate-600' : 'text-slate-400'}`}>
                 {skill.description}
               </div>
-              <div className={`text-[10px] mt-1.5 font-medium uppercase tracking-wider ${isLocked ? 'text-slate-600' : 'text-slate-500'}`}>
+              <div className={`text-xs sm:text-[10px] mt-1.5 font-medium uppercase tracking-wider ${isLocked ? 'text-slate-600' : 'text-slate-500'}`}>
                 {skill.category}
               </div>
             </div>
@@ -858,7 +857,7 @@ export default function OnboardingWizard() {
             {/* Free skills */}
             <div>
               <h3 className="text-xs font-bold uppercase tracking-wider text-slate-500 mb-3">Included</h3>
-              <div className="grid grid-cols-2 lg:grid-cols-3 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
                 {FREE_SKILLS.map((s) => (
                   <SkillCard key={s.id} skill={s} />
                 ))}
@@ -870,7 +869,7 @@ export default function OnboardingWizard() {
               <h3 className="text-xs font-bold uppercase tracking-wider text-slate-500 mb-3 flex items-center gap-1.5">
                 <Lock className="w-3 h-3" /> Pro Skills
               </h3>
-              <div className="grid grid-cols-2 lg:grid-cols-3 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
                 {PRO_SKILLS.map((s) => (
                   <SkillCard key={s.id} skill={s} />
                 ))}
