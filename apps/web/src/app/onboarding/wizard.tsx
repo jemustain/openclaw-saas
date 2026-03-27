@@ -441,7 +441,7 @@ export default function OnboardingWizard() {
         >
           {/* Pro badge */}
           {skill.pro && (
-            <div className="absolute top-2.5 right-2.5 flex items-center gap-1 bg-amber-500/20 text-amber-400 text-[10px] font-bold px-2 py-0.5 rounded-full">
+            <div className="absolute top-2.5 right-2.5 flex items-center gap-1 bg-amber-500/30 text-amber-300 text-[10px] font-bold px-2 py-0.5 rounded-full border border-amber-500/40">
               <Lock className="w-2.5 h-2.5" />
               PRO
             </div>
@@ -860,19 +860,21 @@ export default function OnboardingWizard() {
                       disabled={!isEnabled}
                       onClick={isEnabled ? () => setSelectedSubId(sub.id) : undefined}
                     >
-                      <div className="flex items-center gap-3">
-                        <Server className="w-7 h-7 text-blue-400 flex-shrink-0" />
+                      <div className="flex items-start gap-3">
+                        <Server className="w-7 h-7 text-blue-400 flex-shrink-0 mt-0.5" />
                         <div className="min-w-0 flex-1">
-                          <div className="font-semibold truncate">{sub.displayName}</div>
-                          <div className="text-xs text-slate-500 font-mono truncate">{sub.id}</div>
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <span className="font-semibold">{sub.displayName}</span>
+                            <span className={`text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full ${
+                              isEnabled
+                                ? 'bg-green-500/20 text-green-400'
+                                : 'bg-slate-700 text-slate-400'
+                            }`}>
+                              {sub.state}
+                            </span>
+                          </div>
+                          <div className="text-xs text-slate-500 font-mono truncate mt-0.5">{sub.id}</div>
                         </div>
-                        <span className={`text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full flex-shrink-0 ${
-                          isEnabled
-                            ? 'bg-green-500/20 text-green-400'
-                            : 'bg-slate-700 text-slate-400'
-                        }`}>
-                          {sub.state}
-                        </span>
                       </div>
                     </Card>
                   );
