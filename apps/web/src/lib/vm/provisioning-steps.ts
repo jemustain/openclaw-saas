@@ -366,7 +366,7 @@ export async function advanceProvisioning(assistant: Assistant): Promise<Assista
       const vmBody = {
         location: pd.region ?? DEFAULT_REGION,
         properties: {
-          hardwareProfile: { vmSize: vmSize ?? 'Standard_D2as_v5' },
+          hardwareProfile: { vmSize: vmSize ?? 'Standard_B1ms' },
           storageProfile: {
             imageReference: DEFAULT_IMAGE,
             osDisk: {

@@ -4,7 +4,7 @@ const NETWORK_API = '2024-05-01';
 const RESOURCE_API = '2024-07-01';
 
 const DEFAULT_REGION = 'westus3';
-const DEFAULT_VM_SIZE = 'Standard_D2as_v5';
+const DEFAULT_VM_SIZE = 'Standard_B1ms';
 const DEFAULT_IMAGE = {
   publisher: 'Canonical',
   offer: 'ubuntu-24_04-lts',
