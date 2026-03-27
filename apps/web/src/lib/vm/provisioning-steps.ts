@@ -23,7 +23,7 @@ const COMPUTE_API = '2024-07-01';
 const NETWORK_API = '2024-05-01';
 const RESOURCE_API = '2024-07-01';
 
-const DEFAULT_REGION = 'westus2';
+const DEFAULT_REGION = 'eastus';
 const RG_NAME = 'shiftworker-rg';
 const VNET_NAME = 'shiftworker-vnet';
 const SUBNET_NAME = 'default';
