@@ -329,6 +329,8 @@ export default function OnboardingWizard() {
       { at: 30, msg: 'Installing OpenClaw and dependencies...' },
       { at: 60, msg: 'Configuring your assistant...' },
       { at: 90, msg: 'Almost there - starting services...' },
+      { at: 180, msg: 'Still working - this is taking longer than usual...' },
+      { at: 300, msg: 'Hang tight - large installs can take up to 10 minutes.' },
     ];
     let nextMilestone = 0;
     const poll = async (): Promise<void> => {
@@ -353,8 +355,8 @@ export default function OnboardingWizard() {
           setTimeout(() => goTo(7), 2000);
           return;
         }
-        // No assistant found at all after some attempts = likely failed
-        if (!data.assistant && attempts > 10) {
+        // No assistant found at all after many attempts = likely failed
+        if (!data.assistant && attempts > 30) {
           addStatus('⚠️ Something went wrong - please try launching from your dashboard');
           setSetupDone(true);
           setTimeout(() => goTo(7), 2000);
@@ -362,18 +364,14 @@ export default function OnboardingWizard() {
         }
       } catch { /* ignore */ }
       attempts++;
-      const elapsed = attempts * 3;
+      const elapsed = attempts * 5;
       while (nextMilestone < milestones.length && elapsed >= milestones[nextMilestone].at) {
         addStatus(milestones[nextMilestone].msg);
         nextMilestone++;
       }
-      if (attempts < 80) {
-        await new Promise((r) => setTimeout(r, 3000));
-        return poll();
-      }
-      addStatus('Taking longer than expected - you can check progress on your dashboard');
-      setSetupDone(true);
-      setTimeout(() => goTo(7), 1000);
+      // Keep polling every 5 seconds - never give up while provisioning
+      await new Promise((r) => setTimeout(r, 5000));
+      return poll();
     };
     await poll();
   };
