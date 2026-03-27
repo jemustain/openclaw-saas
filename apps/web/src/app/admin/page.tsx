@@ -18,7 +18,7 @@ export default async function AdminDashboard() {
   const { count: activeAssistants } = await supabase
     .from('assistants')
     .select('*', { count: 'exact', head: true })
-    .eq('status', 'running');
+    .eq('status', 'active');
 
   const { count: totalVMs } = await supabase
     .from('assistants')
