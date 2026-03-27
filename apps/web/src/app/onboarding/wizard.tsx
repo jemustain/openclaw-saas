@@ -9,10 +9,10 @@ import {
   MessageCircle, Send, Hash, Slack, Shield,
   Mail, Globe, Bell, FileText, Sun, Lock,
   ShoppingCart, Plane, DollarSign, CalendarDays,
-  QrCode, Bot, Smartphone,
+  QrCode, Bot, Smartphone, AlertCircle, ExternalLink,
 } from 'lucide-react';
 
-const STEPS = ['Welcome', 'Hosting', 'Plan', 'Messengers', 'Skills', 'Setup & Connect', 'Ready'];
+const STEPS = ['Welcome', 'Hosting', 'Subscription', 'Plan', 'Messengers', 'Skills', 'Setup & Connect', 'Ready'];
 
 const MESSENGERS = [
   { id: 'whatsapp', label: 'WhatsApp', icon: MessageCircle },
@@ -128,6 +128,13 @@ export default function OnboardingWizard() {
   const [onboardingError, setOnboardingError] = useState<string | null>(null);
   const [botLinks, setBotLinks] = useState<Record<string, string>>({});
 
+  // Azure subscription picker state
+  type AzureSub = { id: string; displayName: string; state: string };
+  const [azureSubs, setAzureSubs] = useState<AzureSub[]>([]);
+  const [selectedSubId, setSelectedSubId] = useState<string | null>(null);
+  const [subsLoading, setSubsLoading] = useState(false);
+  const [subsError, setSubsError] = useState<string | null>(null);
+
   // Init from URL params and timezone
   useEffect(() => {
     setTimezone(Intl.DateTimeFormat().resolvedOptions().timeZone);
@@ -157,11 +164,17 @@ export default function OnboardingWizard() {
     if ((connected === 'digitalocean' || connected === 'azure') && !stepParam) {
       setHosting(connected);
       setVmSize(getDefaultSize(connected));
-      setStep(2);
+      if (connected === 'azure') {
+        // Go to subscription picker
+        setStep(2);
+      } else {
+        // Skip subscription step for non-Azure providers
+        setStep(3);
+      }
     }
     if (upgraded === 'true' && !stepParam) {
       setPlan('pro');
-      setStep(3);
+      setStep(4);
       setMessengers(MESSENGERS.map((m) => m.id));
       setSkills(SKILLS.filter((s) => !s.pro).map((s) => s.id));
     }
@@ -175,6 +188,40 @@ export default function OnboardingWizard() {
       setAnimating(false);
     }, 200);
   }, [step]);
+
+  // Fetch Azure subscriptions when entering the subscription picker step
+  useEffect(() => {
+    if (step !== 2 || hosting !== 'azure') return;
+    if (azureSubs.length > 0) return; // Already fetched
+
+    let cancelled = false;
+    setSubsLoading(true);
+    setSubsError(null);
+
+    fetch('/api/azure/subscriptions')
+      .then((res) => {
+        if (!res.ok) throw new Error('Failed to fetch subscriptions');
+        return res.json();
+      })
+      .then((data) => {
+        if (cancelled) return;
+        const subs: AzureSub[] = data.subscriptions ?? [];
+        setAzureSubs(subs);
+        // Auto-select the first enabled sub
+        const enabled = subs.filter((s) => s.state === 'Enabled');
+        if (enabled.length > 0 && !selectedSubId) {
+          setSelectedSubId(enabled[0].id);
+        }
+        setSubsLoading(false);
+      })
+      .catch((err) => {
+        if (cancelled) return;
+        setSubsError(err.message ?? 'Failed to load subscriptions');
+        setSubsLoading(false);
+      });
+
+    return () => { cancelled = true; };
+  }, [step, hosting, azureSubs.length, selectedSubId]);
 
   const next = () => goTo(step + 1);
   const back = () => goTo(step - 1);
@@ -228,13 +275,13 @@ export default function OnboardingWizard() {
 
   // Timer for setup step
   useEffect(() => {
-    if (step !== 5 || setupDone) return;
+    if (step !== 6 || setupDone) return;
     const interval = setInterval(() => setElapsedSecs((s) => s + 1), 1000);
     return () => clearInterval(interval);
   }, [step, setupDone]);
 
   const saveAndLaunch = async () => {
-    goTo(5);
+    goTo(6);
     setServerActive(false);
     const statuses: string[] = [];
     const addStatus = (s: string) => {
@@ -247,7 +294,11 @@ export default function OnboardingWizard() {
       await fetch('/api/onboarding', {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ timezone, plan, windowStart, messengers, skills, onboardingComplete: false }),
+        body: JSON.stringify({
+          timezone, plan, windowStart, messengers, skills,
+          onboardingComplete: false,
+          ...(selectedSubId ? { azureSubscriptionId: selectedSubId } : {}),
+        }),
       });
     } catch {
       addStatus('Warning: Could not save preferences');
@@ -269,7 +320,7 @@ export default function OnboardingWizard() {
 
     if (launchFailed) {
       setSetupDone(true);
-      setTimeout(() => goTo(6), 2000);
+      setTimeout(() => goTo(7), 2000);
       return;
     }
     let attempts = 0;
@@ -278,6 +329,8 @@ export default function OnboardingWizard() {
       { at: 30, msg: 'Installing OpenClaw and dependencies...' },
       { at: 60, msg: 'Configuring your assistant...' },
       { at: 90, msg: 'Almost there - starting services...' },
+      { at: 180, msg: 'Still working - this is taking longer than usual...' },
+      { at: 300, msg: 'Hang tight - large installs can take up to 10 minutes.' },
     ];
     let nextMilestone = 0;
     const poll = async (): Promise<void> => {
@@ -293,36 +346,32 @@ export default function OnboardingWizard() {
             body: JSON.stringify({ onboardingComplete: true }),
           });
           setSetupDone(true);
-          setTimeout(() => goTo(6), 2000);
+          setTimeout(() => goTo(7), 2000);
           return;
         }
         if (data.assistant?.status === 'destroyed' || data.assistant?.status === 'destroying') {
           addStatus('⚠️ Server provisioning failed - please try again from your dashboard');
           setSetupDone(true);
-          setTimeout(() => goTo(6), 2000);
+          setTimeout(() => goTo(7), 2000);
           return;
         }
-        // No assistant found at all after some attempts = likely failed
-        if (!data.assistant && attempts > 10) {
+        // No assistant found at all after many attempts = likely failed
+        if (!data.assistant && attempts > 30) {
           addStatus('⚠️ Something went wrong - please try launching from your dashboard');
           setSetupDone(true);
-          setTimeout(() => goTo(6), 2000);
+          setTimeout(() => goTo(7), 2000);
           return;
         }
       } catch { /* ignore */ }
       attempts++;
-      const elapsed = attempts * 3;
+      const elapsed = attempts * 5;
       while (nextMilestone < milestones.length && elapsed >= milestones[nextMilestone].at) {
         addStatus(milestones[nextMilestone].msg);
         nextMilestone++;
       }
-      if (attempts < 80) {
-        await new Promise((r) => setTimeout(r, 3000));
-        return poll();
-      }
-      addStatus('Taking longer than expected - you can check progress on your dashboard');
-      setSetupDone(true);
-      setTimeout(() => goTo(6), 1000);
+      // Keep polling every 5 seconds - never give up while provisioning
+      await new Promise((r) => setTimeout(r, 5000));
+      return poll();
     };
     await poll();
   };
@@ -743,8 +792,108 @@ export default function OnboardingWizard() {
           </div>
         )}
 
-        {/* Step 2: Plan */}
-        {step === 2 && (
+        {/* Step 2: Azure Subscription Picker */}
+        {step === 2 && hosting === 'azure' && (
+          <div className="space-y-6">
+            <h2 className="text-2xl font-bold text-center">Select Your Azure Subscription</h2>
+            <p className="text-slate-400 text-center">
+              Your assistant&apos;s server will be created in this subscription. You&apos;ll only pay Azure for the VM resources used.
+            </p>
+
+            {subsLoading && (
+              <div className="flex items-center justify-center gap-3 py-8">
+                <Loader2 className="w-5 h-5 animate-spin text-violet-400" />
+                <span className="text-slate-300">Loading your subscriptions...</span>
+              </div>
+            )}
+
+            {subsError && (
+              <div className="bg-red-900/30 border border-red-700 rounded-lg p-4 text-sm text-red-300 text-center">
+                {subsError}
+                <button
+                  type="button"
+                  onClick={() => { setAzureSubs([]); setSubsLoading(true); setSubsError(null); }}
+                  className="ml-2 underline hover:text-red-200"
+                >
+                  Retry
+                </button>
+              </div>
+            )}
+
+            {!subsLoading && !subsError && azureSubs.length === 0 && (
+              <div className="bg-slate-900 border border-slate-800 rounded-xl p-6 text-center space-y-4">
+                <AlertCircle className="w-10 h-10 text-amber-400 mx-auto" />
+                <div>
+                  <p className="font-medium">No Azure subscriptions found</p>
+                  <p className="text-sm text-slate-400 mt-1">
+                    You need an Azure subscription to host your assistant. Create a free one with $200 in credits to get started.
+                  </p>
+                </div>
+                <div className="flex flex-col sm:flex-row gap-3 justify-center">
+                  <a
+                    href="https://azure.microsoft.com/free/"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center justify-center gap-2 px-5 py-2.5 bg-blue-600 hover:bg-blue-500 text-white font-medium rounded-lg transition-colors"
+                  >
+                    Create Free Subscription <ExternalLink className="w-4 h-4" />
+                  </a>
+                  <button
+                    type="button"
+                    onClick={() => { setAzureSubs([]); setSubsLoading(true); setSubsError(null); }}
+                    className="inline-flex items-center justify-center gap-2 px-5 py-2.5 bg-slate-800 hover:bg-slate-700 text-white font-medium rounded-lg transition-colors border border-slate-700"
+                  >
+                    I created one - check again
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {!subsLoading && !subsError && azureSubs.length > 0 && (
+              <div className="grid gap-3">
+                {azureSubs.map((sub) => {
+                  const isEnabled = sub.state === 'Enabled';
+                  return (
+                    <Card
+                      key={sub.id}
+                      selected={selectedSubId === sub.id}
+                      disabled={!isEnabled}
+                      onClick={isEnabled ? () => setSelectedSubId(sub.id) : undefined}
+                    >
+                      <div className="flex items-center gap-3">
+                        <Server className="w-7 h-7 text-blue-400 flex-shrink-0" />
+                        <div className="min-w-0 flex-1">
+                          <div className="font-semibold truncate">{sub.displayName}</div>
+                          <div className="text-xs text-slate-500 font-mono truncate">{sub.id}</div>
+                        </div>
+                        <span className={`text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full flex-shrink-0 ${
+                          isEnabled
+                            ? 'bg-green-500/20 text-green-400'
+                            : 'bg-slate-700 text-slate-400'
+                        }`}>
+                          {sub.state}
+                        </span>
+                      </div>
+                    </Card>
+                  );
+                })}
+              </div>
+            )}
+
+            <div className="flex justify-between items-center">
+              <BackBtn />
+              <PrimaryBtn
+                onClick={next}
+                disabled={!selectedSubId || subsLoading}
+              >
+                Next <ArrowRight className="w-4 h-4" />
+              </PrimaryBtn>
+            </div>
+          </div>
+        )}
+
+        {/* Step 3: Plan */}
+        {step === 3 && (
           <div className="space-y-6">
             <h2 className="text-2xl font-bold text-center">Choose Your Plan</h2>
             <div className="grid sm:grid-cols-2 gap-4">
@@ -810,8 +959,8 @@ export default function OnboardingWizard() {
           </div>
         )}
 
-        {/* Step 3: Messengers */}
-        {step === 3 && (
+        {/* Step 4: Messengers */}
+        {step === 4 && (
           <div className="space-y-6">
             <h2 className="text-2xl font-bold text-center">Choose Your Messenger{plan === 'free' ? '' : 's'}</h2>
             <p className="text-slate-400 text-center">
@@ -839,8 +988,8 @@ export default function OnboardingWizard() {
           </div>
         )}
 
-        {/* Step 4: Skills */}
-        {step === 4 && (
+        {/* Step 5: Skills */}
+        {step === 5 && (
           <div className="space-y-6">
             <h2 className="text-2xl font-bold text-center">Choose Your Skills</h2>
             <p className="text-slate-400 text-center">
@@ -880,8 +1029,8 @@ export default function OnboardingWizard() {
           </div>
         )}
 
-        {/* Step 5: Setup & Connect (provisioning + messenger setup) */}
-        {step === 5 && (
+        {/* Step 6: Setup & Connect (provisioning + messenger setup) */}
+        {step === 6 && (
           <div className="space-y-6">
             <h2 className="text-2xl font-bold text-center">Setting Up Your Assistant</h2>
             {!setupDone && (
@@ -937,8 +1086,8 @@ export default function OnboardingWizard() {
           </div>
         )}
 
-        {/* Step 6: Ready */}
-        {step === 6 && (
+        {/* Step 7: Ready */}
+        {step === 7 && (
           <div className="text-center space-y-6">
             <Sparkles className="w-16 h-16 text-violet-500 mx-auto" />
             <h1 className="text-3xl font-bold">You&apos;re All Set!</h1>

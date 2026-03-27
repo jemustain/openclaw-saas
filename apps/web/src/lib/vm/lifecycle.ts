@@ -116,15 +116,16 @@ export async function launchAssistant(userId: string): Promise<Assistant> {
   const supabase: any = createClient();
   const provider = await getProviderForUser(userId);
 
-  // Read user record to get VM size preference
+  // Read user record to get VM size and subscription preferences
   const { data: user, error: userError } = await supabase
     .from('users')
-    .select('vm_size')
+    .select('vm_size, azure_subscription_id')
     .eq('id', userId)
     .single();
 
   if (userError) throw new Error(`Failed to read user: ${userError.message}`);
   const vmSize: string | null = user?.vm_size ?? null;
+  const azureSubscriptionId: string | null = user?.azure_subscription_id ?? null;
 
   const assistantId = randomUUID();
   const sidecarToken = randomUUID();
@@ -175,6 +176,7 @@ export async function launchAssistant(userId: string): Promise<Assistant> {
           vmName: `claw-${assistantId.slice(0, 8)}`,
           vmSize: vmSize ?? 'Standard_D2als_v7',
           cloudInit,
+          ...(azureSubscriptionId ? { subscriptionId: azureSubscriptionId } : {}),
         } as any,
       });
     } else {

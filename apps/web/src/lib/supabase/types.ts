@@ -39,6 +39,7 @@ export interface User {
   window_start: number | null;
   onboarding_complete: boolean;
   provider_preference: string | null;
+  azure_subscription_id: string | null;
   created_at: string;
   updated_at: string;
 }

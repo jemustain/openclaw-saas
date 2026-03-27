@@ -115,6 +115,46 @@ export async function advanceProvisioning(assistant: Assistant): Promise<Assista
 
   switch (step) {
     case 'validate': {
+      // If a subscription was pre-selected during onboarding, use it directly
+      if (pd.subscriptionId) {
+        // Still validate the account works, but use the chosen subscription
+        try {
+          // Quick check: list subs and verify the chosen one exists & is enabled
+          const { listSubscriptions } = await import('../providers/azure');
+          const subs = await listSubscriptions(token);
+          const chosen = subs.find((s) => s.id === pd.subscriptionId && s.state === 'Enabled');
+          if (!chosen) {
+            // Selected subscription not found or not enabled - fall back to auto-detect
+            const validation = await validateAzureAccount(token);
+            if (!validation.ok || !validation.subscriptionId) {
+              return await updateAssistant(assistant.id, {
+                status: 'destroyed',
+                provisioning_step: null,
+                provisioning_data: null,
+              });
+            }
+            return await updateAssistant(assistant.id, {
+              provisioning_step: 'create_rg' as ProvisioningStep,
+              provisioning_data: {
+                ...pd,
+                subscriptionId: validation.subscriptionId,
+              } as any,
+            });
+          }
+          // Chosen subscription is valid - proceed
+          return await updateAssistant(assistant.id, {
+            provisioning_step: 'create_rg' as ProvisioningStep,
+            provisioning_data: pd as any,
+          });
+        } catch {
+          return await updateAssistant(assistant.id, {
+            status: 'destroyed',
+            provisioning_step: null,
+            provisioning_data: null,
+          });
+        }
+      }
+
       const validation = await validateAzureAccount(token);
       if (!validation.ok || !validation.subscriptionId) {
         // Mark as failed
