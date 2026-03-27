@@ -350,18 +350,31 @@ export async function advanceProvisioning(assistant: Assistant): Promise<Assista
         });
       }
 
-      // Generate SSH key
+      // Generate SSH key pair in OpenSSH format
       const crypto = await import('crypto');
-      const { publicKey } = crypto.generateKeyPairSync('rsa', {
-        modulusLength: 2048,
-        publicKeyEncoding: { type: 'pkcs1', format: 'pem' },
+      const { generateKeyPairSync } = crypto;
+      const { publicKey } = generateKeyPairSync('ed25519', {
+        publicKeyEncoding: { type: 'spki', format: 'pem' },
         privateKeyEncoding: { type: 'pkcs8', format: 'pem' },
       });
-      const pubKeyBase64 = publicKey
-        .replace('-----BEGIN RSA PUBLIC KEY-----', '')
-        .replace('-----END RSA PUBLIC KEY-----', '')
+
+      // Convert SPKI PEM to SSH authorized_keys format
+      const derB64 = publicKey
+        .replace('-----BEGIN PUBLIC KEY-----', '')
+        .replace('-----END PUBLIC KEY-----', '')
         .replace(/\n/g, '');
-      const sshPublicKey = `ssh-rsa ${pubKeyBase64} shiftworker@azure`;
+      const derBuffer = Buffer.from(derB64, 'base64');
+      // Ed25519 SPKI DER has a 12-byte prefix before the 32-byte key
+      const rawKey = derBuffer.subarray(12);
+
+      // Build SSH wire format: string "ssh-ed25519" + string <32-byte key>
+      const typeStr = Buffer.from('ssh-ed25519');
+      const typeLenBuf = Buffer.alloc(4);
+      typeLenBuf.writeUInt32BE(typeStr.length);
+      const keyLenBuf = Buffer.alloc(4);
+      keyLenBuf.writeUInt32BE(rawKey.length);
+      const wireFormat = Buffer.concat([typeLenBuf, typeStr, keyLenBuf, rawKey]);
+      const sshPublicKey = `ssh-ed25519 ${wireFormat.toString('base64')} shiftworker@azure`;
 
       const vmBody = {
         location: pd.region ?? DEFAULT_REGION,
