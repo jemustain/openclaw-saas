@@ -242,31 +242,28 @@ export default function OnboardingWizard() {
       setSetupStatus([...statuses]);
     };
 
-    addStatus('Saving your preferences...');
+    addStatus('Saving preferences...');
     try {
       await fetch('/api/onboarding', {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ timezone, plan, windowStart, messengers, skills, onboardingComplete: false }),
       });
-      addStatus('Preferences saved');
     } catch {
       addStatus('Warning: Could not save preferences');
     }
 
-    addStatus('Launching your assistant...');
+    addStatus('Starting server provisioning...');
     let launchFailed = false;
     try {
       const launchRes = await fetch('/api/launch', { method: 'POST' });
       if (!launchRes.ok) {
         const errData = await launchRes.json().catch(() => ({}));
-        addStatus(`⚠️ ${errData.error ?? 'Launch failed — please try again'}`);
+        addStatus(`⚠️ ${errData.error ?? 'Launch failed - please try again'}`);
         launchFailed = true;
-      } else {
-        addStatus('Assistant launched');
       }
     } catch {
-      addStatus('⚠️ Launch request failed — check your connection');
+      addStatus('⚠️ Launch request failed - check your connection');
       launchFailed = true;
     }
 
@@ -275,14 +272,12 @@ export default function OnboardingWizard() {
       setTimeout(() => goTo(6), 2000);
       return;
     }
-
-    addStatus('Provisioning your server — this usually takes 2–4 minutes...');
     let attempts = 0;
     const milestones = [
       { at: 15, msg: `Creating your server on ${hosting === 'azure' ? 'Azure' : hosting === 'oracle' ? 'Oracle Cloud' : 'DigitalOcean'}...` },
       { at: 30, msg: 'Installing OpenClaw and dependencies...' },
       { at: 60, msg: 'Configuring your assistant...' },
-      { at: 90, msg: 'Almost there — starting services...' },
+      { at: 90, msg: 'Almost there - starting services...' },
     ];
     let nextMilestone = 0;
     const poll = async (): Promise<void> => {
@@ -290,8 +285,7 @@ export default function OnboardingWizard() {
         const res = await fetch('/api/assistant/status');
         const data = await res.json();
         if (data.assistant?.status === 'active') {
-          addStatus('✅ Assistant is online!');
-          addStatus('✅ Assistant is online! Setting up your messengers...');
+          addStatus('✅ Server is online! Connecting your messengers...');
           setServerActive(true);
           await fetch('/api/onboarding', {
             method: 'PATCH',
@@ -303,14 +297,14 @@ export default function OnboardingWizard() {
           return;
         }
         if (data.assistant?.status === 'destroyed' || data.assistant?.status === 'destroying') {
-          addStatus('⚠️ Server provisioning failed — please try again from your dashboard');
+          addStatus('⚠️ Server provisioning failed - please try again from your dashboard');
           setSetupDone(true);
           setTimeout(() => goTo(6), 2000);
           return;
         }
         // No assistant found at all after some attempts = likely failed
         if (!data.assistant && attempts > 10) {
-          addStatus('⚠️ Something went wrong — please try launching from your dashboard');
+          addStatus('⚠️ Something went wrong - please try launching from your dashboard');
           setSetupDone(true);
           setTimeout(() => goTo(6), 2000);
           return;
@@ -326,7 +320,7 @@ export default function OnboardingWizard() {
         await new Promise((r) => setTimeout(r, 3000));
         return poll();
       }
-      addStatus('Taking longer than expected — you can check progress on your dashboard');
+      addStatus('Taking longer than expected - you can check progress on your dashboard');
       setSetupDone(true);
       setTimeout(() => goTo(6), 1000);
     };
@@ -417,10 +411,10 @@ export default function OnboardingWizard() {
             </div>
             <div className={`min-w-0 ${skill.pro ? 'pr-12' : ''}`}>
               <div className="font-medium text-sm leading-tight">{skill.label}</div>
-              <div className={`text-xs mt-0.5 leading-snug ${isLocked ? 'text-slate-600' : 'text-slate-400'}`}>
+              <div className={`text-sm sm:text-xs mt-0.5 leading-snug ${isLocked ? 'text-slate-600' : 'text-slate-400'}`}>
                 {skill.description}
               </div>
-              <div className={`text-[10px] mt-1.5 font-medium uppercase tracking-wider ${isLocked ? 'text-slate-600' : 'text-slate-500'}`}>
+              <div className={`text-xs sm:text-[10px] mt-1.5 font-medium uppercase tracking-wider ${isLocked ? 'text-slate-600' : 'text-slate-500'}`}>
                 {skill.category}
               </div>
             </div>
@@ -858,7 +852,7 @@ export default function OnboardingWizard() {
             {/* Free skills */}
             <div>
               <h3 className="text-xs font-bold uppercase tracking-wider text-slate-500 mb-3">Included</h3>
-              <div className="grid grid-cols-2 lg:grid-cols-3 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
                 {FREE_SKILLS.map((s) => (
                   <SkillCard key={s.id} skill={s} />
                 ))}
@@ -870,7 +864,7 @@ export default function OnboardingWizard() {
               <h3 className="text-xs font-bold uppercase tracking-wider text-slate-500 mb-3 flex items-center gap-1.5">
                 <Lock className="w-3 h-3" /> Pro Skills
               </h3>
-              <div className="grid grid-cols-2 lg:grid-cols-3 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
                 {PRO_SKILLS.map((s) => (
                   <SkillCard key={s.id} skill={s} />
                 ))}
