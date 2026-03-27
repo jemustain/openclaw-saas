@@ -3,7 +3,7 @@ const COMPUTE_API = '2024-07-01';
 const NETWORK_API = '2024-05-01';
 const RESOURCE_API = '2024-07-01';
 
-const DEFAULT_REGION = 'centralus';
+const DEFAULT_REGION = 'westus3';
 const DEFAULT_VM_SIZE = 'Standard_D2as_v5';
 const DEFAULT_IMAGE = {
   publisher: 'Canonical',
