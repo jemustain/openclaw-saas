@@ -23,7 +23,7 @@ async function getUserEmail(userId: string): Promise<{ email: string; name: stri
 export async function onUserSignup(userId: string) {
   const user = await getUserEmail(userId);
   if (!user) return;
-  await sendEmail(user.email, 'Welcome to ShiftWorker! 🎉', welcomeEmail(user.name));
+  await sendEmail(user.email, 'Welcome to ShiftWorker', welcomeEmail(user.name));
 }
 
 export async function onAssistantReady(userId: string, messengerLinks?: { whatsapp?: string; telegram?: string; slack?: string }) {
@@ -31,7 +31,7 @@ export async function onAssistantReady(userId: string, messengerLinks?: { whatsa
   if (!user) return;
   await sendEmail(
     user.email,
-    'Your AI Assistant is Ready! 🎉',
+    'Your AI Assistant is Ready',
     assistantReadyEmail(user.name, messengerLinks),
   );
 }
@@ -45,7 +45,7 @@ export async function onPaymentFailed(userId: string) {
 export async function onSubscriptionConfirmed(userId: string) {
   const user = await getUserEmail(userId);
   if (!user) return;
-  await sendEmail(user.email, 'Welcome to Pro! 🚀', subscriptionConfirmedEmail(user.name));
+  await sendEmail(user.email, 'Welcome to Pro', subscriptionConfirmedEmail(user.name));
 }
 
 export async function onSubscriptionCancelled(userId: string, gracePeriodEnds?: string) {

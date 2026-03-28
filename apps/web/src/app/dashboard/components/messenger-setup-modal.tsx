@@ -190,7 +190,7 @@ export function MessengerSetupModal({
         {status === "ready" && messenger === "telegram" && botLink && (
           <div className="space-y-3 pt-2">
             <p className="text-sm text-green-400">
-              ✅ Bot created - tap to start chatting
+              Bot created - tap to start chatting
             </p>
             <a
               href={botLink}
@@ -269,7 +269,7 @@ export function MessengerSetupModal({
         {status === "connected" && (
           <div className="text-center py-6 space-y-3">
             <p className="text-green-400 font-medium">
-              ✅ {info.title} is connected!
+              {info.title} is connected!
             </p>
             <button
               type="button"

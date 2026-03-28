@@ -44,7 +44,7 @@ function tip(emoji: string, text: string) {
 
 export function welcomeEmail(name: string): string {
   return layout(`
-    ${p(`Hey ${name} 👋`)}
+    ${p(`Hey ${name},`)}
     ${p(`Welcome to ShiftWorker! Your personal AI assistant awaits.`)}
     ${p(`We're setting things up for you right now. You'll get another email as soon as your assistant is ready to go.`)}
     ${button('Go to Dashboard', `${APP_URL}/dashboard`)}
@@ -64,15 +64,15 @@ export function assistantReadyEmail(name: string, messengerLinks?: { whatsapp?: 
   }
 
   return layout(`
-    ${p(`Great news, ${name}! 🎉`)}
+    ${p(`Great news, ${name}!`)}
     ${p(`<strong style="color:#e9d5ff;">Your AI assistant is live and ready to go!</strong>`)}
     ${connectSection}
     ${p(`Or head straight to your dashboard to start chatting.`)}
     <table width="100%" cellpadding="0" cellspacing="0" style="background:#251840;border-radius:8px;padding:16px 20px;margin:20px 0;">
-    <tr><td colspan="2" style="padding-bottom:12px;"><strong style="color:#c084fc;font-size:14px;">⚡ Quick tips</strong></td></tr>
-    ${tip('💬', 'Just talk naturally — your assistant understands context')}
+    <tr><td colspan="2" style="padding-bottom:12px;"><strong style="color:#c084fc;font-size:14px;">Quick tips</strong></td></tr>
+    ${tip('•', 'Just talk naturally — your assistant understands context')}
     ${tip('📅', 'Try "What\'s on my calendar today?" to get started')}
-    ${tip('📧', 'Ask it to draft emails, summarize threads, or set reminders')}
+    ${tip('•', 'Ask it to draft emails, summarize threads, or set reminders')}
     ${tip('🔗', 'Connect more tools from your dashboard settings')}
     </table>
     ${button('Open Dashboard', `${APP_URL}/dashboard`)}
@@ -92,12 +92,12 @@ export function paymentFailedEmail(name: string): string {
 
 export function subscriptionConfirmedEmail(name: string): string {
   return layout(`
-    ${p(`Welcome to Pro, ${name}! 🚀`)}
+    ${p(`Welcome to Pro, ${name}!`)}
     ${p(`<strong style="color:#e9d5ff;">Your upgrade is confirmed.</strong> Here's what you've unlocked:`)}
     <table width="100%" cellpadding="0" cellspacing="0" style="background:#251840;border-radius:8px;padding:16px 20px;margin:20px 0;">
     ${tip('♾️', '<strong style="color:#e9d5ff;">Unlimited messages</strong> — no daily caps')}
-    ${tip('🤖', '<strong style="color:#e9d5ff;">24/7 assistant</strong> — always on, always available')}
-    ${tip('⚡', '<strong style="color:#e9d5ff;">Priority processing</strong> — faster responses')}
+    ${tip('•', '<strong style="color:#e9d5ff;">24/7 assistant</strong> — always on, always available')}
+    ${tip('•', '<strong style="color:#e9d5ff;">Priority processing</strong> — faster responses')}
     ${tip('🔌', '<strong style="color:#e9d5ff;">All integrations</strong> — connect every tool you use')}
     </table>
     ${p(`Your assistant is ready and running. Go say hi!`)}
