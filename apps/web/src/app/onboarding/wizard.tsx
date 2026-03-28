@@ -320,11 +320,11 @@ export default function OnboardingWizard() {
       const launchRes = await fetch('/api/launch', { method: 'POST' });
       if (!launchRes.ok) {
         const errData = await launchRes.json().catch(() => ({}));
-        addStatus(`⚠️ ${errData.error ?? 'Launch failed - please try again'}`);
+        addStatus(`${errData.error ?? 'Launch failed - please try again'}`);
         launchFailed = true;
       }
     } catch {
-      addStatus('⚠️ Launch request failed - check your connection');
+      addStatus('Launch request failed - check your connection');
       launchFailed = true;
     }
 
@@ -348,21 +348,39 @@ export default function OnboardingWizard() {
         const res = await fetch('/api/assistant/status');
         const data = await res.json();
         if (data.assistant?.status === 'active') {
-          addStatus('Server is online');
+          // Server is active in Azure but sidecar may still be starting.
+          // Poll the messaging status endpoint to confirm sidecar is reachable.
+          addStatus('Server is running - waiting for services to start...');
+          let sidecarReady = false;
+          for (let check = 0; check < 30; check++) {
+            try {
+              const statusRes = await fetch('/api/messaging/status');
+              if (statusRes.ok) {
+                sidecarReady = true;
+                break;
+              }
+            } catch { /* sidecar not up yet */ }
+            await new Promise((r) => setTimeout(r, 5000));
+          }
+          if (!sidecarReady) {
+            addStatus('Server is online but services are still starting. You can set up messengers from the dashboard.');
+          } else {
+            addStatus('Server is online');
+          }
           setServerActive(true);
           setSetupDone(true);
           // Don't auto-advance — let user set up messengers first
           return;
         }
         if (data.assistant?.status === 'destroyed' || data.assistant?.status === 'destroying') {
-          addStatus('⚠️ Server provisioning failed - please try again from your dashboard');
+          addStatus('Server provisioning failed - please try again from your dashboard');
           setSetupDone(true);
           setTimeout(() => goTo(7), 2000);
           return;
         }
         // No assistant found at all after many attempts = likely failed
         if (!data.assistant && attempts > 30) {
-          addStatus('⚠️ Something went wrong - please try launching from your dashboard');
+          addStatus('Something went wrong - please try launching from your dashboard');
           setSetupDone(true);
           setTimeout(() => goTo(7), 2000);
           return;
