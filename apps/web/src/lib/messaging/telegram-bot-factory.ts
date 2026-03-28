@@ -113,8 +113,16 @@ export async function createTelegramBot(
         'Your personal AI assistant powered by ShiftWorker. I can manage your email, calendar, browse the web, and much more.',
     });
     await sleep(1000);
+
+    // Disable group privacy so bot can see all messages, not just @mentions
+    await tg.sendMessage(botFather, { message: '/setprivacy' });
+    await sleep(1000);
+    await tg.sendMessage(botFather, { message: `@${botUsername}` });
+    await sleep(1000);
+    await tg.sendMessage(botFather, { message: 'Disable' });
+    await sleep(1000);
   } catch {
-    // Non-critical — bot works without description
+    // Non-critical — bot works without description/privacy changes
   }
 
   return { botUsername, botToken, botDisplayName: botName };

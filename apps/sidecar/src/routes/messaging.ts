@@ -115,6 +115,32 @@ router.post('/messaging/setup', async (req: Request, res: Response) => {
   }
 });
 
+router.post('/messaging/teardown', async (req: Request, res: Response) => {
+  const { platform } = req.body;
+
+  if (!platform || !VALID_PLATFORMS.includes(platform)) {
+    res.status(400).json({ error: `Invalid platform. Must be one of: ${VALID_PLATFORMS.join(', ')}` });
+    return;
+  }
+
+  try {
+    // Remove the channel via openclaw CLI
+    await runAsClaw(`openclaw channels remove --channel ${platform}`);
+
+    // Restart gateway to apply changes
+    try {
+      await execAsync('systemctl restart openclaw-sidecar', { timeout: 15_000 });
+      await new Promise(r => setTimeout(r, 3000));
+    } catch {
+      try { await runAsClaw('openclaw gateway restart'); } catch {}
+    }
+
+    res.json({ status: 'removed', platform });
+  } catch (err: any) {
+    res.status(500).json({ error: `Failed to teardown ${platform}`, details: err.message });
+  }
+});
+
 router.get('/messaging/status', async (_req: Request, res: Response) => {
   try {
     const platforms: Record<string, { configured: boolean; connected: boolean }> = {};

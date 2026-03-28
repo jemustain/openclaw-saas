@@ -42,6 +42,7 @@ export function ConnectionsCard({
     MessengerStatus[]
   >([]);
   const [setupModal, setSetupModal] = useState<string | null>(null);
+  const [disconnecting, setDisconnecting] = useState<string | null>(null);
 
   const fetchMessengerStatus = useCallback(async () => {
     try {
@@ -62,6 +63,26 @@ export function ConnectionsCard({
       return () => clearInterval(interval);
     }
   }, [messengers.length, fetchMessengerStatus]);
+
+  const handleDisconnect = async (messengerKey: string) => {
+    setDisconnecting(messengerKey);
+    try {
+      const res = await fetch('/api/messaging/disconnect', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ platform: messengerKey }),
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        console.error('Disconnect failed:', data.error);
+      }
+    } catch (err) {
+      console.error('Disconnect error:', err);
+    } finally {
+      setDisconnecting(null);
+      fetchMessengerStatus();
+    }
+  };
 
   const providerConfig = hosting ? PROVIDER_CONFIG[hosting] : null;
 
@@ -147,15 +168,27 @@ export function ConnectionsCard({
                     ● {statusLabel}
                   </span>
                 </div>
-                {connected && botLink && (
-                  <a
-                    href={botLink}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="rounded-md bg-slate-800 px-3 py-1 text-xs text-slate-300 hover:bg-slate-700"
-                  >
-                    Open
-                  </a>
+                {connected && (
+                  <div className="flex items-center gap-2">
+                    {botLink && (
+                      <a
+                        href={botLink}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="rounded-md bg-slate-800 px-3 py-1 text-xs text-slate-300 hover:bg-slate-700"
+                      >
+                        Open
+                      </a>
+                    )}
+                    <button
+                      type="button"
+                      disabled={disconnecting === m}
+                      onClick={() => handleDisconnect(m)}
+                      className="rounded-md bg-red-900/50 px-3 py-1 text-xs text-red-400 hover:bg-red-900/80 disabled:opacity-50"
+                    >
+                      {disconnecting === m ? 'Disconnecting…' : 'Disconnect'}
+                    </button>
+                  </div>
                 )}
                 {!connected && configured && (
                   <button
