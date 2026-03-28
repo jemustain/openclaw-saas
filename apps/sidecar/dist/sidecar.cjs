@@ -542,6 +542,28 @@ router6.post("/messaging/setup", async (req, res) => {
     res.status(500).json({ error: `Failed to setup ${platform}`, details: err.message });
   }
 });
+router6.post("/messaging/teardown", async (req, res) => {
+  const { platform } = req.body;
+  if (!platform || !VALID_PLATFORMS.includes(platform)) {
+    res.status(400).json({ error: `Invalid platform. Must be one of: ${VALID_PLATFORMS.join(", ")}` });
+    return;
+  }
+  try {
+    await runAsClaw(`openclaw channels remove --channel ${platform}`);
+    try {
+      await execAsync4("systemctl restart openclaw-sidecar", { timeout: 15e3 });
+      await new Promise((r) => setTimeout(r, 3e3));
+    } catch {
+      try {
+        await runAsClaw("openclaw gateway restart");
+      } catch {
+      }
+    }
+    res.json({ status: "removed", platform });
+  } catch (err) {
+    res.status(500).json({ error: `Failed to teardown ${platform}`, details: err.message });
+  }
+});
 router6.get("/messaging/status", async (_req, res) => {
   try {
     const platforms = {};
