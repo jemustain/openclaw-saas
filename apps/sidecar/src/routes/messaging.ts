@@ -100,7 +100,7 @@ async function setupTelegram(config: { botToken: string }): Promise<{ status: st
   return { status: 'configured' };
 }
 
-async function setupWhatsApp(_config: Record<string, unknown>): Promise<{ platform: string; status: string; qr?: string; error?: string }> {
+async function setupWhatsApp(_config: Record<string, unknown>): Promise<{ platform: string; status: string; qr?: string; controlUiUrl?: string; error?: string }> {
   // Check if already connected via credential files
   if (whatsappCredentialsExist()) {
     try {
@@ -111,26 +111,40 @@ async function setupWhatsApp(_config: Record<string, unknown>): Promise<{ platfo
     } catch {}
   }
 
-  // Use Gateway WebSocket to start WhatsApp login and get QR
+  // Ensure WhatsApp channel is added to OpenClaw config
   try {
-    const result = await gatewayRpc<{ qrDataUrl?: string; message: string }>(
-      'web.login.start',
-      { channel: 'whatsapp' },
-      30_000
-    );
-
-    if (result.qrDataUrl) {
-      return { platform: 'whatsapp', status: 'pairing', qr: result.qrDataUrl };
-    }
-
-    return { platform: 'whatsapp', status: 'pending' };
-  } catch (err: any) {
-    return {
-      platform: 'whatsapp',
-      status: 'failed',
-      error: err.message || 'Gateway not ready - please wait a moment and try again',
-    };
+    await runAsClaw('openclaw channels add --channel whatsapp 2>/dev/null', 10_000);
+  } catch {
+    // May already be configured
   }
+
+  // Read gateway token from config for Control UI auth
+  let gatewayToken = '';
+  try {
+    const { stdout } = await runAsClaw(`cat ${CLAW_HOME}/.openclaw/openclaw.json`, 5_000);
+    const config = JSON.parse(stdout.trim());
+    gatewayToken = config?.gateway?.auth?.token ?? '';
+  } catch {}
+
+  // Return the Control UI URL - gateway serves it on port 8787
+  // The Control UI has built-in WhatsApp QR login
+  const controlUiUrl = `http://${getLocalIp()}:8787${gatewayToken ? `/#token=${gatewayToken}` : ''}`;
+
+  return { platform: 'whatsapp', status: 'pairing', controlUiUrl };
+}
+
+/** Get the VM's public-facing IP for Control UI URL */
+function getLocalIp(): string {
+  try {
+    const { networkInterfaces } = require('os');
+    const nets = networkInterfaces();
+    for (const name of Object.keys(nets)) {
+      for (const net of nets[name] ?? []) {
+        if (net.family === 'IPv4' && !net.internal) return net.address;
+      }
+    }
+  } catch {}
+  return '127.0.0.1';
 }
 
 router.post('/messaging/setup', async (req: Request, res: Response) => {

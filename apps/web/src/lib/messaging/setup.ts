@@ -7,6 +7,7 @@ export interface MessagingSetupResult {
   botUsername?: string;
   botLink?: string;
   qr?: string;
+  controlUiUrl?: string;
   error?: string;
 }
 
@@ -243,6 +244,7 @@ export async function setupWhatsAppForAssistant(
       platform: 'whatsapp',
       status: 'pending',
       qr: result.qr as string,
+      controlUiUrl: result.controlUiUrl as string | undefined,
     };
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : String(err);
