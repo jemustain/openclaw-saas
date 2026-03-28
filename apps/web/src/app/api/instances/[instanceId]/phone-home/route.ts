@@ -35,15 +35,43 @@ export async function POST(
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
+  // Derive caller IP from the request (Vercel sets x-forwarded-for)
+  const callerIp =
+    request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ||
+    request.headers.get('x-real-ip') ||
+    null;
+
   if (record.status !== 'provisioning') {
-    // Already active or in another state — just acknowledge
+    // Already active - but backfill ip_address if missing (fixes race condition
+    // where phone-home arrived before the wait_vm step fetched the IP).
+    if (!record.ip_address && callerIp) {
+      await supabase
+        .from('assistants')
+        .update({
+          ip_address: callerIp,
+          provisioning_step: 'done',
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', instanceId);
+    }
     return NextResponse.json({ status: record.status });
   }
 
-  // Transition from provisioning → active
+  // Transition from provisioning -> active, set IP and mark provisioning done.
+  // This prevents a race where the frontend poll never runs wait_vm because
+  // status is already 'active'.
+  const updates: Record<string, any> = {
+    status: 'active',
+    provisioning_step: 'done',
+    updated_at: new Date().toISOString(),
+  };
+  if (callerIp) {
+    updates.ip_address = callerIp;
+  }
+
   const { error: updateError } = await supabase
     .from('assistants')
-    .update({ status: 'active', updated_at: new Date().toISOString() })
+    .update(updates)
     .eq('id', instanceId);
 
   if (updateError) {

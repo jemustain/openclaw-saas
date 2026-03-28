@@ -26,12 +26,15 @@ export async function GET() {
 
     // If the assistant is mid-provisioning on Azure, advance one step.
     // Each step is a single API call that fits within the 10s timeout.
-    if (
-      assistant.status === 'provisioning' &&
+    // Also advance if status is 'active' but provisioning_step isn't done yet
+    // (race condition: phone-home set status before wait_vm fetched the IP).
+    const needsProvisioning =
       assistant.provider === 'azure' &&
       assistant.provisioning_step &&
-      assistant.provisioning_step !== 'done'
-    ) {
+      assistant.provisioning_step !== 'done' &&
+      (assistant.status === 'provisioning' || assistant.status === 'active');
+
+    if (needsProvisioning) {
       try {
         const updated = await advanceProvisioning(assistant);
         return NextResponse.json({ assistant: updated });
