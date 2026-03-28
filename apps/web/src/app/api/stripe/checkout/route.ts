@@ -16,6 +16,7 @@ export async function POST(req: NextRequest) {
 
     const body = await req.json().catch(() => ({}));
     const plan: PlanKey = body.plan ?? "pro";
+    const returnUrl: string | undefined = body.returnUrl;
 
     const planConfig = PLANS[plan];
     if (!planConfig || !planConfig.stripePriceId) {
@@ -28,8 +29,12 @@ export async function POST(req: NextRequest) {
       customer_email: session.email,
       metadata: { userId: session.userId, plan },
       line_items: [{ price: planConfig.stripePriceId, quantity: 1 }],
-      success_url: `${process.env.NEXT_PUBLIC_APP_URL}/dashboard?upgraded=true`,
-      cancel_url: `${process.env.NEXT_PUBLIC_APP_URL}/dashboard`,
+      success_url: returnUrl
+        ? `${process.env.NEXT_PUBLIC_APP_URL}${returnUrl}`
+        : `${process.env.NEXT_PUBLIC_APP_URL}/dashboard?upgraded=true`,
+      cancel_url: returnUrl
+        ? `${process.env.NEXT_PUBLIC_APP_URL}/onboarding`
+        : `${process.env.NEXT_PUBLIC_APP_URL}/dashboard`,
     });
 
     return NextResponse.json({ url: checkoutSession.url });

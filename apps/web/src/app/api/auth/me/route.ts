@@ -15,7 +15,18 @@ export async function GET() {
     .eq('id', session.userId)
     .single();
 
-  return NextResponse.json({ user: user ?? { email: session.email, name: session.name } });
+  const { data: subscription } = await supabase
+    .from('subscriptions')
+    .select('stripe_customer_id, stripe_subscription_id, plan, status, current_period_end')
+    .eq('user_id', session.userId)
+    .single();
+
+  return NextResponse.json({
+    user: {
+      ...(user ?? { email: session.email, name: session.name }),
+      subscription: subscription ?? null,
+    },
+  });
 }
 
 export async function PATCH(request: NextRequest) {

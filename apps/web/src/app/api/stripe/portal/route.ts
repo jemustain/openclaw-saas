@@ -1,29 +1,39 @@
 import { NextRequest, NextResponse } from "next/server";
 import { stripe } from "@/lib/stripe/client";
+import { getSession } from "@/lib/auth/session";
+import { createClient } from "@/lib/supabase/server";
 
 /**
  * POST /api/stripe/portal
- * Body: { customerId: string }
- *
- * Creates a Stripe Customer Portal session and returns the URL.
+ * Creates a Stripe Customer Portal session for the authenticated user.
  */
 export async function POST(req: NextRequest) {
   try {
-    const { customerId } = (await req.json()) as { customerId: string };
+    const session = await getSession();
+    if (!session) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
 
-    if (!customerId) {
+    const supabase: any = createClient();
+    const { data: subscription } = await supabase
+      .from("subscriptions")
+      .select("stripe_customer_id")
+      .eq("user_id", session.userId)
+      .single();
+
+    if (!subscription?.stripe_customer_id) {
       return NextResponse.json(
-        { error: "customerId is required" },
-        { status: 400 },
+        { error: "No subscription found" },
+        { status: 404 },
       );
     }
 
-    const session = await stripe.billingPortal.sessions.create({
-      customer: customerId,
-      return_url: `${process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"}/billing`,
+    const portalSession = await stripe.billingPortal.sessions.create({
+      customer: subscription.stripe_customer_id,
+      return_url: `${process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"}/dashboard/billing`,
     });
 
-    return NextResponse.json({ url: session.url });
+    return NextResponse.json({ url: portalSession.url });
   } catch (err: unknown) {
     console.error("Stripe portal error:", err);
     const message = err instanceof Error ? err.message : "Internal error";
