@@ -1,4 +1,4 @@
-import { createTelegramBot } from './telegram-bot-factory';
+import { createTelegramBot, deleteTelegramBot } from './telegram-bot-factory';
 import { createClient } from '../supabase/server';
 
 export interface MessagingSetupResult {
@@ -248,4 +248,118 @@ export async function setupWhatsAppForAssistant(
     const message = err instanceof Error ? err.message : String(err);
     return { platform: 'whatsapp', status: 'failed', error: message };
   }
+}
+
+/**
+ * Call the sidecar teardown endpoint to remove a messaging channel.
+ */
+async function callSidecarTeardown(
+  ipAddress: string,
+  sidecarToken: string,
+  platform: string,
+): Promise<void> {
+  const url = `http://${ipAddress}:${SIDECAR_PORT}/messaging/teardown`;
+  const res = await fetch(url, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${sidecarToken}`,
+    },
+    body: JSON.stringify({ platform }),
+    signal: AbortSignal.timeout(35_000),
+  });
+
+  if (!res.ok) {
+    const body = await res.text().catch(() => '');
+    throw new Error(`Sidecar ${platform} teardown failed (${res.status}): ${body}`);
+  }
+}
+
+export interface DisconnectResult {
+  success: boolean;
+  platform: string;
+  error?: string;
+}
+
+/**
+ * Disconnect a messaging platform from an assistant.
+ * Deletes the bot (for Telegram), tears down the sidecar channel, and clears DB.
+ * Errors in BotFather deletion are non-fatal — DB and sidecar are still cleaned up.
+ */
+export async function disconnectMessenger(
+  assistantId: string,
+  platform: string,
+): Promise<DisconnectResult> {
+  const supabase = await createClient();
+
+  const { data: assistant } = await (supabase as any)
+    .from('assistants')
+    .select('ip_address, sidecar_token, telegram_bot_username, telegram_bot_token')
+    .eq('id', assistantId)
+    .single();
+
+  if (!assistant) {
+    return { success: false, platform, error: 'Assistant not found' };
+  }
+
+  const errors: string[] = [];
+
+  if (platform === 'telegram') {
+    // Delete bot via BotFather (best-effort)
+    if (assistant.telegram_bot_username) {
+      try {
+        await deleteTelegramBot(assistant.telegram_bot_username);
+      } catch (err: unknown) {
+        const msg = err instanceof Error ? err.message : String(err);
+        errors.push(`BotFather delete failed: ${msg}`);
+      }
+    }
+
+    // Teardown sidecar channel (best-effort)
+    if (assistant.ip_address && assistant.sidecar_token) {
+      try {
+        await callSidecarTeardown(assistant.ip_address, assistant.sidecar_token, 'telegram');
+      } catch (err: unknown) {
+        const msg = err instanceof Error ? err.message : String(err);
+        errors.push(`Sidecar teardown failed: ${msg}`);
+      }
+    }
+
+    // Clear DB
+    await (supabase as any)
+      .from('assistants')
+      .update({
+        telegram_bot_username: null,
+        telegram_bot_token: null,
+        updated_at: new Date().toISOString(),
+      })
+      .eq('id', assistantId);
+  } else if (platform === 'whatsapp') {
+    // Teardown sidecar channel (best-effort)
+    if (assistant.ip_address && assistant.sidecar_token) {
+      try {
+        await callSidecarTeardown(assistant.ip_address, assistant.sidecar_token, 'whatsapp');
+      } catch (err: unknown) {
+        const msg = err instanceof Error ? err.message : String(err);
+        errors.push(`Sidecar teardown failed: ${msg}`);
+      }
+    }
+
+    // Clear DB
+    await (supabase as any)
+      .from('assistants')
+      .update({
+        whatsapp_connected: false,
+        updated_at: new Date().toISOString(),
+      })
+      .eq('id', assistantId);
+  } else {
+    return { success: false, platform, error: `Unsupported platform: ${platform}` };
+  }
+
+  return {
+    success: true,
+    platform,
+    ...(errors.length > 0 ? { error: errors.join('; ') } : {}),
+  };
 }
