@@ -1,0 +1,612 @@
+"use strict";
+var __create = Object.create;
+var __defProp = Object.defineProperty;
+var __getOwnPropDesc = Object.getOwnPropertyDescriptor;
+var __getOwnPropNames = Object.getOwnPropertyNames;
+var __getProtoOf = Object.getPrototypeOf;
+var __hasOwnProp = Object.prototype.hasOwnProperty;
+var __export = (target, all) => {
+  for (var name in all)
+    __defProp(target, name, { get: all[name], enumerable: true });
+};
+var __copyProps = (to, from, except, desc) => {
+  if (from && typeof from === "object" || typeof from === "function") {
+    for (let key of __getOwnPropNames(from))
+      if (!__hasOwnProp.call(to, key) && key !== except)
+        __defProp(to, key, { get: () => from[key], enumerable: !(desc = __getOwnPropDesc(from, key)) || desc.enumerable });
+  }
+  return to;
+};
+var __toESM = (mod, isNodeMode, target) => (target = mod != null ? __create(__getProtoOf(mod)) : {}, __copyProps(
+  // If the importer is in node compatibility mode or this is not an ESM
+  // file that has been converted to a CommonJS file using a Babel-
+  // compatible transform (i.e. "__esModule" has not been set), then set
+  // "default" to the CommonJS "module.exports" for node compatibility.
+  isNodeMode || !mod || !mod.__esModule ? __defProp(target, "default", { value: mod, enumerable: true }) : target,
+  mod
+));
+var __toCommonJS = (mod) => __copyProps(__defProp({}, "__esModule", { value: true }), mod);
+
+// src/index.ts
+var index_exports = {};
+__export(index_exports, {
+  default: () => index_default
+});
+module.exports = __toCommonJS(index_exports);
+var import_express7 = __toESM(require("express"));
+
+// src/middleware/auth.ts
+function authMiddleware(req, res, next) {
+  const token = process.env.SIDECAR_TOKEN;
+  if (!token) {
+    res.status(500).json({ error: "SIDECAR_TOKEN not configured" });
+    return;
+  }
+  const auth = req.headers.authorization;
+  if (!auth || !auth.startsWith("Bearer ") || auth.slice(7) !== token) {
+    res.status(401).json({ error: "Unauthorized" });
+    return;
+  }
+  next();
+}
+
+// src/routes/health.ts
+var import_express = require("express");
+var import_os = __toESM(require("os"));
+var import_child_process = require("child_process");
+var import_util = require("util");
+var execAsync = (0, import_util.promisify)(import_child_process.exec);
+var router = (0, import_express.Router)();
+async function getDiskUsage() {
+  try {
+    const { stdout } = await execAsync("df -h / | tail -1 | awk '{print $2,$3,$4,$5}'");
+    const [total, used, available, usePercent] = stdout.trim().split(/\s+/);
+    return { total, used, available, usePercent };
+  } catch {
+    return { total: "unknown", used: "unknown", available: "unknown", usePercent: "unknown" };
+  }
+}
+async function getOpenclawVersion() {
+  try {
+    const { stdout } = await execAsync("openclaw --version");
+    return stdout.trim();
+  } catch {
+    return "unknown";
+  }
+}
+async function isOpenclawRunning() {
+  try {
+    await execAsync("pgrep -f openclaw");
+    return true;
+  } catch {
+    return false;
+  }
+}
+function getCpuUsage() {
+  const cpus = import_os.default.cpus();
+  return {
+    model: cpus[0]?.model || "unknown",
+    cores: cpus.length,
+    loadAvg: import_os.default.loadavg()
+  };
+}
+function getMemoryUsage() {
+  const total = import_os.default.totalmem();
+  const free = import_os.default.freemem();
+  const used = total - free;
+  return {
+    totalMB: Math.round(total / 1024 / 1024),
+    freeMB: Math.round(free / 1024 / 1024),
+    usedPercent: Math.round(used / total * 100)
+  };
+}
+router.get("/health", async (_req, res) => {
+  const [disk, openclawVersion, openclawRunning] = await Promise.all([
+    getDiskUsage(),
+    getOpenclawVersion(),
+    isOpenclawRunning()
+  ]);
+  res.json({
+    status: "ok",
+    uptime: process.uptime(),
+    cpu: getCpuUsage(),
+    memory: getMemoryUsage(),
+    disk,
+    openclaw: {
+      version: openclawVersion,
+      running: openclawRunning
+    }
+  });
+});
+var health_default = router;
+
+// src/routes/openclaw.ts
+var import_express2 = require("express");
+var import_child_process2 = require("child_process");
+var import_util2 = require("util");
+var execAsync2 = (0, import_util2.promisify)(import_child_process2.exec);
+var router2 = (0, import_express2.Router)();
+async function getOpenclawStatus() {
+  let running = false;
+  let version = "unknown";
+  let uptime = "unknown";
+  try {
+    const { stdout } = await execAsync2("openclaw --version");
+    version = stdout.trim();
+  } catch {
+  }
+  try {
+    await execAsync2("systemctl is-active openclaw");
+    running = true;
+  } catch {
+    try {
+      await execAsync2("pgrep -f openclaw");
+      running = true;
+    } catch {
+    }
+  }
+  if (running) {
+    try {
+      const { stdout } = await execAsync2("systemctl show openclaw --property=ActiveEnterTimestamp --value");
+      uptime = stdout.trim() || "unknown";
+    } catch {
+    }
+  }
+  return { running, version, uptime };
+}
+router2.get("/openclaw/status", async (_req, res) => {
+  const status = await getOpenclawStatus();
+  res.json(status);
+});
+router2.post("/openclaw/restart", async (_req, res) => {
+  try {
+    await execAsync2("systemctl restart openclaw");
+    res.json({ status: "restarted" });
+  } catch (err) {
+    res.status(500).json({ error: "Failed to restart openclaw", details: err.message });
+  }
+});
+router2.post("/openclaw/update", async (_req, res) => {
+  try {
+    await execAsync2("npm install -g openclaw@latest");
+    await execAsync2("systemctl restart openclaw");
+    const { stdout } = await execAsync2("openclaw --version");
+    res.json({ status: "updated", version: stdout.trim() });
+  } catch (err) {
+    res.status(500).json({ error: "Failed to update openclaw", details: err.message });
+  }
+});
+var openclaw_default = router2;
+
+// src/routes/heartbeat.ts
+var import_express4 = require("express");
+
+// src/routes/usage.ts
+var import_express3 = require("express");
+var import_promises = require("fs/promises");
+var import_path = require("path");
+var router3 = (0, import_express3.Router)();
+var USAGE_FILE = process.env.USAGE_FILE || "/var/lib/shiftworker/usage.json";
+function todayKey() {
+  return (/* @__PURE__ */ new Date()).toISOString().slice(0, 10);
+}
+async function readUsageStore() {
+  try {
+    const raw = await (0, import_promises.readFile)(USAGE_FILE, "utf-8");
+    return JSON.parse(raw);
+  } catch {
+    return {};
+  }
+}
+async function writeUsageStore(store) {
+  await (0, import_promises.mkdir)((0, import_path.dirname)(USAGE_FILE), { recursive: true });
+  await (0, import_promises.writeFile)(USAGE_FILE, JSON.stringify(store, null, 2), "utf-8");
+}
+function getOrCreateToday(store) {
+  const key = todayKey();
+  if (!store[key]) {
+    store[key] = {
+      date: key,
+      messages_sent: 0,
+      active_minutes: 0,
+      api_tokens_used: 0,
+      last_activity: (/* @__PURE__ */ new Date()).toISOString()
+    };
+  }
+  return store[key];
+}
+router3.post("/usage/increment", async (req, res) => {
+  const { messages = 1, tokens = 0 } = req.body || {};
+  try {
+    const store = await readUsageStore();
+    const today = getOrCreateToday(store);
+    today.messages_sent += typeof messages === "number" ? messages : 1;
+    today.api_tokens_used += typeof tokens === "number" ? tokens : 0;
+    const now = /* @__PURE__ */ new Date();
+    const lastActivity = new Date(today.last_activity);
+    const gapMinutes = (now.getTime() - lastActivity.getTime()) / 6e4;
+    if (gapMinutes > 0 && gapMinutes <= 5) {
+      today.active_minutes += gapMinutes;
+    } else if (gapMinutes > 5) {
+      today.active_minutes += 1;
+    }
+    today.last_activity = now.toISOString();
+    await writeUsageStore(store);
+    res.json({ status: "ok", today });
+  } catch (err) {
+    res.status(500).json({ error: "Failed to increment usage", details: err.message });
+  }
+});
+router3.get("/usage/today", async (_req, res) => {
+  try {
+    const store = await readUsageStore();
+    const key = todayKey();
+    const today = store[key] || {
+      date: key,
+      messages_sent: 0,
+      active_minutes: 0,
+      api_tokens_used: 0,
+      last_activity: null
+    };
+    res.json({
+      messages_sent: today.messages_sent,
+      hours_active: Math.round(today.active_minutes / 60 * 100) / 100,
+      api_tokens_used: today.api_tokens_used
+    });
+  } catch (err) {
+    res.status(500).json({ error: "Failed to read usage", details: err.message });
+  }
+});
+async function getTodayUsageSummary() {
+  const store = await readUsageStore();
+  const today = store[todayKey()];
+  if (!today) return { messages_sent: 0, hours_active: 0, api_tokens_used: 0 };
+  return {
+    messages_sent: today.messages_sent,
+    hours_active: Math.round(today.active_minutes / 60 * 100) / 100,
+    api_tokens_used: today.api_tokens_used
+  };
+}
+var usage_default = router3;
+
+// src/routes/heartbeat.ts
+var router4 = (0, import_express4.Router)();
+var heartbeatInterval = null;
+var usageReportInterval = null;
+var portalUrl = null;
+var vmId = null;
+var throttled = false;
+async function collectHealthData() {
+  const os2 = await import("os");
+  const { exec: exec5 } = await import("child_process");
+  const { promisify: promisify5 } = await import("util");
+  const execAsync5 = promisify5(exec5);
+  let openclawRunning = false;
+  try {
+    await execAsync5("pgrep -f openclaw");
+    openclawRunning = true;
+  } catch {
+  }
+  const total = os2.totalmem();
+  const free = os2.freemem();
+  return {
+    uptime: process.uptime(),
+    cpu: { cores: os2.cpus().length, loadAvg: os2.loadavg() },
+    memory: {
+      totalMB: Math.round(total / 1024 / 1024),
+      freeMB: Math.round(free / 1024 / 1024),
+      usedPercent: Math.round((total - free) / total * 100)
+    },
+    openclaw: { running: openclawRunning },
+    timestamp: (/* @__PURE__ */ new Date()).toISOString()
+  };
+}
+async function sendHeartbeat() {
+  if (!portalUrl || !vmId) return;
+  try {
+    const health = await collectHealthData();
+    let usage = { messages_sent: 0, hours_active: 0, api_tokens_used: 0 };
+    try {
+      usage = await getTodayUsageSummary();
+    } catch {
+    }
+    await fetch(`${portalUrl}/api/heartbeat`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ vmId, ...health, usage })
+    });
+  } catch (err) {
+    console.error("[heartbeat] Failed to phone home:", err.message);
+  }
+}
+async function reportUsageToPortal() {
+  if (!portalUrl || !vmId) return;
+  const sidecarToken = process.env.SIDECAR_TOKEN;
+  if (!sidecarToken) return;
+  try {
+    const usage = await getTodayUsageSummary();
+    const res = await fetch(`${portalUrl}/api/usage/record`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${sidecarToken}`
+      },
+      body: JSON.stringify({
+        assistant_id: vmId,
+        messages_sent: usage.messages_sent,
+        hours_active: usage.hours_active,
+        api_tokens_used: usage.api_tokens_used
+      })
+    });
+    if (res.ok) {
+      const data = await res.json();
+      throttled = data.throttled === true;
+      if (throttled) {
+        console.warn(`[usage] Throttled by portal: ${data.reason ?? "limit reached"}`);
+      }
+    }
+  } catch (err) {
+    console.error("[usage] Failed to report usage:", err.message);
+  }
+}
+router4.post("/heartbeat/register", (req, res) => {
+  const { url, id } = req.body;
+  if (!url || !id) {
+    res.status(400).json({ error: "Missing url or id in body" });
+    return;
+  }
+  portalUrl = url;
+  vmId = id;
+  if (heartbeatInterval) clearInterval(heartbeatInterval);
+  if (usageReportInterval) clearInterval(usageReportInterval);
+  sendHeartbeat();
+  heartbeatInterval = setInterval(sendHeartbeat, 6e4);
+  reportUsageToPortal();
+  usageReportInterval = setInterval(reportUsageToPortal, 5 * 60 * 1e3);
+  res.json({ status: "registered", portalUrl, vmId, heartbeatMs: 6e4, usageReportMs: 3e5 });
+});
+var heartbeat_default = router4;
+
+// src/routes/skills.ts
+var import_express5 = require("express");
+var import_child_process3 = require("child_process");
+var import_util3 = require("util");
+var import_promises2 = require("fs/promises");
+var import_path2 = require("path");
+var execAsync3 = (0, import_util3.promisify)(import_child_process3.exec);
+var router5 = (0, import_express5.Router)();
+var SKILLS_DIRS = [
+  "/usr/local/lib/node_modules/openclaw/skills",
+  (0, import_path2.join)(process.env.HOME || "/root", ".openclaw/workspace/skills"),
+  (0, import_path2.join)(process.env.HOME || "/root", ".agents/skills")
+];
+router5.get("/skills", async (_req, res) => {
+  try {
+    try {
+      const { stdout } = await execAsync3("openclaw skill list --json 2>/dev/null || openclaw skill list 2>/dev/null");
+      if (stdout.trim()) {
+        try {
+          const skills2 = JSON.parse(stdout.trim());
+          res.json({ skills: skills2 });
+          return;
+        } catch {
+          const skills2 = stdout.trim().split("\n").filter(Boolean).map((name) => ({ name: name.trim() }));
+          res.json({ skills: skills2 });
+          return;
+        }
+      }
+    } catch {
+    }
+    const skills = [];
+    for (const dir of SKILLS_DIRS) {
+      try {
+        const entries = await (0, import_promises2.readdir)(dir, { withFileTypes: true });
+        for (const entry of entries) {
+          if (entry.isDirectory()) {
+            skills.push({ name: entry.name, path: (0, import_path2.join)(dir, entry.name) });
+          }
+        }
+      } catch {
+      }
+    }
+    res.json({ skills });
+  } catch (err) {
+    res.status(500).json({ error: "Failed to list skills", details: err.message });
+  }
+});
+router5.post("/skills/install", async (req, res) => {
+  const { name } = req.body;
+  if (!name || typeof name !== "string") {
+    res.status(400).json({ error: "Missing or invalid skill name" });
+    return;
+  }
+  if (!/^[a-zA-Z0-9_-]+$/.test(name)) {
+    res.status(400).json({ error: "Invalid skill name format" });
+    return;
+  }
+  try {
+    const { stdout, stderr } = await execAsync3(`openclaw skill install ${name}`, { timeout: 6e4 });
+    res.json({ status: "installed", name, output: stdout.trim() || stderr.trim() });
+  } catch (err) {
+    res.status(500).json({ error: "Failed to install skill", details: err.stderr || err.message });
+  }
+});
+router5.post("/skills/remove", async (req, res) => {
+  const { name } = req.body;
+  if (!name || typeof name !== "string") {
+    res.status(400).json({ error: "Missing or invalid skill name" });
+    return;
+  }
+  if (!/^[a-zA-Z0-9_-]+$/.test(name)) {
+    res.status(400).json({ error: "Invalid skill name format" });
+    return;
+  }
+  try {
+    const { stdout, stderr } = await execAsync3(`openclaw skill remove ${name}`, { timeout: 3e4 });
+    res.json({ status: "removed", name, output: stdout.trim() || stderr.trim() });
+  } catch (err) {
+    res.status(500).json({ error: "Failed to remove skill", details: err.stderr || err.message });
+  }
+});
+var skills_default = router5;
+
+// src/routes/messaging.ts
+var import_express6 = require("express");
+var import_child_process4 = require("child_process");
+var import_util4 = require("util");
+var execAsync4 = (0, import_util4.promisify)(import_child_process4.exec);
+var router6 = (0, import_express6.Router)();
+var VALID_PLATFORMS = ["whatsapp", "telegram", "signal", "discord", "slack"];
+var CLAW_USER = process.env.OPENCLAW_USER || "claw";
+async function runAsClaw(cmd, timeoutMs = 3e4) {
+  return execAsync4(`su - ${CLAW_USER} -c '${cmd.replace(/'/g, "'\\''")}'`, { timeout: timeoutMs });
+}
+async function setupTelegram(config) {
+  if (!config.botToken || typeof config.botToken !== "string") {
+    throw new Error("Missing botToken for Telegram setup");
+  }
+  await runAsClaw(`openclaw channels add --channel telegram --token ${config.botToken}`);
+  try {
+    await execAsync4("systemctl restart openclaw-sidecar", { timeout: 15e3 });
+    await new Promise((r) => setTimeout(r, 5e3));
+  } catch {
+    try {
+      await runAsClaw("openclaw gateway restart");
+    } catch {
+    }
+  }
+  return { status: "configured" };
+}
+async function setupWhatsApp(_config) {
+  try {
+    const { stdout } = await runAsClaw("openclaw channels status --channel whatsapp 2>/dev/null", 1e4);
+    if (stdout.toLowerCase().includes("connected") || stdout.toLowerCase().includes("active") || stdout.toLowerCase().includes("ready")) {
+      return { status: "connected" };
+    }
+  } catch {
+  }
+  try {
+    await runAsClaw("openclaw channels add --channel whatsapp");
+  } catch {
+  }
+  try {
+    await execAsync4("systemctl restart openclaw-sidecar", { timeout: 15e3 });
+    await new Promise((r) => setTimeout(r, 5e3));
+  } catch {
+  }
+  try {
+    const { stdout } = await runAsClaw("openclaw channels login --channel whatsapp --json 2>/dev/null", 3e4);
+    try {
+      const data = JSON.parse(stdout.trim());
+      if (data.qr) return { status: "pairing", qr: data.qr };
+      if (data.pairingCode) return { status: "pairing", pairingCode: data.pairingCode };
+    } catch {
+      const trimmed = stdout.trim();
+      if (trimmed.length > 20) return { status: "pairing", qr: trimmed };
+    }
+  } catch {
+  }
+  return { status: "pending" };
+}
+router6.post("/messaging/setup", async (req, res) => {
+  const { platform, config } = req.body;
+  if (!platform || !VALID_PLATFORMS.includes(platform)) {
+    res.status(400).json({ error: `Invalid platform. Must be one of: ${VALID_PLATFORMS.join(", ")}` });
+    return;
+  }
+  try {
+    let result;
+    switch (platform) {
+      case "telegram":
+        result = await setupTelegram(config || {});
+        break;
+      case "whatsapp":
+        result = await setupWhatsApp(config || {});
+        break;
+      default:
+        if (config?.token) {
+          await runAsClaw(`openclaw channels add --channel ${platform} --token ${config.token}`);
+        } else {
+          await runAsClaw(`openclaw channels add --channel ${platform}`);
+        }
+        try {
+          await execAsync4("systemctl restart openclaw-sidecar", { timeout: 15e3 });
+          await new Promise((r) => setTimeout(r, 3e3));
+        } catch {
+        }
+        result = { status: "configured" };
+        break;
+    }
+    res.json({ platform, ...result });
+  } catch (err) {
+    res.status(500).json({ error: `Failed to setup ${platform}`, details: err.message });
+  }
+});
+router6.get("/messaging/status", async (_req, res) => {
+  try {
+    const platforms = {};
+    try {
+      const { stdout } = await runAsClaw("openclaw channels list --json 2>/dev/null", 1e4);
+      const data = JSON.parse(stdout.trim());
+      const channels = Array.isArray(data) ? data : data.channels || [];
+      for (const ch of channels) {
+        const name = (ch.channel || ch.name || "").toLowerCase();
+        if (VALID_PLATFORMS.includes(name)) {
+          platforms[name] = {
+            configured: true,
+            connected: ch.connected !== void 0 ? ch.connected : ch.status === "connected"
+          };
+        }
+      }
+    } catch {
+    }
+    res.json({ platforms });
+  } catch (err) {
+    res.status(500).json({ error: "Failed to get messaging status", details: err.message });
+  }
+});
+router6.get("/messaging/whatsapp/qr", async (_req, res) => {
+  try {
+    try {
+      const { stdout } = await runAsClaw("openclaw channels status --channel whatsapp 2>/dev/null", 5e3);
+      if (stdout.toLowerCase().includes("connected") || stdout.toLowerCase().includes("ready")) {
+        res.json({ status: "connected" });
+        return;
+      }
+    } catch {
+    }
+    try {
+      const { stdout } = await runAsClaw("openclaw channels login --channel whatsapp --json 2>/dev/null", 15e3);
+      const data = JSON.parse(stdout.trim());
+      if (data.qr) {
+        res.json({ status: "pairing", qr: data.qr });
+        return;
+      }
+      if (data.pairingCode) {
+        res.json({ status: "pairing", pairingCode: data.pairingCode });
+        return;
+      }
+    } catch {
+    }
+    res.json({ status: "pending" });
+  } catch (err) {
+    res.status(500).json({ error: "Failed to get WhatsApp QR", details: err.message });
+  }
+});
+var messaging_default = router6;
+
+// src/index.ts
+var app = (0, import_express7.default)();
+var PORT = parseInt(process.env.PORT || "8787", 10);
+app.use(import_express7.default.json());
+app.use(authMiddleware);
+app.use(health_default);
+app.use(openclaw_default);
+app.use(heartbeat_default);
+app.use(skills_default);
+app.use(messaging_default);
+app.use(usage_default);
+app.listen(PORT, "0.0.0.0", () => {
+  console.log(`[sidecar] listening on port ${PORT}`);
+});
+var index_default = app;

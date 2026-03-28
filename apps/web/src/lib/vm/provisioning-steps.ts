@@ -254,7 +254,7 @@ export async function advanceProvisioning(assistant: Assistant): Promise<Assista
                 properties: {
                   priority: 1030, protocol: 'Tcp', access: 'Allow', direction: 'Inbound',
                   sourceAddressPrefix: '*', sourcePortRange: '*',
-                  destinationAddressPrefix: '*', destinationPortRange: '8787',
+                  destinationAddressPrefix: '*', destinationPortRange: '8787-8788',
                 },
               },
             ],

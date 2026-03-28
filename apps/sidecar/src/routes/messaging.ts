@@ -1,8 +1,6 @@
 import { Router, Request, Response } from 'express';
-import { exec } from 'child_process';
+import { exec, spawn } from 'child_process';
 import { promisify } from 'util';
-import { readFile, writeFile, mkdir } from 'fs/promises';
-import { join } from 'path';
 
 const execAsync = promisify(exec);
 const router = Router();
@@ -10,21 +8,12 @@ const router = Router();
 type Platform = 'whatsapp' | 'telegram' | 'signal' | 'discord' | 'slack';
 const VALID_PLATFORMS: Platform[] = ['whatsapp', 'telegram', 'signal', 'discord', 'slack'];
 
-const OPENCLAW_CONFIG_PATH = join(process.env.HOME || '/root', '.openclaw/openclaw.json');
+// Home dir for the claw user (OpenClaw runs as this user)
+const CLAW_USER = process.env.OPENCLAW_USER || 'claw';
 
-async function readOpenclawConfig(): Promise<Record<string, any>> {
-  try {
-    const raw = await readFile(OPENCLAW_CONFIG_PATH, 'utf-8');
-    return JSON.parse(raw);
-  } catch {
-    return {};
-  }
-}
-
-async function writeOpenclawConfig(config: Record<string, any>): Promise<void> {
-  const dir = join(process.env.HOME || '/root', '.openclaw');
-  await mkdir(dir, { recursive: true });
-  await writeFile(OPENCLAW_CONFIG_PATH, JSON.stringify(config, null, 2), 'utf-8');
+/** Run a command as the claw user */
+async function runAsClaw(cmd: string, timeoutMs = 30_000): Promise<{ stdout: string; stderr: string }> {
+  return execAsync(`su - ${CLAW_USER} -c '${cmd.replace(/'/g, "'\\''")}'`, { timeout: timeoutMs });
 }
 
 async function setupTelegram(config: { botToken: string }): Promise<{ status: string }> {
@@ -32,101 +21,59 @@ async function setupTelegram(config: { botToken: string }): Promise<{ status: st
     throw new Error('Missing botToken for Telegram setup');
   }
 
-  const clawConfig = await readOpenclawConfig();
-  if (!clawConfig.plugins) clawConfig.plugins = {};
-  if (!clawConfig.plugins.entries) clawConfig.plugins.entries = {};
-  clawConfig.plugins.entries.telegram = {
-    enabled: true,
-    config: { botToken: config.botToken },
-  };
-  await writeOpenclawConfig(clawConfig);
+  // Use openclaw channels add to configure the Telegram bot
+  await runAsClaw(`openclaw channels add --channel telegram --token ${config.botToken}`);
 
-  // Restart openclaw to pick up new config
+  // Restart the gateway to pick up the new channel
   try {
-    await execAsync('systemctl restart openclaw');
+    await execAsync('systemctl restart openclaw-sidecar', { timeout: 15_000 });
+    // Wait for restart
+    await new Promise(r => setTimeout(r, 5000));
   } catch {
-    try { await execAsync('openclaw gateway restart'); } catch {}
+    // If systemctl fails, try restarting via openclaw CLI
+    try { await runAsClaw('openclaw gateway restart'); } catch {}
   }
 
   return { status: 'configured' };
 }
 
-async function setupWhatsApp(_config: Record<string, any>): Promise<{ status: string; qr?: string; pairingCode?: string }> {
+async function setupWhatsApp(_config: Record<string, unknown>): Promise<{ status: string; qr?: string; pairingCode?: string }> {
   // First check if already connected
   try {
-    const { stdout } = await execAsync('openclaw whatsapp status 2>/dev/null', { timeout: 10_000 });
-    if (stdout.includes('connected') || stdout.includes('active')) {
+    const { stdout } = await runAsClaw('openclaw channels status --channel whatsapp 2>/dev/null', 10_000);
+    if (stdout.toLowerCase().includes('connected') || stdout.toLowerCase().includes('active') || stdout.toLowerCase().includes('ready')) {
       return { status: 'connected' };
     }
   } catch {}
 
-  // Enable WhatsApp in OpenClaw config first
-  const clawConfig = await readOpenclawConfig();
-  if (!clawConfig.plugins) clawConfig.plugins = {};
-  if (!clawConfig.plugins.entries) clawConfig.plugins.entries = {};
-  if (!clawConfig.plugins.entries.whatsapp) {
-    clawConfig.plugins.entries.whatsapp = { enabled: true, config: {} };
-    await writeOpenclawConfig(clawConfig);
-    // Restart to pick up WhatsApp plugin
-    try {
-      await execAsync('systemctl restart openclaw', { timeout: 15_000 });
-      // Wait for restart
-      await new Promise(r => setTimeout(r, 3000));
-    } catch {
-      try { await execAsync('openclaw gateway restart', { timeout: 15_000 }); } catch {}
-    }
+  // Enable WhatsApp channel if not already configured
+  try {
+    await runAsClaw('openclaw channels add --channel whatsapp');
+  } catch {
+    // May already be configured
   }
 
-  // Try to get QR code
-  // OpenClaw outputs QR as a text string that needs to be rendered into a QR image
+  // Restart to ensure WhatsApp plugin is loaded
   try {
-    const { stdout, stderr } = await execAsync('openclaw whatsapp pair --json 2>/dev/null', { timeout: 30_000 });
+    await execAsync('systemctl restart openclaw-sidecar', { timeout: 15_000 });
+    await new Promise(r => setTimeout(r, 5000));
+  } catch {}
 
-    // Parse the output — openclaw should return JSON with qr field
+  // Try to get QR code via the login command
+  try {
+    const { stdout } = await runAsClaw('openclaw channels login --channel whatsapp --json 2>/dev/null', 30_000);
     try {
       const data = JSON.parse(stdout.trim());
-      if (data.qr) {
-        return { status: 'pairing', qr: data.qr };
-      }
-      if (data.pairingCode) {
-        return { status: 'pairing', pairingCode: data.pairingCode };
-      }
+      if (data.qr) return { status: 'pairing', qr: data.qr };
+      if (data.pairingCode) return { status: 'pairing', pairingCode: data.pairingCode };
     } catch {
-      // If not JSON, the stdout might be the raw QR string
-      if (stdout.trim().length > 20) {
-        return { status: 'pairing', qr: stdout.trim() };
-      }
+      // Not JSON, try to use raw output
+      const trimmed = stdout.trim();
+      if (trimmed.length > 20) return { status: 'pairing', qr: trimmed };
     }
+  } catch {}
 
-    // Check stderr for QR data too
-    if (stderr && stderr.trim().length > 20) {
-      return { status: 'pairing', qr: stderr.trim() };
-    }
-
-    return { status: 'pending' };
-  } catch {
-    // If the command fails, WhatsApp might need more time to initialize
-    return { status: 'pending' };
-  }
-}
-
-async function setupGeneric(platform: string, config: Record<string, any>): Promise<{ status: string }> {
-  const clawConfig = await readOpenclawConfig();
-  if (!clawConfig.plugins) clawConfig.plugins = {};
-  if (!clawConfig.plugins.entries) clawConfig.plugins.entries = {};
-  clawConfig.plugins.entries[platform] = {
-    enabled: true,
-    config,
-  };
-  await writeOpenclawConfig(clawConfig);
-
-  try {
-    await execAsync('systemctl restart openclaw');
-  } catch {
-    try { await execAsync('openclaw gateway restart'); } catch {}
-  }
-
-  return { status: 'configured' };
+  return { status: 'pending' };
 }
 
 router.post('/messaging/setup', async (req: Request, res: Response) => {
@@ -137,23 +84,28 @@ router.post('/messaging/setup', async (req: Request, res: Response) => {
     return;
   }
 
-  if (!config || typeof config !== 'object') {
-    res.status(400).json({ error: 'Missing config object' });
-    return;
-  }
-
   try {
-    let result: { status: string; qr?: string };
+    let result: { status: string; qr?: string; pairingCode?: string };
 
     switch (platform) {
       case 'telegram':
-        result = await setupTelegram(config);
+        result = await setupTelegram(config || {});
         break;
       case 'whatsapp':
-        result = await setupWhatsApp(config);
+        result = await setupWhatsApp(config || {});
         break;
       default:
-        result = await setupGeneric(platform, config);
+        // For other platforms, try generic channels add
+        if (config?.token) {
+          await runAsClaw(`openclaw channels add --channel ${platform} --token ${config.token}`);
+        } else {
+          await runAsClaw(`openclaw channels add --channel ${platform}`);
+        }
+        try {
+          await execAsync('systemctl restart openclaw-sidecar', { timeout: 15_000 });
+          await new Promise(r => setTimeout(r, 3000));
+        } catch {}
+        result = { status: 'configured' };
         break;
     }
 
@@ -165,21 +117,24 @@ router.post('/messaging/setup', async (req: Request, res: Response) => {
 
 router.get('/messaging/status', async (_req: Request, res: Response) => {
   try {
-    const config = await readOpenclawConfig();
-    const entries = config?.plugins?.entries || {};
-    const platforms: Record<string, { enabled: boolean; connected: boolean }> = {};
+    const platforms: Record<string, { configured: boolean; connected: boolean }> = {};
 
-    for (const p of VALID_PLATFORMS) {
-      const entry = entries[p];
-      if (entry) {
-        let connected = false;
-        try {
-          const { stdout } = await execAsync(`openclaw ${p} status 2>/dev/null`, { timeout: 5_000 });
-          connected = stdout.toLowerCase().includes('connected') || stdout.toLowerCase().includes('active');
-        } catch {}
-
-        platforms[p] = { enabled: !!entry.enabled, connected };
+    // Use openclaw channels list to check configured channels
+    try {
+      const { stdout } = await runAsClaw('openclaw channels list --json 2>/dev/null', 10_000);
+      const data = JSON.parse(stdout.trim());
+      const channels = Array.isArray(data) ? data : data.channels || [];
+      for (const ch of channels) {
+        const name = (ch.channel || ch.name || '').toLowerCase();
+        if (VALID_PLATFORMS.includes(name as Platform)) {
+          platforms[name] = {
+            configured: true,
+            connected: ch.connected !== undefined ? ch.connected : ch.status === 'connected',
+          };
+        }
       }
+    } catch {
+      // Channels list failed, return empty
     }
 
     res.json({ platforms });
@@ -188,66 +143,29 @@ router.get('/messaging/status', async (_req: Request, res: Response) => {
   }
 });
 
-// Dedicated WhatsApp QR polling endpoint — wizard calls this repeatedly
-// QR codes expire every ~20 seconds, so fresh codes are needed
+// WhatsApp QR polling endpoint
 router.get('/messaging/whatsapp/qr', async (_req: Request, res: Response) => {
   try {
-    // Check if already connected
+    // Check if connected
     try {
-      const { stdout } = await execAsync('openclaw whatsapp status 2>/dev/null', { timeout: 5_000 });
-      if (stdout.includes('connected') || stdout.includes('active')) {
+      const { stdout } = await runAsClaw('openclaw channels status --channel whatsapp 2>/dev/null', 5_000);
+      if (stdout.toLowerCase().includes('connected') || stdout.toLowerCase().includes('ready')) {
         res.json({ status: 'connected' });
         return;
       }
     } catch {}
 
-    // Get current QR
+    // Get fresh QR
     try {
-      const { stdout } = await execAsync('openclaw whatsapp pair --json 2>/dev/null', { timeout: 15_000 });
+      const { stdout } = await runAsClaw('openclaw channels login --channel whatsapp --json 2>/dev/null', 15_000);
       const data = JSON.parse(stdout.trim());
-      if (data.qr) {
-        res.json({ status: 'pairing', qr: data.qr });
-        return;
-      }
-      if (data.pairingCode) {
-        res.json({ status: 'pairing', pairingCode: data.pairingCode });
-        return;
-      }
+      if (data.qr) { res.json({ status: 'pairing', qr: data.qr }); return; }
+      if (data.pairingCode) { res.json({ status: 'pairing', pairingCode: data.pairingCode }); return; }
     } catch {}
 
     res.json({ status: 'pending' });
   } catch (err: any) {
     res.status(500).json({ error: 'Failed to get WhatsApp QR', details: err.message });
-  }
-});
-
-// Individual platform status check
-router.get('/messaging/status/:platform', async (req: Request, res: Response) => {
-  const { platform } = req.params;
-
-  if (!VALID_PLATFORMS.includes(platform as Platform)) {
-    res.status(400).json({ error: 'Invalid platform' });
-    return;
-  }
-
-  try {
-    const config = await readOpenclawConfig();
-    const entry = config?.plugins?.entries?.[platform];
-
-    if (!entry?.enabled) {
-      res.json({ configured: false, connected: false });
-      return;
-    }
-
-    let connected = false;
-    try {
-      const { stdout } = await execAsync(`openclaw ${platform} status 2>/dev/null`, { timeout: 5_000 });
-      connected = stdout.toLowerCase().includes('connected') || stdout.toLowerCase().includes('active');
-    } catch {}
-
-    res.json({ configured: true, connected });
-  } catch (err: any) {
-    res.status(500).json({ error: err.message });
   }
 });
 
