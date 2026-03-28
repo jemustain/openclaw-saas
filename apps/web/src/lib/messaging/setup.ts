@@ -93,23 +93,91 @@ export async function setupTelegramForAssistant(
   }
 
   try {
-    // Create bot via BotFather
-    const bot = await createTelegramBot(userId, displayName);
+    // Check if BotFather automation is configured
+    const hasBotFactory = !!(process.env.TELEGRAM_API_ID && process.env.TELEGRAM_API_HASH && process.env.TELEGRAM_SESSION_STRING);
 
-    // Configure sidecar
-    await callSidecar(
-      assistant.ip_address,
-      assistant.sidecar_token,
-      'telegram',
-      { botToken: bot.botToken },
-    );
+    if (hasBotFactory) {
+      // Create bot via BotFather automation
+      const bot = await createTelegramBot(userId, displayName);
 
-    // Store bot details in assistant record
+      // Configure sidecar
+      await callSidecar(
+        assistant.ip_address,
+        assistant.sidecar_token,
+        'telegram',
+        { botToken: bot.botToken },
+      );
+
+      // Store bot details in assistant record
+      await (supabase as any)
+        .from('assistants')
+        .update({
+          telegram_bot_username: bot.botUsername,
+          telegram_bot_token: bot.botToken,
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', assistantId);
+
+      return {
+        platform: 'telegram',
+        status: 'configured',
+        botUsername: bot.botUsername,
+        botLink: `https://t.me/${bot.botUsername}`,
+      };
+    } else {
+      // BotFather automation not configured - return manual setup instructions
+      return {
+        platform: 'telegram',
+        status: 'pending',
+        error: 'manual_setup_required',
+      };
+    }
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : String(err);
+    return { platform: 'telegram', status: 'failed', error: message };
+  }
+}
+
+/**
+ * Set up Telegram with a user-provided bot token.
+ * Skips BotFather automation - user creates their own bot.
+ */
+export async function setupTelegramWithToken(
+  assistantId: string,
+  botToken: string,
+): Promise<MessagingSetupResult> {
+  const supabase = createClient();
+
+  const { data: assistant } = await (supabase as any)
+    .from('assistants')
+    .select('ip_address, sidecar_token')
+    .eq('id', assistantId)
+    .single();
+
+  if (!assistant?.ip_address || !assistant?.sidecar_token) {
+    return { platform: 'telegram', status: 'pending', error: 'VM not ready yet' };
+  }
+
+  try {
+    await callSidecar(assistant.ip_address, assistant.sidecar_token, 'telegram', { botToken });
+
+    // Extract bot username from token (format: <id>:<hash>)
+    // We can get it from the Telegram getMe API
+    let botUsername = '';
+    try {
+      const meRes = await fetch(`https://api.telegram.org/bot${botToken}/getMe`);
+      const meData = await meRes.json();
+      if (meData.ok && meData.result?.username) {
+        botUsername = meData.result.username;
+      }
+    } catch {}
+
+    // Store in DB
     await (supabase as any)
       .from('assistants')
       .update({
-        telegram_bot_username: bot.botUsername,
-        telegram_bot_token: bot.botToken,
+        telegram_bot_token: botToken,
+        ...(botUsername ? { telegram_bot_username: botUsername } : {}),
         updated_at: new Date().toISOString(),
       })
       .eq('id', assistantId);
@@ -117,8 +185,7 @@ export async function setupTelegramForAssistant(
     return {
       platform: 'telegram',
       status: 'configured',
-      botUsername: bot.botUsername,
-      botLink: `https://t.me/${bot.botUsername}`,
+      ...(botUsername ? { botUsername, botLink: `https://t.me/${botUsername}` } : {}),
     };
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : String(err);
