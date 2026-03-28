@@ -49,7 +49,17 @@ export function ConnectionsCard({
       const res = await fetch("/api/messaging/status");
       if (res.ok) {
         const data = await res.json();
-        setMessengerStatuses(data.statuses ?? []);
+        // Transform platforms object to array format
+        const platforms = data.platforms ?? {};
+        const statuses: MessengerStatus[] = Object.entries(platforms).map(
+          ([key, val]: [string, any]) => ({
+            messenger: key,
+            connected: val.connected ?? false,
+            configured: val.configured ?? false,
+            botLink: val.botLink ?? null,
+          })
+        );
+        setMessengerStatuses(statuses);
       }
     } catch {
       // silently fail
@@ -156,7 +166,7 @@ export function ConnectionsCard({
               statusLabel = "Connected";
             } else if (configured) {
               statusColor = "text-amber-400";
-              statusLabel = "Disconnected";
+              statusLabel = "Configured";
             }
 
             return (

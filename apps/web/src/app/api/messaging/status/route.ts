@@ -63,12 +63,13 @@ export async function GET() {
         );
         if (res.ok) {
           const live = await res.json();
+          const livePlatforms = live.platforms ?? live;
           // Merge live connection status
-          if (live.telegram?.connected !== undefined) {
-            platforms.telegram.connected = live.telegram.connected;
+          if (livePlatforms.telegram?.connected !== undefined) {
+            platforms.telegram.connected = livePlatforms.telegram.connected;
           }
-          if (live.whatsapp?.connected !== undefined) {
-            platforms.whatsapp.connected = live.whatsapp.connected;
+          if (livePlatforms.whatsapp?.connected !== undefined) {
+            platforms.whatsapp.connected = livePlatforms.whatsapp.connected;
           }
         }
       } catch {

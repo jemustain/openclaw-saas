@@ -38,6 +38,7 @@ export interface User {
   timezone: string | null;
   window_start: number | null;
   onboarding_complete: boolean;
+  messengers: string[] | null;
   provider_preference: string | null;
   azure_subscription_id: string | null;
   created_at: string;
