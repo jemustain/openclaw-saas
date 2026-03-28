@@ -240,11 +240,21 @@ export async function setupWhatsAppForAssistant(
       return { platform: 'whatsapp', status: 'configured' };
     }
 
+    // Build Control UI URL using the public IP (sidecar returns private IP)
+    let controlUiUrl = result.controlUiUrl as string | undefined;
+    if (controlUiUrl) {
+      // Replace any IP in the URL with the assistant's public IP
+      controlUiUrl = controlUiUrl.replace(
+        /http:\/\/[^:]+:8787/,
+        `http://${assistant.ip_address}:8787`,
+      );
+    }
+
     return {
       platform: 'whatsapp',
       status: 'pending',
       qr: result.qr as string,
-      controlUiUrl: result.controlUiUrl as string | undefined,
+      controlUiUrl,
     };
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : String(err);
