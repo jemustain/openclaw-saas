@@ -348,7 +348,7 @@ export default function OnboardingWizard() {
         const res = await fetch('/api/assistant/status');
         const data = await res.json();
         if (data.assistant?.status === 'active') {
-          addStatus('✅ Server is online!');
+          addStatus('Server is online');
           setServerActive(true);
           setSetupDone(true);
           // Don't auto-advance — let user set up messengers first
@@ -630,7 +630,7 @@ export default function OnboardingWizard() {
         {/* Ready state — Telegram: show bot link */}
         {status === 'ready' && messengerId === 'telegram' && botLink && (
           <div className="space-y-2">
-            <p className="text-xs text-green-400">✅ Bot created — tap to start chatting</p>
+            <p className="text-xs text-green-400">Bot created — tap to start chatting</p>
             <a
               href={botLink}
               target="_blank"
@@ -743,7 +743,7 @@ export default function OnboardingWizard() {
 
         {/* Connected state */}
         {status === 'connected' && (
-          <p className="text-xs text-green-400">✅ {info.title} is connected!</p>
+          <p className="text-xs text-green-400">{info.title} is connected!</p>
         )}
 
         {/* Failed state */}
@@ -1162,7 +1162,7 @@ export default function OnboardingWizard() {
             {setupDone && serverActive && (
               <div className="flex flex-col items-center gap-3 pt-2">
                 <p className="text-sm text-green-400 font-medium">
-                  ✅ Your server is ready! Set up your messengers above, or continue to your dashboard.
+                  Your server is ready. Set up your messengers above, or continue to your dashboard.
                 </p>
                 <PrimaryBtn
                   onClick={async () => {
