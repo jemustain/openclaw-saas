@@ -273,16 +273,26 @@ export default function OnboardingWizard() {
 
   const [elapsedSecs, setElapsedSecs] = useState(0);
 
-  // Timer for setup step
+  // Timer for setup step - persists launch time in sessionStorage
   useEffect(() => {
     if (step !== 6 || setupDone) return;
-    const interval = setInterval(() => setElapsedSecs((s) => s + 1), 1000);
+    // Recover or set launch timestamp
+    let launchTime = Number(sessionStorage.getItem('sw_launch_ts') || '0');
+    if (!launchTime) {
+      launchTime = Date.now();
+      sessionStorage.setItem('sw_launch_ts', String(launchTime));
+    }
+    const tick = () => setElapsedSecs(Math.floor((Date.now() - launchTime) / 1000));
+    tick(); // set immediately
+    const interval = setInterval(tick, 1000);
     return () => clearInterval(interval);
   }, [step, setupDone]);
 
   const saveAndLaunch = async () => {
     goTo(6);
     setServerActive(false);
+    // Reset launch timer
+    sessionStorage.setItem('sw_launch_ts', String(Date.now()));
     const statuses: string[] = [];
     const addStatus = (s: string) => {
       statuses.push(s);
