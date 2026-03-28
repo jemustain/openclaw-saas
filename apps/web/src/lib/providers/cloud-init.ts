@@ -118,10 +118,9 @@ write_files:
       # Configure gateway for LAN binding (required for sidecar to accept remote connections)
       python3 /opt/shiftworker/patch-config.py ${user}
       # Install ShiftWorker sidecar from GitHub
-      mkdir -p /opt/shiftworker/sidecar
+      mkdir -p /opt/shiftworker/sidecar/dist
       cd /opt/shiftworker/sidecar
-      curl -sf -L "https://raw.githubusercontent.com/jemustain/openclaw-saas/main/apps/sidecar/dist/sidecar.cjs" -o dist/sidecar.cjs || true
-      mkdir -p dist
+      curl -sf -L "https://raw.githubusercontent.com/jemustain/openclaw-saas/main/apps/sidecar/dist/sidecar.cjs" -o dist/sidecar.cjs
       echo '{"dependencies":{"express":"^4.21.0"}}' > package.json
       npm install --production 2>/dev/null
       # Start services
