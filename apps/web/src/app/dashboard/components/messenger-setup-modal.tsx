@@ -54,12 +54,13 @@ export function MessengerSetupModal({
 }: MessengerSetupModalProps) {
   const info = MESSENGER_INFO[messenger];
   const [status, setStatus] = useState<
-    "setting-up" | "ready" | "connected" | "failed"
+    "setting-up" | "ready" | "connected" | "failed" | "manual-token"
   >("setting-up");
   const [botLink, setBotLink] = useState<string | null>(null);
   const [qrCode, setQrCode] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [qrExpired, setQrExpired] = useState(false);
+  const [manualToken, setManualToken] = useState("");
 
   const triggerSetup = useCallback(async () => {
     setStatus("setting-up");
@@ -79,8 +80,12 @@ export function MessengerSetupModal({
       const data = await res.json();
 
       if (data.error) {
-        setError(data.error);
-        setStatus("failed");
+        if (data.error === "manual_setup_required") {
+          setStatus("manual-token");
+        } else {
+          setError(data.error);
+          setStatus("failed");
+        }
       } else if (data.botLink) {
         setBotLink(data.botLink);
         setStatus("ready");
@@ -272,6 +277,61 @@ export function MessengerSetupModal({
               className="px-6 py-2.5 bg-violet-600 hover:bg-violet-500 text-white font-medium rounded-lg transition-colors text-sm"
             >
               Done
+            </button>
+          </div>
+        )}
+
+        {/* Manual token entry (Telegram) */}
+        {status === "manual-token" && messenger === "telegram" && (
+          <div className="space-y-4 pt-2">
+            <div className="text-sm text-slate-300 space-y-2">
+              <p>Create a Telegram bot in 3 steps:</p>
+              <ol className="list-decimal ml-5 space-y-1 text-slate-400">
+                <li>Open <a href="https://t.me/BotFather" target="_blank" rel="noopener noreferrer" className="text-blue-400 underline">@BotFather</a> in Telegram</li>
+                <li>Send <code className="bg-slate-800 px-1.5 py-0.5 rounded text-xs">/newbot</code> and follow the prompts</li>
+                <li>Copy the bot token and paste it below</li>
+              </ol>
+            </div>
+            <input
+              type="text"
+              value={manualToken}
+              onChange={(e) => setManualToken(e.target.value)}
+              placeholder="Paste bot token (e.g. 123456:ABC-DEF...)"
+              className="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2.5 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-violet-500 transition"
+            />
+            <button
+              type="button"
+              disabled={!manualToken.includes(":")}
+              onClick={async () => {
+                setStatus("setting-up");
+                setError(null);
+                try {
+                  const res = await fetch("/api/messaging/setup", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ platform: "telegram", botToken: manualToken }),
+                  });
+                  const data = await res.json();
+                  if (data.status === "configured") {
+                    setStatus("connected");
+                    if (data.botLink) {
+                      setBotLink(data.botLink);
+                      onConnected?.("telegram", data.botLink);
+                    } else {
+                      onConnected?.("telegram");
+                    }
+                  } else if (data.error) {
+                    setError(data.error);
+                    setStatus("failed");
+                  }
+                } catch {
+                  setError("Failed to connect bot");
+                  setStatus("failed");
+                }
+              }}
+              className="w-full text-center rounded-lg bg-blue-600 hover:bg-blue-500 disabled:opacity-50 disabled:cursor-not-allowed py-2.5 text-sm font-medium transition text-white"
+            >
+              Connect Bot
             </button>
           </div>
         )}
