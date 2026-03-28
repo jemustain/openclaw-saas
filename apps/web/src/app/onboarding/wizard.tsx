@@ -1028,7 +1028,7 @@ export default function OnboardingWizard() {
                   const res = await fetch('/api/stripe/checkout', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ plan: 'pro' }),
+                    body: JSON.stringify({ plan: 'pro', returnUrl: '/onboarding?step=4&upgraded=true' }),
                   });
                   const data = await res.json();
                   if (data.url) {
