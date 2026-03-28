@@ -4,6 +4,7 @@ import { createVM, destroyVM, powerOnVM, powerOffVM, validateAccount as validate
 import { OracleProvider } from '../providers/oracle';
 import { getProviderToken, refreshProviderToken } from '../providers/token-store';
 import { generateCloudInit } from '../providers/cloud-init';
+import { deleteTelegramBot } from '../messaging/telegram-bot-factory';
 import type { Assistant, AssistantStatus, ProvisioningStep } from '../supabase/types';
 import { randomUUID } from 'crypto';
 
@@ -286,6 +287,16 @@ export async function destroyAssistant(assistantId: string): Promise<Assistant> 
   assertTransition(assistant.status, 'destroying');
   await updateAssistantStatus(assistantId, 'destroying');
 
+  // Best-effort Telegram bot cleanup — must not block VM destruction
+  if (assistant.telegram_bot_username) {
+    try {
+      await deleteTelegramBot(assistant.telegram_bot_username);
+      console.log(`Deleted Telegram bot @${assistant.telegram_bot_username}`);
+    } catch (err) {
+      console.warn(`Failed to delete Telegram bot @${assistant.telegram_bot_username}:`, err);
+    }
+  }
+
   try {
     if (assistant.vm_id) {
       if (assistant.provider === 'oracle') {
@@ -303,11 +314,17 @@ export async function destroyAssistant(assistantId: string): Promise<Assistant> 
     return await updateAssistantStatus(assistantId, 'destroyed', {
       vm_id: null,
       ip_address: null,
+      telegram_bot_username: null,
+      telegram_bot_token: null,
+      whatsapp_connected: false,
     });
   } catch (err) {
     return await updateAssistantStatus(assistantId, 'destroyed', {
       vm_id: null,
       ip_address: null,
+      telegram_bot_username: null,
+      telegram_bot_token: null,
+      whatsapp_connected: false,
     });
   }
 }
