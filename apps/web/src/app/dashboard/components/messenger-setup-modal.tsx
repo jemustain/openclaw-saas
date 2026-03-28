@@ -58,6 +58,7 @@ export function MessengerSetupModal({
   >("setting-up");
   const [botLink, setBotLink] = useState<string | null>(null);
   const [qrCode, setQrCode] = useState<string | null>(null);
+  const [controlUiUrl, setControlUiUrl] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [qrExpired, setQrExpired] = useState(false);
   const [manualToken, setManualToken] = useState("");
@@ -88,6 +89,9 @@ export function MessengerSetupModal({
         }
       } else if (data.botLink) {
         setBotLink(data.botLink);
+        setStatus("ready");
+      } else if (data.controlUiUrl) {
+        setControlUiUrl(data.controlUiUrl);
         setStatus("ready");
       } else if (data.qr) {
         setQrCode(data.qr);
@@ -258,8 +262,28 @@ export function MessengerSetupModal({
             </div>
           )}
 
+        {/* Ready - Control UI link (WhatsApp) */}
+        {status === "ready" && controlUiUrl && !qrCode && (
+          <div className="space-y-3 pt-2">
+            <p className="text-sm text-slate-300">
+              Your assistant&apos;s control panel has a built-in WhatsApp setup. Tap the button below, then go to <strong>Channels</strong> and connect WhatsApp.
+            </p>
+            <a
+              href={controlUiUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="block w-full text-center rounded-lg bg-green-600 hover:bg-green-500 py-3 text-sm font-medium transition text-white"
+            >
+              Open Control Panel
+            </a>
+            <p className="text-xs text-slate-500 text-center">
+              Opens your assistant&apos;s dashboard in a new tab
+            </p>
+          </div>
+        )}
+
         {/* Ready - generic (no link, no QR) */}
-        {status === "ready" && !botLink && !qrCode && (
+        {status === "ready" && !botLink && !qrCode && !controlUiUrl && (
           <p className="text-sm text-slate-300 text-center py-4">
             {info.setupInstructions}
           </p>

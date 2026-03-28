@@ -4184,22 +4184,31 @@ async function setupWhatsApp(_config) {
     }
   }
   try {
-    const result = await gatewayRpc(
-      "web.login.start",
-      { channel: "whatsapp" },
-      3e4
-    );
-    if (result.qrDataUrl) {
-      return { platform: "whatsapp", status: "pairing", qr: result.qrDataUrl };
-    }
-    return { platform: "whatsapp", status: "pending" };
-  } catch (err) {
-    return {
-      platform: "whatsapp",
-      status: "failed",
-      error: err.message || "Gateway not ready - please wait a moment and try again"
-    };
+    await runAsClaw("openclaw channels add --channel whatsapp 2>/dev/null", 1e4);
+  } catch {
   }
+  let gatewayToken = "";
+  try {
+    const { stdout } = await runAsClaw(`cat ${CLAW_HOME}/.openclaw/openclaw.json`, 5e3);
+    const config = JSON.parse(stdout.trim());
+    gatewayToken = config?.gateway?.auth?.token ?? "";
+  } catch {
+  }
+  const controlUiUrl = `http://${getLocalIp()}:8787${gatewayToken ? `/#token=${gatewayToken}` : ""}`;
+  return { platform: "whatsapp", status: "pairing", controlUiUrl };
+}
+function getLocalIp() {
+  try {
+    const { networkInterfaces } = require("os");
+    const nets = networkInterfaces();
+    for (const name of Object.keys(nets)) {
+      for (const net of nets[name] ?? []) {
+        if (net.family === "IPv4" && !net.internal) return net.address;
+      }
+    }
+  } catch {
+  }
+  return "127.0.0.1";
 }
 router6.post("/messaging/setup", async (req, res) => {
   const { platform, config } = req.body;

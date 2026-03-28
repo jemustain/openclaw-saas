@@ -513,6 +513,7 @@ export default function OnboardingWizard() {
     const [status, setStatus] = useState<'waiting' | 'setting-up' | 'ready' | 'connected' | 'failed' | 'manual-token'>('waiting');
     const [botLink, setBotLink] = useState<string | null>(null);
     const [qrCode, setQrCode] = useState<string | null>(null);
+    const [controlUiUrl, setControlUiUrl] = useState<string | null>(null);
     const [error, setError] = useState<string | null>(null);
     const [qrExpired, setQrExpired] = useState(false);
     const [manualToken, setManualToken] = useState('');
@@ -545,6 +546,9 @@ export default function OnboardingWizard() {
           setBotLink(data.botLink);
           setStatus('ready');
           onReady?.(messengerId, data.botLink);
+        } else if (data.controlUiUrl) {
+          setControlUiUrl(data.controlUiUrl);
+          setStatus('ready');
         } else if (data.qr) {
           setQrCode(data.qr);
           setStatus('ready');
@@ -669,6 +673,23 @@ export default function OnboardingWizard() {
               alt={`Scan QR code with ${info.title}`}
               className="w-48 h-48 mx-auto rounded-lg"
             />
+          </div>
+        )}
+
+        {/* Ready state — WhatsApp Control UI link */}
+        {status === 'ready' && controlUiUrl && !qrCode && (
+          <div className="space-y-2">
+            <p className="text-xs text-slate-300">
+              Open your assistant&apos;s control panel to connect WhatsApp. Go to <strong>Channels</strong> and scan the QR code.
+            </p>
+            <a
+              href={controlUiUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="block w-full text-center rounded-lg bg-green-600 hover:bg-green-500 py-3 text-sm font-medium transition"
+            >
+              Open Control Panel
+            </a>
           </div>
         )}
 
