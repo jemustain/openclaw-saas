@@ -118,7 +118,17 @@ async function setupWhatsApp(_config: Record<string, unknown>): Promise<{ platfo
     // May already be configured
   }
 
-  // Read gateway token from config for Control UI auth
+  // Capture QR from the CLI login command
+  try {
+    const qrData = await captureWhatsAppQr();
+    if (qrData) {
+      return { platform: 'whatsapp', status: 'pairing', qr: qrData };
+    }
+  } catch (err: any) {
+    console.error('WhatsApp QR capture failed:', err.message);
+  }
+
+  // Fallback: return Control UI URL
   let gatewayToken = '';
   try {
     const { stdout } = await runAsClaw(`cat ${CLAW_HOME}/.openclaw/openclaw.json`, 5_000);
@@ -126,14 +136,143 @@ async function setupWhatsApp(_config: Record<string, unknown>): Promise<{ platfo
     gatewayToken = config?.gateway?.auth?.token ?? '';
   } catch {}
 
-  // Return the Control UI URL - gateway serves it on port 8787
-  // The Control UI has built-in WhatsApp QR login
   const controlUiUrl = `http://${getLocalIp()}:8787${gatewayToken ? `/#token=${gatewayToken}` : ''}`;
-
   return { platform: 'whatsapp', status: 'pairing', controlUiUrl };
 }
 
-/** Get the VM's public-facing IP for Control UI URL */
+/**
+ * Capture QR code from `openclaw channels login --channel whatsapp` CLI output.
+ * The CLI prints a Unicode block QR code to the terminal. We capture the raw
+ * QR string from the output and use it to generate a data URL.
+ */
+async function captureWhatsAppQr(): Promise<string | null> {
+  return new Promise((resolve) => {
+    const child = exec(
+      `su - ${CLAW_USER} -c 'openclaw channels login --channel whatsapp 2>&1'`,
+      { timeout: 25_000 },
+    );
+
+    let output = '';
+    let resolved = false;
+
+    child.stdout?.on('data', (chunk: string) => {
+      output += chunk;
+      // The QR code is printed as Unicode block characters
+      // Look for the pattern of block characters that form the QR
+      if (!resolved && output.includes('█') && output.split('\n').length > 10) {
+        // Give it a moment to finish printing
+        setTimeout(() => {
+          if (!resolved) {
+            resolved = true;
+            child.kill();
+            // Convert the terminal QR to a simple data format
+            // The QR data URL is what the UI needs to display
+            const qrImage = terminalQrToDataUrl(output);
+            resolve(qrImage);
+          }
+        }, 2000);
+      }
+    });
+
+    child.on('close', () => {
+      if (!resolved) {
+        resolved = true;
+        if (output.includes('█')) {
+          resolve(terminalQrToDataUrl(output));
+        } else {
+          resolve(null);
+        }
+      }
+    });
+
+    child.on('error', () => {
+      if (!resolved) { resolved = true; resolve(null); }
+    });
+
+    // Timeout fallback
+    setTimeout(() => {
+      if (!resolved) {
+        resolved = true;
+        child.kill();
+        resolve(output.includes('█') ? terminalQrToDataUrl(output) : null);
+      }
+    }, 22_000);
+  });
+}
+
+/**
+ * Convert terminal Unicode QR code to an SVG data URL.
+ * The terminal output uses block characters (█, ▄, ▀, space) to represent
+ * the QR code. We convert these to a black/white pixel grid and render as SVG.
+ */
+function terminalQrToDataUrl(termOutput: string): string | null {
+  const lines = termOutput.split('\n').filter(l => l.includes('█') || l.includes('▄') || l.includes('▀'));
+  if (lines.length < 5) return null;
+
+  const scale = 4;
+  // Each line represents 2 rows of the QR code (top/bottom halves using ▀▄█ characters)
+  // █ = both top and bottom black
+  // ▀ = top black, bottom white
+  // ▄ = top white, bottom black
+  // space = both white
+
+  const rows: boolean[][] = [];
+
+  for (const line of lines) {
+    const topRow: boolean[] = [];
+    const bottomRow: boolean[] = [];
+
+    for (const ch of line) {
+      switch (ch) {
+        case '█':
+          topRow.push(true);
+          bottomRow.push(true);
+          break;
+        case '▀':
+          topRow.push(true);
+          bottomRow.push(false);
+          break;
+        case '▄':
+          topRow.push(false);
+          bottomRow.push(true);
+          break;
+        case ' ':
+          topRow.push(false);
+          bottomRow.push(false);
+          break;
+        default:
+          // Other characters treated as black
+          topRow.push(true);
+          bottomRow.push(true);
+          break;
+      }
+    }
+    rows.push(topRow);
+    rows.push(bottomRow);
+  }
+
+  if (rows.length === 0) return null;
+
+  const width = Math.max(...rows.map(r => r.length));
+  const height = rows.length;
+
+  // Build SVG
+  let rects = '';
+  for (let y = 0; y < height; y++) {
+    for (let x = 0; x < (rows[y]?.length ?? 0); x++) {
+      if (rows[y][x]) {
+        rects += `<rect x="${x * scale}" y="${y * scale}" width="${scale}" height="${scale}" fill="black"/>`;
+      }
+    }
+  }
+
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${width * scale}" height="${height * scale}" viewBox="0 0 ${width * scale} ${height * scale}"><rect width="100%" height="100%" fill="white"/>${rects}</svg>`;
+
+  const b64 = Buffer.from(svg).toString('base64');
+  return `data:image/svg+xml;base64,${b64}`;
+}
+
+/** Get the VM's network IP */
 function getLocalIp(): string {
   try {
     const { networkInterfaces } = require('os');

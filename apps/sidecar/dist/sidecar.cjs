@@ -4187,6 +4187,14 @@ async function setupWhatsApp(_config) {
     await runAsClaw("openclaw channels add --channel whatsapp 2>/dev/null", 1e4);
   } catch {
   }
+  try {
+    const qrData = await captureWhatsAppQr();
+    if (qrData) {
+      return { platform: "whatsapp", status: "pairing", qr: qrData };
+    }
+  } catch (err) {
+    console.error("WhatsApp QR capture failed:", err.message);
+  }
   let gatewayToken = "";
   try {
     const { stdout } = await runAsClaw(`cat ${CLAW_HOME}/.openclaw/openclaw.json`, 5e3);
@@ -4196,6 +4204,102 @@ async function setupWhatsApp(_config) {
   }
   const controlUiUrl = `http://${getLocalIp()}:8787${gatewayToken ? `/#token=${gatewayToken}` : ""}`;
   return { platform: "whatsapp", status: "pairing", controlUiUrl };
+}
+async function captureWhatsAppQr() {
+  return new Promise((resolve2) => {
+    const child = (0, import_child_process4.exec)(
+      `su - ${CLAW_USER} -c 'openclaw channels login --channel whatsapp 2>&1'`,
+      { timeout: 25e3 }
+    );
+    let output = "";
+    let resolved = false;
+    child.stdout?.on("data", (chunk) => {
+      output += chunk;
+      if (!resolved && output.includes("\u2588") && output.split("\n").length > 10) {
+        setTimeout(() => {
+          if (!resolved) {
+            resolved = true;
+            child.kill();
+            const qrImage = terminalQrToDataUrl(output);
+            resolve2(qrImage);
+          }
+        }, 2e3);
+      }
+    });
+    child.on("close", () => {
+      if (!resolved) {
+        resolved = true;
+        if (output.includes("\u2588")) {
+          resolve2(terminalQrToDataUrl(output));
+        } else {
+          resolve2(null);
+        }
+      }
+    });
+    child.on("error", () => {
+      if (!resolved) {
+        resolved = true;
+        resolve2(null);
+      }
+    });
+    setTimeout(() => {
+      if (!resolved) {
+        resolved = true;
+        child.kill();
+        resolve2(output.includes("\u2588") ? terminalQrToDataUrl(output) : null);
+      }
+    }, 22e3);
+  });
+}
+function terminalQrToDataUrl(termOutput) {
+  const lines = termOutput.split("\n").filter((l) => l.includes("\u2588") || l.includes("\u2584") || l.includes("\u2580"));
+  if (lines.length < 5) return null;
+  const scale = 4;
+  const rows = [];
+  for (const line of lines) {
+    const topRow = [];
+    const bottomRow = [];
+    for (const ch of line) {
+      switch (ch) {
+        case "\u2588":
+          topRow.push(true);
+          bottomRow.push(true);
+          break;
+        case "\u2580":
+          topRow.push(true);
+          bottomRow.push(false);
+          break;
+        case "\u2584":
+          topRow.push(false);
+          bottomRow.push(true);
+          break;
+        case " ":
+          topRow.push(false);
+          bottomRow.push(false);
+          break;
+        default:
+          topRow.push(true);
+          bottomRow.push(true);
+          break;
+      }
+    }
+    rows.push(topRow);
+    rows.push(bottomRow);
+  }
+  if (rows.length === 0) return null;
+  const width = Math.max(...rows.map((r) => r.length));
+  const height = rows.length;
+  let rects = "";
+  for (let y = 0; y < height; y++) {
+    for (let x = 0; x < (rows[y]?.length ?? 0); x++) {
+      if (rows[y][x]) {
+        rects += `<rect x="${x * scale}" y="${y * scale}" width="${scale}" height="${scale}" fill="black"/>`;
+      }
+    }
+  }
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${width * scale}" height="${height * scale}" viewBox="0 0 ${width * scale} ${height * scale}"><rect width="100%" height="100%" fill="white"/>${rects}</svg>`;
+  const b64 = Buffer.from(svg).toString("base64");
+  return `data:image/svg+xml;base64,${b64}`;
 }
 function getLocalIp() {
   try {
