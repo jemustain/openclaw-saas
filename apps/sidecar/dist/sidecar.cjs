@@ -55,8 +55,17 @@ var import_express = require("express");
 var import_os = __toESM(require("os"));
 var import_child_process = require("child_process");
 var import_util = require("util");
+var import_crypto = require("crypto");
+var import_fs = require("fs");
+var import_path = require("path");
 var execAsync = (0, import_util.promisify)(import_child_process.exec);
 var router = (0, import_express.Router)();
+var sidecarHash = "unknown";
+try {
+  const content = (0, import_fs.readFileSync)((0, import_path.resolve)(__dirname, "../sidecar.cjs"));
+  sidecarHash = (0, import_crypto.createHash)("sha256").update(content).digest("hex").slice(0, 12);
+} catch {
+}
 async function getDiskUsage() {
   try {
     const { stdout } = await execAsync("df -h / | tail -1 | awk '{print $2,$3,$4,$5}'");
@@ -109,6 +118,7 @@ router.get("/health", async (_req, res) => {
   res.json({
     status: "ok",
     uptime: process.uptime(),
+    sidecarVersion: sidecarHash,
     cpu: getCpuUsage(),
     memory: getMemoryUsage(),
     disk,
@@ -184,7 +194,7 @@ var import_express4 = require("express");
 // src/routes/usage.ts
 var import_express3 = require("express");
 var import_promises = require("fs/promises");
-var import_path = require("path");
+var import_path2 = require("path");
 var router3 = (0, import_express3.Router)();
 var USAGE_FILE = process.env.USAGE_FILE || "/var/lib/shiftworker/usage.json";
 function todayKey() {
@@ -199,7 +209,7 @@ async function readUsageStore() {
   }
 }
 async function writeUsageStore(store) {
-  await (0, import_promises.mkdir)((0, import_path.dirname)(USAGE_FILE), { recursive: true });
+  await (0, import_promises.mkdir)((0, import_path2.dirname)(USAGE_FILE), { recursive: true });
   await (0, import_promises.writeFile)(USAGE_FILE, JSON.stringify(store, null, 2), "utf-8");
 }
 function getOrCreateToday(store) {
@@ -372,13 +382,13 @@ var import_express5 = require("express");
 var import_child_process3 = require("child_process");
 var import_util3 = require("util");
 var import_promises2 = require("fs/promises");
-var import_path2 = require("path");
+var import_path3 = require("path");
 var execAsync3 = (0, import_util3.promisify)(import_child_process3.exec);
 var router5 = (0, import_express5.Router)();
 var SKILLS_DIRS = [
   "/usr/local/lib/node_modules/openclaw/skills",
-  (0, import_path2.join)(process.env.HOME || "/root", ".openclaw/workspace/skills"),
-  (0, import_path2.join)(process.env.HOME || "/root", ".agents/skills")
+  (0, import_path3.join)(process.env.HOME || "/root", ".openclaw/workspace/skills"),
+  (0, import_path3.join)(process.env.HOME || "/root", ".agents/skills")
 ];
 router5.get("/skills", async (_req, res) => {
   try {
@@ -403,7 +413,7 @@ router5.get("/skills", async (_req, res) => {
         const entries = await (0, import_promises2.readdir)(dir, { withFileTypes: true });
         for (const entry of entries) {
           if (entry.isDirectory()) {
-            skills.push({ name: entry.name, path: (0, import_path2.join)(dir, entry.name) });
+            skills.push({ name: entry.name, path: (0, import_path3.join)(dir, entry.name) });
           }
         }
       } catch {

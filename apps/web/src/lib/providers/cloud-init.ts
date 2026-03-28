@@ -123,6 +123,11 @@ write_files:
       curl -sf -L "https://raw.githubusercontent.com/jemustain/openclaw-saas/main/apps/sidecar/dist/sidecar.cjs" -o dist/sidecar.cjs
       echo '{"dependencies":{"express":"^4.21.0"}}' > package.json
       npm install --production 2>/dev/null
+      # Install sidecar auto-update script and cron job
+      curl -sf -L "https://raw.githubusercontent.com/jemustain/openclaw-saas/main/apps/sidecar/scripts/auto-update.sh" -o /opt/shiftworker/sidecar/auto-update.sh
+      chmod +x /opt/shiftworker/sidecar/auto-update.sh
+      echo "0 * * * * root /opt/shiftworker/sidecar/auto-update.sh" > /etc/cron.d/shiftworker-sidecar-update
+      chmod 644 /etc/cron.d/shiftworker-sidecar-update
       # Start services
       systemctl daemon-reload
       systemctl enable --now openclaw-sidecar
