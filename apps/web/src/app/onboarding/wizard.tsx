@@ -492,11 +492,12 @@ export default function OnboardingWizard() {
     onReady?: (platform: string, link: string) => void;
   }) => {
     const info = MESSENGER_SETUP_INFO[messengerId];
-    const [status, setStatus] = useState<'waiting' | 'setting-up' | 'ready' | 'connected' | 'failed'>('waiting');
+    const [status, setStatus] = useState<'waiting' | 'setting-up' | 'ready' | 'connected' | 'failed' | 'manual-token'>('waiting');
     const [botLink, setBotLink] = useState<string | null>(null);
     const [qrCode, setQrCode] = useState<string | null>(null);
     const [error, setError] = useState<string | null>(null);
     const [qrExpired, setQrExpired] = useState(false);
+    const [manualToken, setManualToken] = useState('');
 
     const triggerSetup = useCallback(async () => {
       setStatus('setting-up');
@@ -516,8 +517,12 @@ export default function OnboardingWizard() {
         const data = await res.json();
 
         if (data.error) {
-          setError(data.error);
-          setStatus('failed');
+          if (data.error === 'manual_setup_required') {
+            setStatus('manual-token');
+          } else {
+            setError(data.error);
+            setStatus('failed');
+          }
         } else if (data.botLink) {
           setBotLink(data.botLink);
           setStatus('ready');
@@ -584,6 +589,7 @@ export default function OnboardingWizard() {
       status === 'setting-up' ? 'bg-amber-500/20 text-amber-400' :
       status === 'connected' ? 'bg-violet-500/20 text-violet-400' :
       status === 'failed' ? 'bg-red-500/20 text-red-400' :
+      status === 'manual-token' ? 'bg-blue-500/20 text-blue-400' :
       'bg-green-500/20 text-green-400';
 
     const badgeLabel =
@@ -591,6 +597,7 @@ export default function OnboardingWizard() {
       status === 'setting-up' ? 'Setting up…' :
       status === 'connected' ? 'Connected' :
       status === 'failed' ? 'Failed' :
+      status === 'manual-token' ? 'Setup' :
       'Ready';
 
     return (
@@ -679,6 +686,59 @@ export default function OnboardingWizard() {
         {/* Ready state — generic (no link, no QR) */}
         {status === 'ready' && !botLink && !qrCode && (
           <p className="text-xs text-slate-300">{info.readyMsg}</p>
+        )}
+
+        {/* Manual token entry (Telegram) */}
+        {status === 'manual-token' && messengerId === 'telegram' && (
+          <div className="space-y-3">
+            <div className="text-xs text-slate-300 space-y-1">
+              <p>Create a Telegram bot in 3 steps:</p>
+              <ol className="list-decimal ml-4 space-y-0.5">
+                <li>Open <a href="https://t.me/BotFather" target="_blank" rel="noopener noreferrer" className="text-blue-400 underline">@BotFather</a> in Telegram</li>
+                <li>Send <code className="bg-slate-800 px-1 rounded">/newbot</code> and follow the prompts</li>
+                <li>Copy the bot token and paste it below</li>
+              </ol>
+            </div>
+            <input
+              type="text"
+              value={manualToken}
+              onChange={(e) => setManualToken(e.target.value)}
+              placeholder="Paste bot token (e.g. 123456:ABC-DEF...)"
+              className="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-violet-500"
+            />
+            <button
+              type="button"
+              disabled={!manualToken.includes(':')}
+              onClick={async () => {
+                setStatus('setting-up');
+                setError(null);
+                try {
+                  const res = await fetch('/api/messaging/setup', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ platform: 'telegram', botToken: manualToken }),
+                  });
+                  const data = await res.json();
+                  if (data.status === 'configured') {
+                    setStatus('connected');
+                    if (data.botLink) {
+                      setBotLink(data.botLink);
+                      onReady?.('telegram', data.botLink);
+                    }
+                  } else if (data.error) {
+                    setError(data.error);
+                    setStatus('failed');
+                  }
+                } catch {
+                  setError('Failed to connect bot');
+                  setStatus('failed');
+                }
+              }}
+              className="w-full text-center rounded-lg bg-blue-600 hover:bg-blue-500 disabled:opacity-50 disabled:cursor-not-allowed py-2.5 text-sm font-medium transition"
+            >
+              Connect Bot
+            </button>
+          </div>
         )}
 
         {/* Connected state */}

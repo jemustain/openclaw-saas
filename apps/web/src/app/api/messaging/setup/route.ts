@@ -2,6 +2,7 @@ import { createClient } from '@/lib/supabase/server';
 import { getSession } from '@/lib/auth/session';
 import {
   setupTelegramForAssistant,
+  setupTelegramWithToken,
   setupWhatsAppForAssistant,
 } from '@/lib/messaging/setup';
 import { NextResponse } from 'next/server';
@@ -14,10 +15,11 @@ export async function POST(request: Request) {
     }
 
     const body = await request.json();
-    const { platform, assistantId, displayName } = body as {
+    const { platform, assistantId, displayName, botToken } = body as {
       platform: string;
       assistantId?: string;
       displayName?: string;
+      botToken?: string;
     };
 
     if (!platform) {
@@ -52,11 +54,19 @@ export async function POST(request: Request) {
     let result;
     switch (platform) {
       case 'telegram':
-        result = await setupTelegramForAssistant(
-          targetAssistantId!,
-          session.userId,
-          displayName,
-        );
+        if (botToken) {
+          // Manual token submission - configure sidecar directly
+          result = await setupTelegramWithToken(
+            targetAssistantId!,
+            botToken,
+          );
+        } else {
+          result = await setupTelegramForAssistant(
+            targetAssistantId!,
+            session.userId,
+            displayName,
+          );
+        }
         break;
       case 'whatsapp':
         result = await setupWhatsAppForAssistant(targetAssistantId!);
