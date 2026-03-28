@@ -47,7 +47,7 @@ write_files:
     permissions: "0644"
     content: |
       [Unit]
-      Description=OpenClaw Sidecar Agent
+      Description=OpenClaw Gateway
       After=network-online.target
       Wants=network-online.target
       [Service]
@@ -55,6 +55,25 @@ write_files:
       User=${user}
       EnvironmentFile=/etc/shiftworker/sidecar.env
       ExecStart=/usr/bin/openclaw gateway run --bind lan --port 8787 --allow-unconfigured
+      Restart=always
+      RestartSec=5
+      [Install]
+      WantedBy=multi-user.target
+  - path: /etc/systemd/system/shiftworker-sidecar.service
+    permissions: "0644"
+    content: |
+      [Unit]
+      Description=ShiftWorker Sidecar API
+      After=openclaw-sidecar.service
+      Wants=openclaw-sidecar.service
+      [Service]
+      Type=simple
+      User=root
+      EnvironmentFile=/etc/shiftworker/sidecar.env
+      Environment=PORT=8788
+      Environment=OPENCLAW_USER=${user}
+      WorkingDirectory=/opt/shiftworker/sidecar
+      ExecStart=/usr/bin/node dist/sidecar.cjs
       Restart=always
       RestartSec=5
       [Install]
@@ -89,6 +108,7 @@ write_files:
       ufw allow 443/tcp
       ufw allow 3000/tcp
       ufw allow 8787/tcp
+      ufw allow 8788/tcp
       ufw --force enable
       curl -fsSL https://deb.nodesource.com/setup_${nodeVersion}.x | bash -
       apt-get install -y nodejs
@@ -97,8 +117,17 @@ write_files:
       su - ${user} -c "openclaw gateway install" || true
       # Configure gateway for LAN binding (required for sidecar to accept remote connections)
       python3 /opt/shiftworker/patch-config.py ${user}
+      # Install ShiftWorker sidecar from GitHub
+      mkdir -p /opt/shiftworker/sidecar
+      cd /opt/shiftworker/sidecar
+      curl -sf -L "https://raw.githubusercontent.com/jemustain/openclaw-saas/main/apps/sidecar/dist/sidecar.cjs" -o dist/sidecar.cjs || true
+      mkdir -p dist
+      echo '{"dependencies":{"express":"^4.21.0"}}' > package.json
+      npm install --production 2>/dev/null
+      # Start services
       systemctl daemon-reload
       systemctl enable --now openclaw-sidecar
+      systemctl enable --now shiftworker-sidecar
       source /etc/shiftworker/sidecar.env
       curl -sf -X POST "$PORTAL_URL/api/instances/$INSTANCE_ID/phone-home" \\
         -H "Authorization: Bearer $SIDECAR_TOKEN" \\

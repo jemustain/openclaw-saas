@@ -10,7 +10,7 @@ export interface MessagingSetupResult {
   error?: string;
 }
 
-const SIDECAR_PORT = 8787;
+const SIDECAR_PORT = 8788;
 
 /**
  * Call the sidecar on the user's VM to configure a messaging platform.

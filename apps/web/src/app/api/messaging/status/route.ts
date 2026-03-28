@@ -2,7 +2,7 @@ import { createClient } from '@/lib/supabase/server';
 import { getSession } from '@/lib/auth/session';
 import { NextResponse } from 'next/server';
 
-const SIDECAR_PORT = 8787;
+const SIDECAR_PORT = 8788;
 
 export async function GET() {
   try {
