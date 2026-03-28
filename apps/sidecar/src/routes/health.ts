@@ -2,9 +2,18 @@ import { Router, Request, Response } from 'express';
 import os from 'os';
 import { exec } from 'child_process';
 import { promisify } from 'util';
+import { createHash } from 'crypto';
+import { readFileSync } from 'fs';
+import { resolve } from 'path';
 
 const execAsync = promisify(exec);
 const router = Router();
+
+let sidecarHash = 'unknown';
+try {
+  const content = readFileSync(resolve(__dirname, '../sidecar.cjs'));
+  sidecarHash = createHash('sha256').update(content).digest('hex').slice(0, 12);
+} catch {}
 
 async function getDiskUsage(): Promise<{ total: string; used: string; available: string; usePercent: string }> {
   try {
@@ -64,6 +73,7 @@ router.get('/health', async (_req: Request, res: Response) => {
   res.json({
     status: 'ok',
     uptime: process.uptime(),
+    sidecarVersion: sidecarHash,
     cpu: getCpuUsage(),
     memory: getMemoryUsage(),
     disk,
