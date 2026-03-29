@@ -1,7 +1,14 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import "./globals.css";
 
 const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "https://shiftworker.ai";
+
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  maximumScale: 1,
+  themeColor: "#020617",
+};
 
 export const metadata: Metadata = {
   title: "ShiftWorker — AI Agent Hosting Platform",
@@ -9,7 +16,6 @@ export const metadata: Metadata = {
     "ShiftWorker provisions and manages OpenClaw instances for you. Get a personal AI agent that handles your email, calendar, research, and more — no servers, no setup.",
   metadataBase: new URL(siteUrl),
   icons: { icon: "/favicon.ico" },
-  themeColor: "#020617", // slate-950
   openGraph: {
     title: "ShiftWorker — AI Agent Hosting Platform",
     description:
