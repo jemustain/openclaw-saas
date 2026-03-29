@@ -3,29 +3,24 @@
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 
-const TIMEZONES: { value: string; label: string }[] = [
-  { value: 'America/New_York', label: 'Eastern Time (UTC-5)' },
-  { value: 'America/Chicago', label: 'Central Time (UTC-6)' },
-  { value: 'America/Denver', label: 'Mountain Time (UTC-7)' },
-  { value: 'America/Phoenix', label: 'Arizona Time (UTC-7)' },
-  { value: 'America/Los_Angeles', label: 'Pacific Time (UTC-8)' },
-  { value: 'America/Anchorage', label: 'Alaska Time (UTC-9)' },
-  { value: 'Pacific/Honolulu', label: 'Hawaii Time (UTC-10)' },
-  { value: 'Europe/London', label: 'London (UTC+0)' },
-  { value: 'Europe/Paris', label: 'Central European (UTC+1)' },
-  { value: 'Europe/Berlin', label: 'Berlin (UTC+1)' },
-  { value: 'Europe/Moscow', label: 'Moscow (UTC+3)' },
-  { value: 'Asia/Dubai', label: 'Dubai (UTC+4)' },
-  { value: 'Asia/Kolkata', label: 'India (UTC+5:30)' },
-  { value: 'Asia/Shanghai', label: 'China (UTC+8)' },
-  { value: 'Asia/Tokyo', label: 'Japan (UTC+9)' },
-  { value: 'Australia/Sydney', label: 'Sydney (UTC+11)' },
-  { value: 'Pacific/Auckland', label: 'New Zealand (UTC+12)' },
-];
-
 function formatPlan(plan: string): string {
   if (!plan) return 'Free';
   return plan.charAt(0).toUpperCase() + plan.slice(1);
+}
+
+function friendlyTimezone(tz: string): string {
+  try {
+    const now = new Date();
+    const formatter = new Intl.DateTimeFormat('en-US', {
+      timeZone: tz,
+      timeZoneName: 'long',
+    });
+    const parts = formatter.formatToParts(now);
+    const tzName = parts.find((p) => p.type === 'timeZoneName')?.value ?? tz;
+    return tzName;
+  } catch {
+    return tz.replace(/_/g, ' ');
+  }
 }
 
 export default function SettingsPage() {
@@ -33,7 +28,7 @@ export default function SettingsPage() {
 
   const [email, setEmail] = useState('');
   const [name, setName] = useState('');
-  const [timezone, setTimezone] = useState('America/New_York');
+  const [timezone, setTimezone] = useState('');
   const [plan, setPlan] = useState('Free');
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
@@ -43,17 +38,32 @@ export default function SettingsPage() {
   const [deleteError, setDeleteError] = useState<string | null>(null);
 
   useEffect(() => {
+    // Auto-detect timezone from browser
+    const detectedTz = Intl.DateTimeFormat().resolvedOptions().timeZone;
+
     fetch('/api/auth/me')
       .then((res) => res.json())
       .then((data) => {
         if (data.user) {
           setEmail(data.user.email ?? '');
           setName(data.user.name ?? '');
-          setTimezone(data.user.timezone ?? 'America/New_York');
+          setTimezone(data.user.timezone ?? detectedTz);
           setPlan(data.user.plan ?? 'Free');
+
+          // If stored timezone differs from browser, auto-update
+          if (data.user.timezone !== detectedTz && detectedTz) {
+            setTimezone(detectedTz);
+            fetch('/api/auth/me', {
+              method: 'PATCH',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ timezone: detectedTz }),
+            }).catch(() => {});
+          }
         }
       })
-      .catch(() => {});
+      .catch(() => {
+        setTimezone(detectedTz);
+      });
   }, []);
 
   async function handleSave() {
@@ -93,40 +103,13 @@ export default function SettingsPage() {
     <div className="max-w-2xl space-y-8">
       <h1 className="text-2xl font-bold text-white">Settings</h1>
 
-      {/* Profile */}
+      {/* Profile - Editable */}
       <section className="space-y-4 rounded-xl border border-slate-800 bg-slate-900/50 p-6">
         <h2 className="text-lg font-semibold text-white">Profile</h2>
 
         <div>
           <label className="block text-sm text-slate-400 mb-1">Display Name</label>
           <input value={name} onChange={(e) => setName(e.target.value)} className={inputClass} />
-        </div>
-
-        <div>
-          <label className="block text-sm text-slate-400 mb-1">Email</label>
-          <input value={email} readOnly className={`${inputClass} opacity-60 cursor-not-allowed`} />
-        </div>
-
-        <div>
-          <label className="block text-sm text-slate-400 mb-1">Timezone</label>
-          <select
-            value={timezone}
-            onChange={(e) => setTimezone(e.target.value)}
-            className={inputClass}
-          >
-            {TIMEZONES.map((tz) => (
-              <option key={tz.value} value={tz.value}>{tz.label}</option>
-            ))}
-          </select>
-        </div>
-
-        <div>
-          <label className="block text-sm text-slate-400 mb-1">Current Plan</label>
-          <div className="flex items-center gap-2">
-            <span className="inline-flex items-center rounded-full bg-violet-600/20 px-3 py-1 text-sm font-medium text-violet-400 border border-violet-500/30">
-              {formatPlan(plan)}
-            </span>
-          </div>
         </div>
 
         <button
@@ -136,6 +119,31 @@ export default function SettingsPage() {
         >
           {saving ? 'Saving...' : saved ? 'Saved' : 'Save Changes'}
         </button>
+      </section>
+
+      {/* Account Info - Read-only */}
+      <section className="space-y-4 rounded-xl border border-slate-800 bg-slate-900/50 p-6">
+        <h2 className="text-lg font-semibold text-white">Account</h2>
+
+        <div className="grid gap-4 sm:grid-cols-2">
+          <div>
+            <p className="text-sm text-slate-500 mb-1">Email</p>
+            <p className="text-sm text-white">{email}</p>
+          </div>
+
+          <div>
+            <p className="text-sm text-slate-500 mb-1">Plan</p>
+            <span className="inline-flex items-center rounded-full bg-violet-600/20 px-3 py-1 text-sm font-medium text-violet-400 border border-violet-500/30">
+              {formatPlan(plan)}
+            </span>
+          </div>
+
+          <div>
+            <p className="text-sm text-slate-500 mb-1">Timezone</p>
+            <p className="text-sm text-white">{friendlyTimezone(timezone)}</p>
+            <p className="text-xs text-slate-500 mt-0.5">Detected from your browser</p>
+          </div>
+        </div>
       </section>
 
       {/* Danger Zone */}
