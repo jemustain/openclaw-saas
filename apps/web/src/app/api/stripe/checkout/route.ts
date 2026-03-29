@@ -38,10 +38,11 @@ export async function POST(req: NextRequest) {
     });
 
     return NextResponse.json({ url: checkoutSession.url });
-  } catch (error) {
+  } catch (error: any) {
     console.error("Stripe checkout error:", error);
+    const detail = error?.message ?? String(error);
     return NextResponse.json(
-      { error: "Failed to create checkout session" },
+      { error: "Failed to create checkout session", detail },
       { status: 500 },
     );
   }
