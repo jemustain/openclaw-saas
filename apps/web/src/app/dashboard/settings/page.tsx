@@ -99,7 +99,7 @@ export default function SettingsPage() {
           disabled={saving}
           className="rounded-lg bg-violet-600 px-5 py-2 text-sm font-medium text-white hover:bg-violet-500 disabled:opacity-50 transition"
         >
-          {saving ? 'Saving…' : saved ? 'Saved ✓' : 'Save Changes'}
+          {saving ? 'Saving…' : saved ? 'Saved' : 'Save Changes'}
         </button>
       </section>
 

@@ -224,7 +224,7 @@ export function MessengerSetupModal({
                   <li>Point your camera at the QR code below</li>
                 </ol>
                 <p className="text-xs text-amber-400/80 mt-1">
-                  ⚠️ You need to view this QR on a different screen than your phone (computer, tablet, etc.)
+                  You need to view this QR on a different screen than your phone (computer, tablet, etc.)
                 </p>
               </div>
               <img

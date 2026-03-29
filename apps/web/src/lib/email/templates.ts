@@ -71,9 +71,9 @@ export function assistantReadyEmail(name: string, messengerLinks?: { whatsapp?: 
     <table width="100%" cellpadding="0" cellspacing="0" style="background:#251840;border-radius:8px;padding:16px 20px;margin:20px 0;">
     <tr><td colspan="2" style="padding-bottom:12px;"><strong style="color:#c084fc;font-size:14px;">Quick tips</strong></td></tr>
     ${tip('•', 'Just talk naturally — your assistant understands context')}
-    ${tip('📅', 'Try "What\'s on my calendar today?" to get started')}
+    ${tip('', 'Try "What\'s on my calendar today?" to get started')}
     ${tip('•', 'Ask it to draft emails, summarize threads, or set reminders')}
-    ${tip('🔗', 'Connect more tools from your dashboard settings')}
+    ${tip('', 'Connect more tools from your dashboard settings')}
     </table>
     ${button('Open Dashboard', `${APP_URL}/dashboard`)}
   `);
@@ -82,7 +82,7 @@ export function assistantReadyEmail(name: string, messengerLinks?: { whatsapp?: 
 export function paymentFailedEmail(name: string): string {
   return layout(`
     ${p(`Hi ${name},`)}
-    ${p(`⚠️ <strong style="color:#e9d5ff;">We had trouble processing your latest payment.</strong>`)}
+    ${p(` <strong style="color:#e9d5ff;">We had trouble processing your latest payment.</strong>`)}
     ${p(`Your assistant is still running for now, but please update your payment method to avoid any interruption to your service.`)}
     ${p(`You can update your card or payment details in the billing portal below.`)}
     ${button('Update Payment Method', STRIPE_PORTAL_URL)}
@@ -95,10 +95,10 @@ export function subscriptionConfirmedEmail(name: string): string {
     ${p(`Welcome to Pro, ${name}!`)}
     ${p(`<strong style="color:#e9d5ff;">Your upgrade is confirmed.</strong> Here's what you've unlocked:`)}
     <table width="100%" cellpadding="0" cellspacing="0" style="background:#251840;border-radius:8px;padding:16px 20px;margin:20px 0;">
-    ${tip('♾️', '<strong style="color:#e9d5ff;">Unlimited messages</strong> — no daily caps')}
+    ${tip('', '<strong style="color:#e9d5ff;">Unlimited messages</strong> — no daily caps')}
     ${tip('•', '<strong style="color:#e9d5ff;">24/7 assistant</strong> — always on, always available')}
     ${tip('•', '<strong style="color:#e9d5ff;">Priority processing</strong> — faster responses')}
-    ${tip('🔌', '<strong style="color:#e9d5ff;">All integrations</strong> — connect every tool you use')}
+    ${tip('', '<strong style="color:#e9d5ff;">All integrations</strong> — connect every tool you use')}
     </table>
     ${p(`Your assistant is ready and running. Go say hi!`)}
     ${button('Go to Dashboard', `${APP_URL}/dashboard`)}

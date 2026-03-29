@@ -72,7 +72,7 @@ export default function SkillDetailPage() {
     return (
       <div className="min-h-screen bg-gray-950 text-gray-100 flex items-center justify-center">
         <div className="text-center">
-          <p className="text-2xl mb-4">🤷</p>
+          <p className="text-2xl mb-4"></p>
           <p className="text-gray-400 mb-4">Skill not found</p>
           <Link href="/dashboard/skills" className="text-blue-400 hover:text-blue-300">
             ← Back to Skill Library
@@ -105,7 +105,7 @@ export default function SkillDetailPage() {
             >
               {TIER_LABELS[skill.tier]}
             </span>
-            {skill.popular && <span className="text-xs text-amber-400">⭐ Popular</span>}
+            {skill.popular && <span className="text-xs text-amber-400">Popular</span>}
           </div>
           <p className="text-gray-400">{skill.description}</p>
         </div>
