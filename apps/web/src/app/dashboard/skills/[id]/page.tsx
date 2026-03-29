@@ -18,8 +18,20 @@ export default function SkillDetailPage() {
   const [loading, setLoading] = useState(true);
   const [actionInProgress, setActionInProgress] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [userTier, setUserTier] = useState<SkillTier>("free");
 
-  const userTier: SkillTier = "free";
+  // Fetch user plan
+  useEffect(() => {
+    fetch("/api/auth/me")
+      .then((res) => res.ok ? res.json() : null)
+      .then((data) => {
+        const plan = data?.user?.plan ?? data?.user?.subscription?.plan;
+        if (plan === "pro" || plan === "starter") {
+          setUserTier(plan as SkillTier);
+        }
+      })
+      .catch(() => {});
+  }, []);
 
   const fetchStatus = useCallback(async () => {
     try {
@@ -82,7 +94,8 @@ export default function SkillDetailPage() {
     );
   }
 
-  const locked = skill.tier !== "free" && userTier === "free";
+  const tierRank: Record<SkillTier, number> = { free: 0, starter: 1, pro: 2 };
+  const locked = tierRank[skill.tier] > tierRank[userTier];
 
   return (
     <div className="min-h-screen bg-gray-950 text-gray-100 px-4 py-8 sm:px-6 lg:px-8 max-w-3xl mx-auto">
