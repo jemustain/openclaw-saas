@@ -21,7 +21,7 @@ export const PLANS = {
   pro: {
     name: "Pro",
     priceMonthly: 1200, // $12.00 in cents
-    stripePriceId: process.env.STRIPE_PRICE_PRO || "price_pro_placeholder",
+    stripePriceId: process.env.STRIPE_PRICE_PRO?.trim() || "price_pro_placeholder",
     features: [
       "24/7 — assistant never sleeps",
       "Unlimited messages",
