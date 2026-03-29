@@ -11,7 +11,7 @@ export async function GET() {
   const supabase: any = createClient();
   const { data: user } = await supabase
     .from('users')
-    .select('email, name, timezone, plan')
+    .select('email, name, timezone, plan, ai_provider, ai_api_key')
     .eq('id', session.userId)
     .single();
 
@@ -21,9 +21,18 @@ export async function GET() {
     .eq('user_id', session.userId)
     .single();
 
+  // Mask ai_api_key: show first 4 + last 4 chars
+  const maskedKey = user?.ai_api_key
+    ? user.ai_api_key.length > 8
+      ? user.ai_api_key.slice(0, 4) + '••••••••' + user.ai_api_key.slice(-4)
+      : '••••••••'
+    : null;
+
   return NextResponse.json({
     user: {
       ...(user ?? { email: session.email, name: session.name }),
+      ai_provider: user?.ai_provider ?? null,
+      ai_api_key: maskedKey,
       subscription: subscription ?? null,
     },
   });
@@ -36,12 +45,18 @@ export async function PATCH(request: NextRequest) {
   }
 
   const body = await request.json();
-  const { name, timezone } = body;
+  const { name, timezone, ai_provider, ai_api_key } = body;
+
+  const update: Record<string, any> = { updated_at: new Date().toISOString() };
+  if (name !== undefined) update.name = name;
+  if (timezone !== undefined) update.timezone = timezone;
+  if (ai_provider !== undefined) update.ai_provider = ai_provider;
+  if (ai_api_key !== undefined) update.ai_api_key = ai_api_key;
 
   const supabase: any = createClient();
   await supabase
     .from('users')
-    .update({ name, timezone, updated_at: new Date().toISOString() })
+    .update(update)
     .eq('id', session.userId);
 
   return NextResponse.json({ ok: true });

@@ -22,6 +22,15 @@ export default function SettingsPage() {
   const [deleteConfirm, setDeleteConfirm] = useState('');
   const [deleting, setDeleting] = useState(false);
   const [deleteError, setDeleteError] = useState<string | null>(null);
+  const [aiProvider, setAiProvider] = useState('');
+  const [aiApiKeyMasked, setAiApiKeyMasked] = useState('');
+  const [showAiChange, setShowAiChange] = useState(false);
+  const [newAiProvider, setNewAiProvider] = useState<'gemini' | 'openai' | 'anthropic' | ''>('');
+  const [newAiApiKey, setNewAiApiKey] = useState('');
+  const [aiKeyVerifying, setAiKeyVerifying] = useState(false);
+  const [aiKeyVerified, setAiKeyVerified] = useState(false);
+  const [aiKeyError, setAiKeyError] = useState<string | null>(null);
+  const [aiSaving, setAiSaving] = useState(false);
 
   useEffect(() => {
     const detectedTz = Intl.DateTimeFormat().resolvedOptions().timeZone;
@@ -34,6 +43,8 @@ export default function SettingsPage() {
           setName(data.user.name ?? '');
           setTimezone(data.user.timezone ?? detectedTz);
           setPlan(data.user.plan ?? 'Free');
+          setAiProvider(data.user.ai_provider ?? '');
+          setAiApiKeyMasked(data.user.ai_api_key ?? '');
         }
       })
       .catch(() => {
@@ -86,6 +97,100 @@ export default function SettingsPage() {
         <div>
           <label className="block text-sm text-slate-400 mb-1">Display Name</label>
           <input value={name} onChange={(e) => setName(e.target.value)} className={inputClass} />
+        </div>
+
+        <div>
+          <label className="block text-sm text-slate-400 mb-1">AI Model</label>
+          {!showAiChange ? (
+            <div className="flex items-center gap-3">
+              <span className="text-sm text-white">
+                {aiProvider ? `${aiProvider.charAt(0).toUpperCase() + aiProvider.slice(1)}${aiApiKeyMasked ? ` · ${aiApiKeyMasked}` : ''}` : 'Not configured'}
+              </span>
+              <button
+                onClick={() => { setShowAiChange(true); setNewAiProvider((aiProvider as any) || ''); setNewAiApiKey(''); setAiKeyVerified(false); setAiKeyError(null); }}
+                className="text-xs text-violet-400 hover:text-violet-300"
+              >
+                Change
+              </button>
+            </div>
+          ) : (
+            <div className="space-y-3 rounded-lg border border-slate-700 bg-slate-800/50 p-4">
+              <div className="grid grid-cols-3 gap-2">
+                {(['gemini', 'openai', 'anthropic'] as const).map((p) => (
+                  <button
+                    key={p}
+                    onClick={() => { setNewAiProvider(p); setNewAiApiKey(''); setAiKeyVerified(false); setAiKeyError(null); }}
+                    className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
+                      newAiProvider === p ? 'bg-violet-600 text-white' : 'bg-slate-700 text-slate-300 hover:bg-slate-600'
+                    }`}
+                  >
+                    {p.charAt(0).toUpperCase() + p.slice(1)}
+                  </button>
+                ))}
+              </div>
+              {newAiProvider && (
+                <div className="flex gap-2">
+                  <input
+                    type="password"
+                    value={newAiApiKey}
+                    onChange={(e) => { setNewAiApiKey(e.target.value); setAiKeyVerified(false); setAiKeyError(null); }}
+                    placeholder={newAiProvider === 'gemini' ? 'AIza...' : newAiProvider === 'openai' ? 'sk-...' : 'sk-ant-...'}
+                    className={inputClass}
+                  />
+                  <button
+                    disabled={!newAiApiKey || aiKeyVerifying || aiKeyVerified}
+                    onClick={async () => {
+                      setAiKeyVerifying(true); setAiKeyError(null);
+                      try {
+                        const res = await fetch('/api/ai/verify-key', {
+                          method: 'POST',
+                          headers: { 'Content-Type': 'application/json' },
+                          body: JSON.stringify({ provider: newAiProvider, apiKey: newAiApiKey }),
+                        });
+                        const data = await res.json();
+                        if (data.valid) setAiKeyVerified(true);
+                        else setAiKeyError(data.error || 'Invalid key');
+                      } catch { setAiKeyError('Verification failed'); }
+                      setAiKeyVerifying(false);
+                    }}
+                    className="px-3 py-2 rounded-lg bg-slate-700 hover:bg-slate-600 disabled:opacity-50 text-sm text-white transition-colors whitespace-nowrap"
+                  >
+                    {aiKeyVerifying ? 'Verifying...' : aiKeyVerified ? '✓ Verified' : 'Verify'}
+                  </button>
+                </div>
+              )}
+              {aiKeyError && <p className="text-sm text-red-400">{aiKeyError}</p>}
+              <div className="flex gap-2">
+                <button
+                  disabled={!aiKeyVerified || aiSaving}
+                  onClick={async () => {
+                    setAiSaving(true);
+                    await fetch('/api/auth/me', {
+                      method: 'PATCH',
+                      headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify({ ai_provider: newAiProvider, ai_api_key: newAiApiKey }),
+                    });
+                    setAiProvider(newAiProvider);
+                    const masked = newAiApiKey.length > 8
+                      ? newAiApiKey.slice(0, 4) + '••••••••' + newAiApiKey.slice(-4)
+                      : '••••••••';
+                    setAiApiKeyMasked(masked);
+                    setShowAiChange(false);
+                    setAiSaving(false);
+                  }}
+                  className="rounded-lg bg-violet-600 px-4 py-2 text-sm font-medium text-white hover:bg-violet-500 disabled:opacity-50 transition"
+                >
+                  {aiSaving ? 'Saving...' : 'Save'}
+                </button>
+                <button
+                  onClick={() => setShowAiChange(false)}
+                  className="rounded-lg border border-slate-700 px-4 py-2 text-sm text-slate-300 hover:bg-slate-800 transition"
+                >
+                  Cancel
+                </button>
+              </div>
+            </div>
+          )}
         </div>
 
         <div>
