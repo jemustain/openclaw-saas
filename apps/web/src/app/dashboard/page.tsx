@@ -2,9 +2,26 @@ import { Suspense } from "react";
 import { redirect } from "next/navigation";
 import { getSession } from "@/lib/auth/session";
 import { createClient } from "@/lib/supabase/server";
+import { StatusBar } from "./components/status-bar";
+import { AssistantCard } from "./components/assistant-card";
+import { ConnectionsBadges } from "./components/connections-badges";
+import { AiModelCard } from "./components/ai-model-card";
+import { UsageCard } from "./components/usage-card";
+import { PlanBanner } from "./components/plan-banner";
 import { UpgradeBanner } from "./components/upgrade-banner";
-import { DashboardClient } from "./dashboard-client";
 import type { PlanKey } from "@/lib/stripe/config";
+
+function SectionHeading({ children }: { children: React.ReactNode }) {
+  return (
+    <h2 className="text-xs uppercase tracking-wider text-slate-500 font-semibold mb-3">
+      {children}
+    </h2>
+  );
+}
+
+function SectionDivider() {
+  return <div className="border-t border-slate-800" />;
+}
 
 async function DashboardContent({
   searchParams,
@@ -67,18 +84,49 @@ async function DashboardContent({
   }
 
   return (
-    <div className="min-h-screen bg-slate-950 px-4 py-10 sm:px-6 lg:px-8">
-      <div className="mx-auto max-w-4xl">
+    <div className="min-h-screen bg-slate-950">
+      {/* Sticky status bar */}
+      <StatusBar assistant={assistant ?? null} plan={plan} />
+
+      <div className="mx-auto max-w-4xl px-4 py-6 sm:px-6 lg:px-8 space-y-6">
         {upgraded && <UpgradeBanner />}
-        <DashboardClient
-          assistant={assistant ?? null}
-          hosting={hosting}
-          providerConnected={providerConnected}
-          messengers={messengers}
-          aiProvider={aiProvider}
-          aiApiKey={aiApiKey}
-          plan={plan}
-        />
+
+        {/* Section: Assistant */}
+        <section>
+          <SectionHeading>Assistant</SectionHeading>
+          <AssistantCard assistant={assistant ?? null} />
+        </section>
+
+        <SectionDivider />
+
+        {/* Section: Connections */}
+        <section>
+          <SectionHeading>Connections</SectionHeading>
+          <ConnectionsBadges
+            hosting={hosting}
+            providerConnected={providerConnected}
+            messengers={messengers}
+          />
+        </section>
+
+        <SectionDivider />
+
+        {/* Section: Configuration */}
+        <section>
+          <SectionHeading>Configuration</SectionHeading>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <AiModelCard provider={aiProvider} apiKey={aiApiKey} />
+            <UsageCard />
+          </div>
+        </section>
+
+        <SectionDivider />
+
+        {/* Section: Plan */}
+        <section>
+          <SectionHeading>Plan</SectionHeading>
+          <PlanBanner plan={plan} />
+        </section>
       </div>
     </div>
   );
