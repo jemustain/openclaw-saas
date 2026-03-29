@@ -289,7 +289,7 @@ export function AssistantCard({ assistant }: { assistant: Assistant | null }) {
   // Destroying state - show progress
   if (destroying) {
     return (
-      <div className="rounded-xl border border-slate-800 bg-slate-900 p-6">
+      <div className="rounded-2xl border border-slate-800 bg-gradient-to-br from-slate-900 to-slate-800/80 p-6 transition-all duration-200 hover:scale-[1.01] hover:border-slate-700">
         <h2 className="text-lg font-semibold text-white mb-4">Your Assistant</h2>
 
         <div className="flex items-center gap-2 mb-4">
@@ -329,7 +329,7 @@ export function AssistantCard({ assistant }: { assistant: Assistant | null }) {
   // Provisioning state - show progress
   if (provisioning || status === "provisioning") {
     return (
-      <div className="rounded-xl border border-slate-800 bg-slate-900 p-6">
+      <div className="rounded-2xl border border-slate-800 bg-gradient-to-br from-slate-900 to-slate-800/80 p-6 transition-all duration-200 hover:scale-[1.01] hover:border-slate-700">
         <h2 className="text-lg font-semibold text-white mb-4">Your Assistant</h2>
 
         <div className="flex items-center gap-2 mb-4">
@@ -374,7 +374,7 @@ export function AssistantCard({ assistant }: { assistant: Assistant | null }) {
 
   // Normal states
   return (
-    <div className="rounded-xl border border-slate-800 bg-slate-900 p-6">
+    <div className="rounded-2xl border border-slate-800 bg-gradient-to-br from-slate-900 to-slate-800/80 p-6 transition-all duration-200 hover:scale-[1.01] hover:border-slate-700">
       <h2 className="text-lg font-semibold text-white mb-4">Your Assistant</h2>
 
       <div className="flex items-center gap-2 mb-4">

@@ -25,7 +25,7 @@ export function AiModelCard({
   const label = provider ? PROVIDER_LABELS[provider] ?? provider : null;
 
   return (
-    <div className="rounded-xl border border-slate-800 bg-slate-900 p-6">
+    <div className="rounded-2xl border border-slate-800 bg-slate-900 p-6 transition-all duration-200 hover:scale-[1.01] hover:border-slate-700">
       <h2 className="text-lg font-semibold text-white mb-1">AI Model</h2>
 
       {configured ? (

@@ -4,11 +4,13 @@ import { getSession } from "@/lib/auth/session";
 import { createClient } from "@/lib/supabase/server";
 import { AssistantCard } from "./components/assistant-card";
 import { UsageCard } from "./components/usage-card";
-import { ConnectionsCard } from "./components/connections-card";
 import { PlanCard } from "./components/plan-card";
 import { AiModelCard } from "./components/ai-model-card";
 import { UpgradeBanner } from "./components/upgrade-banner";
+import { MessengerMiniCard } from "./components/messenger-mini-card";
 import type { PlanKey } from "@/lib/stripe/config";
+
+const MESSENGER_KEYS = ["whatsapp", "telegram", "slack", "discord", "signal"];
 
 async function DashboardContent({
   searchParams,
@@ -53,41 +55,37 @@ async function DashboardContent({
     plan = profile?.plan ?? "free";
   }
 
-  const hosting: string | undefined = user?.provider_preference ?? undefined;
-  const messengers: string[] = user?.messengers ?? [];
   const aiProvider: string | null = user?.ai_provider ?? null;
   const aiApiKey: string | null = user?.ai_api_key ?? null;
 
-  // Check provider token connections (Azure + DO need OAuth)
-  let providerConnected = false;
-  if (hosting === "oracle") {
-    providerConnected = true; // We manage Oracle — always active
-  } else if (hosting) {
-    const { data: token } = await supabase
-      .from("provider_tokens")
-      .select("id")
-      .eq("user_id", session.userId)
-      .eq("provider", hosting)
-      .single();
-    providerConnected = !!token;
-  }
+  // Derive first name from session
+  const firstName =
+    session.email?.split("@")[0]?.split(".")[0] ??
+    "there";
+  const greeting = `Hey, ${firstName.charAt(0).toUpperCase()}${firstName.slice(1)}`;
 
   return (
     <div className="min-h-screen bg-slate-950 px-4 py-8 sm:px-6 lg:px-8">
       <div className="mx-auto max-w-5xl">
         {upgraded && <UpgradeBanner />}
-        <h1 className="text-3xl font-bold text-white mb-8">Dashboard</h1>
+        <p className="text-xl font-medium text-white mb-8">{greeting}</p>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <AssistantCard assistant={assistant ?? null} />
-          <UsageCard />
-          <ConnectionsCard
-            hosting={hosting}
-            providerConnected={providerConnected}
-            messengers={messengers}
-          />
-          <PlanCard plan={plan} />
+        {/* Bento Grid */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          {/* Assistant — spans 2 cols, 2 rows */}
+          <div className="md:col-span-2 md:row-span-2">
+            <AssistantCard assistant={assistant ?? null} />
+          </div>
+
+          {/* Right column stack */}
           <AiModelCard provider={aiProvider} apiKey={aiApiKey} />
+          <PlanCard plan={plan} />
+          <UsageCard />
+
+          {/* Messenger mini-cards — 2x2 grid below assistant area */}
+          {MESSENGER_KEYS.map((key) => (
+            <MessengerMiniCard key={key} messengerKey={key} />
+          ))}
         </div>
       </div>
     </div>

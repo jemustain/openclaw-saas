@@ -38,7 +38,7 @@ export function PlanCard({ plan }: { plan: PlanKey }) {
   }
 
   return (
-    <div className="rounded-xl border border-slate-800 bg-slate-900 p-6">
+    <div className="rounded-2xl border border-slate-800 bg-slate-900 p-6 transition-all duration-200 hover:scale-[1.01] hover:border-slate-700">
       <h2 className="text-lg font-semibold text-white mb-1">Your Plan</h2>
       <p className="text-2xl font-bold text-indigo-400 mb-4">
         {info.name}

@@ -39,7 +39,7 @@ export function UsageCard() {
   const pct = limit ? Math.min((messagesUsed / limit) * 100, 100) : 0;
 
   return (
-    <div className="rounded-xl border border-slate-800 bg-slate-900 p-6">
+    <div className="rounded-2xl border border-slate-800 bg-slate-900 p-6 transition-all duration-200 hover:scale-[1.01] hover:border-slate-700">
       <h2 className="text-lg font-semibold text-white mb-4">
         Today&apos;s Usage
       </h2>
