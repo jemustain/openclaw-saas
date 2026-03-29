@@ -2,12 +2,8 @@ import { Suspense } from "react";
 import { redirect } from "next/navigation";
 import { getSession } from "@/lib/auth/session";
 import { createClient } from "@/lib/supabase/server";
-import { AssistantCard } from "./components/assistant-card";
-import { UsageCard } from "./components/usage-card";
-import { ConnectionsCard } from "./components/connections-card";
-import { PlanCard } from "./components/plan-card";
-import { AiModelCard } from "./components/ai-model-card";
 import { UpgradeBanner } from "./components/upgrade-banner";
+import { DashboardClient } from "./dashboard-client";
 import type { PlanKey } from "@/lib/stripe/config";
 
 async function DashboardContent({
@@ -25,7 +21,7 @@ async function DashboardContent({
 
   const supabase: any = createClient();
 
-  // Fetch assistant status (include provider info)
+  // Fetch assistant status
   const { data: assistant } = await supabase
     .from("assistants")
     .select("id, status, ip_address, provider, region, created_at")
@@ -35,14 +31,13 @@ async function DashboardContent({
     .limit(1)
     .single();
 
-  // Fetch user record for plan, hosting preference, and messengers
+  // Fetch user record
   const { data: user } = await supabase
     .from("users")
     .select("plan, provider_preference, messengers, ai_provider, ai_api_key")
     .eq("id", session.userId)
     .single();
 
-  // Fallback to profiles table for plan if users table doesn't have it
   let plan: PlanKey = user?.plan ?? "free";
   if (!user?.plan) {
     const { data: profile } = await supabase
@@ -58,10 +53,9 @@ async function DashboardContent({
   const aiProvider: string | null = user?.ai_provider ?? null;
   const aiApiKey: string | null = user?.ai_api_key ?? null;
 
-  // Check provider token connections (Azure + DO need OAuth)
   let providerConnected = false;
   if (hosting === "oracle") {
-    providerConnected = true; // We manage Oracle — always active
+    providerConnected = true;
   } else if (hosting) {
     const { data: token } = await supabase
       .from("provider_tokens")
@@ -73,22 +67,18 @@ async function DashboardContent({
   }
 
   return (
-    <div className="min-h-screen bg-slate-950 px-4 py-8 sm:px-6 lg:px-8">
-      <div className="mx-auto max-w-5xl">
+    <div className="min-h-screen bg-slate-950 px-4 py-10 sm:px-6 lg:px-8">
+      <div className="mx-auto max-w-4xl">
         {upgraded && <UpgradeBanner />}
-        <h1 className="text-3xl font-bold text-white mb-8">Dashboard</h1>
-
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <AssistantCard assistant={assistant ?? null} />
-          <UsageCard />
-          <ConnectionsCard
-            hosting={hosting}
-            providerConnected={providerConnected}
-            messengers={messengers}
-          />
-          <PlanCard plan={plan} />
-          <AiModelCard provider={aiProvider} apiKey={aiApiKey} />
-        </div>
+        <DashboardClient
+          assistant={assistant ?? null}
+          hosting={hosting}
+          providerConnected={providerConnected}
+          messengers={messengers}
+          aiProvider={aiProvider}
+          aiApiKey={aiApiKey}
+          plan={plan}
+        />
       </div>
     </div>
   );
