@@ -1,9 +1,10 @@
 import { Resend } from 'resend';
+import { env } from '../env';
 
 // Lazy init to avoid build crashes when RESEND_API_KEY isn't set
 const resend = new Proxy({} as Resend, {
   get(_, prop) {
-    const instance = new Resend(process.env.RESEND_API_KEY);
+    const instance = new Resend(env('RESEND_API_KEY'));
     return (instance as unknown as Record<string | symbol, unknown>)[prop];
   },
 });
@@ -11,7 +12,7 @@ const resend = new Proxy({} as Resend, {
 const FROM_EMAIL = 'ShiftWorker <hello@shiftworker.ai>';
 
 export async function sendEmail(to: string, subject: string, html: string) {
-  if (!process.env.RESEND_API_KEY) {
+  if (!env('RESEND_API_KEY')) {
     console.warn('[email] RESEND_API_KEY not set, skipping email to', to);
     return null;
   }

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { stripe } from "@/lib/stripe/client";
 import { getSession } from "@/lib/auth/session";
 import { createClient } from "@/lib/supabase/server";
+import { env } from "@/lib/env";
 
 /**
  * POST /api/stripe/portal
@@ -30,7 +31,7 @@ export async function POST(req: NextRequest) {
 
     const portalSession = await stripe.billingPortal.sessions.create({
       customer: subscription.stripe_customer_id,
-      return_url: `${process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"}/dashboard/billing`,
+      return_url: `${env("NEXT_PUBLIC_APP_URL") || "http://localhost:3000"}/dashboard/billing`,
     });
 
     return NextResponse.json({ url: portalSession.url });

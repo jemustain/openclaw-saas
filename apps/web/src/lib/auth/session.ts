@@ -1,5 +1,6 @@
 import { SignJWT, jwtVerify } from 'jose';
 import { cookies } from 'next/headers';
+import { envRequired } from '../env';
 
 export interface Session {
   userId: string;
@@ -11,9 +12,7 @@ const COOKIE_NAME = 'session';
 const EXPIRY = '30d';
 
 function getSecret() {
-  const secret = process.env.SESSION_SECRET;
-  if (!secret) throw new Error('SESSION_SECRET is not set');
-  return new TextEncoder().encode(secret);
+  return new TextEncoder().encode(envRequired('SESSION_SECRET'));
 }
 
 export async function createSession(payload: Session): Promise<string> {
