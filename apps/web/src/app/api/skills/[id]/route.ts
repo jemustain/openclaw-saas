@@ -54,14 +54,28 @@ export async function POST(
     const data = await res.json();
 
     if (!res.ok) {
+      // Surface a friendly message if no assistant is running
+      if (res.status === 404 && data?.error?.includes("No active assistant")) {
+        return NextResponse.json(
+          { error: "Your assistant is not running. Launch it from the dashboard to manage skills." },
+          { status: 404 },
+        );
+      }
       return NextResponse.json(data, { status: res.status });
     }
 
     return NextResponse.json(data);
   } catch (err: any) {
     console.error(`Failed to ${req.method} skill:`, err);
+    // Network errors likely mean the VM/sidecar is unreachable
+    if (err.cause?.code === "ECONNREFUSED" || err.cause?.code === "ETIMEDOUT" || err.name === "TimeoutError") {
+      return NextResponse.json(
+        { error: "Could not reach your assistant. It may be starting up or offline." },
+        { status: 503 },
+      );
+    }
     return NextResponse.json(
-      { error: "Failed to process skill action", details: err.message },
+      { error: "Failed to process skill action" },
       { status: 500 },
     );
   }

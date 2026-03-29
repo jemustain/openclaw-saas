@@ -3,13 +3,30 @@
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 
-const TIMEZONES = [
-  'America/New_York', 'America/Chicago', 'America/Denver', 'America/Phoenix',
-  'America/Los_Angeles', 'America/Anchorage', 'Pacific/Honolulu',
-  'Europe/London', 'Europe/Paris', 'Europe/Berlin', 'Europe/Moscow',
-  'Asia/Tokyo', 'Asia/Shanghai', 'Asia/Kolkata', 'Asia/Dubai',
-  'Australia/Sydney', 'Pacific/Auckland',
+const TIMEZONES: { value: string; label: string }[] = [
+  { value: 'America/New_York', label: 'Eastern Time (UTC-5)' },
+  { value: 'America/Chicago', label: 'Central Time (UTC-6)' },
+  { value: 'America/Denver', label: 'Mountain Time (UTC-7)' },
+  { value: 'America/Phoenix', label: 'Arizona Time (UTC-7)' },
+  { value: 'America/Los_Angeles', label: 'Pacific Time (UTC-8)' },
+  { value: 'America/Anchorage', label: 'Alaska Time (UTC-9)' },
+  { value: 'Pacific/Honolulu', label: 'Hawaii Time (UTC-10)' },
+  { value: 'Europe/London', label: 'London (UTC+0)' },
+  { value: 'Europe/Paris', label: 'Central European (UTC+1)' },
+  { value: 'Europe/Berlin', label: 'Berlin (UTC+1)' },
+  { value: 'Europe/Moscow', label: 'Moscow (UTC+3)' },
+  { value: 'Asia/Dubai', label: 'Dubai (UTC+4)' },
+  { value: 'Asia/Kolkata', label: 'India (UTC+5:30)' },
+  { value: 'Asia/Shanghai', label: 'China (UTC+8)' },
+  { value: 'Asia/Tokyo', label: 'Japan (UTC+9)' },
+  { value: 'Australia/Sydney', label: 'Sydney (UTC+11)' },
+  { value: 'Pacific/Auckland', label: 'New Zealand (UTC+12)' },
 ];
+
+function formatPlan(plan: string): string {
+  if (!plan) return 'Free';
+  return plan.charAt(0).toUpperCase() + plan.slice(1);
+}
 
 export default function SettingsPage() {
   const router = useRouter();
@@ -24,7 +41,6 @@ export default function SettingsPage() {
   const [deleteConfirm, setDeleteConfirm] = useState('');
 
   useEffect(() => {
-    // Fetch user profile from an API endpoint
     fetch('/api/auth/me')
       .then((res) => res.json())
       .then((data) => {
@@ -84,14 +100,18 @@ export default function SettingsPage() {
             className={inputClass}
           >
             {TIMEZONES.map((tz) => (
-              <option key={tz} value={tz}>{tz.replace(/_/g, ' ')}</option>
+              <option key={tz.value} value={tz.value}>{tz.label}</option>
             ))}
           </select>
         </div>
 
         <div>
           <label className="block text-sm text-slate-400 mb-1">Current Plan</label>
-          <p className="text-sm text-white">{plan}</p>
+          <div className="flex items-center gap-2">
+            <span className="inline-flex items-center rounded-full bg-violet-600/20 px-3 py-1 text-sm font-medium text-violet-400 border border-violet-500/30">
+              {formatPlan(plan)}
+            </span>
+          </div>
         </div>
 
         <button
@@ -99,31 +119,31 @@ export default function SettingsPage() {
           disabled={saving}
           className="rounded-lg bg-violet-600 px-5 py-2 text-sm font-medium text-white hover:bg-violet-500 disabled:opacity-50 transition"
         >
-          {saving ? 'Saving…' : saved ? 'Saved' : 'Save Changes'}
+          {saving ? 'Saving...' : saved ? 'Saved' : 'Save Changes'}
         </button>
       </section>
 
       {/* Danger Zone */}
-      <section className="rounded-xl border border-red-900/50 bg-red-950/20 p-6 space-y-4">
-        <h2 className="text-lg font-semibold text-red-400">Danger Zone</h2>
+      <section className="rounded-xl border border-slate-800 bg-slate-900/50 p-6 space-y-4">
+        <h2 className="text-sm font-semibold text-slate-400 uppercase tracking-wider">Danger Zone</h2>
         <p className="text-sm text-slate-400">
           Permanently delete your account and all associated data. This action cannot be undone.
         </p>
         {!showDelete ? (
           <button
             onClick={() => setShowDelete(true)}
-            className="rounded-lg border border-red-800 px-4 py-2 text-sm text-red-400 hover:bg-red-900/30 transition"
+            className="rounded-lg border border-red-800/50 px-4 py-2 text-sm text-red-400 hover:bg-red-900/20 transition"
           >
-            Delete my account
+            Delete Account
           </button>
         ) : (
-          <div className="space-y-3">
-            <p className="text-sm text-red-300">Type <strong>DELETE</strong> to confirm:</p>
+          <div className="space-y-3 rounded-lg border border-red-800/50 bg-red-950/20 p-4">
+            <p className="text-sm text-slate-300">Type <code className="bg-slate-800 px-1.5 py-0.5 rounded text-red-400 text-xs font-mono">DELETE</code> to confirm:</p>
             <input
               value={deleteConfirm}
               onChange={(e) => setDeleteConfirm(e.target.value)}
               placeholder="DELETE"
-              className="w-full max-w-xs rounded-lg border border-red-800 bg-slate-900 px-4 py-2 text-sm text-white focus:outline-none"
+              className="w-full max-w-xs rounded-lg border border-red-800/50 bg-slate-900 px-4 py-2 text-sm text-white focus:outline-none focus:border-red-600"
             />
             <div className="flex gap-3">
               <button
