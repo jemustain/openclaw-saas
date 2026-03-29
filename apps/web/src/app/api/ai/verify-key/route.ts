@@ -74,6 +74,26 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ valid: true });
     }
 
+    if (provider === 'github-copilot') {
+      const res = await fetch('https://models.inference.ai.azure.com/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${apiKey}`,
+        },
+        body: JSON.stringify({
+          model: 'gpt-4o-mini',
+          messages: [{ role: 'user', content: 'Hi' }],
+          max_tokens: 1,
+        }),
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        return NextResponse.json({ valid: false, error: data.error?.message || 'Invalid token' });
+      }
+      return NextResponse.json({ valid: true });
+    }
+
     return NextResponse.json({ valid: false, error: 'Unknown provider' });
   } catch (err: any) {
     return NextResponse.json({ valid: false, error: err.message || 'Verification failed' });
