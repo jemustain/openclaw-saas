@@ -34,7 +34,7 @@ export async function POST(request: Request) {
     const chatId = String(message.chat.id);
     const username = message.from?.username || null;
 
-    const supabase = createClient();
+    const supabase: any = createClient();
 
     // Look up and update the pairing
     const { data: pairing } = await supabase

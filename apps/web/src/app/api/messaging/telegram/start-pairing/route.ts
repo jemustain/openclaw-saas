@@ -18,7 +18,7 @@ export async function POST() {
       );
     }
 
-    const supabase = createClient();
+    const supabase: any = createClient();
 
     // Find user's active assistant
     const { data: assistant } = await supabase

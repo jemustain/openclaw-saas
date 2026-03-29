@@ -14,7 +14,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'pairingToken is required' }, { status: 400 });
     }
 
-    const supabase = createClient();
+    const supabase: any = createClient();
 
     const { data: pairing } = await supabase
       .from('telegram_pairings')
