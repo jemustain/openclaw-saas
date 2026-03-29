@@ -1348,8 +1348,8 @@ export default function OnboardingWizard() {
           <div className="space-y-6">
             <div className="text-center">
               <Key className="w-12 h-12 text-violet-500 mx-auto mb-4" />
-              <h2 className="text-2xl font-bold">Choose Your AI Model</h2>
-              <p className="text-slate-400 mt-2">Your server is ready! Now choose an AI model for your assistant. Bring your own API key from one of these providers.</p>
+              <h2 className="text-2xl font-bold">Connect an AI Provider</h2>
+              <p className="text-slate-400 mt-2">Your assistant needs a brain. Pick a provider and paste your API key — you can always change this later from your dashboard.</p>
             </div>
 
             <div className="grid gap-4">
@@ -1463,35 +1463,54 @@ export default function OnboardingWizard() {
 
             <div className="flex justify-between items-center">
               <BackBtn />
-              <PrimaryBtn onClick={async () => {
-                // Save AI config to database
-                try {
-                  await fetch('/api/onboarding', {
-                    method: 'PATCH',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ aiProvider, aiApiKey }),
-                  });
-                } catch { /* continue anyway */ }
-                // Configure OpenClaw on the VM via sidecar
-                try {
-                  await fetch('/api/assistant/configure-ai', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ provider: aiProvider, apiKey: aiApiKey }),
-                  });
-                } catch { /* continue anyway — can be configured from dashboard */ }
-                // Mark onboarding complete
-                try {
-                  await fetch('/api/onboarding', {
-                    method: 'PATCH',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ onboardingComplete: true }),
-                  });
-                } catch { /* ignore */ }
-                next();
-              }} disabled={!aiKeyVerified}>
-                Finish Setup <ArrowRight className="w-4 h-4" />
-              </PrimaryBtn>
+              <div className="flex items-center gap-4">
+                <PrimaryBtn onClick={async () => {
+                  // Save AI config to database
+                  try {
+                    await fetch('/api/onboarding', {
+                      method: 'PATCH',
+                      headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify({ aiProvider, aiApiKey }),
+                    });
+                  } catch { /* continue anyway */ }
+                  // Configure OpenClaw on the VM via sidecar
+                  try {
+                    await fetch('/api/assistant/configure-ai', {
+                      method: 'POST',
+                      headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify({ provider: aiProvider, apiKey: aiApiKey }),
+                    });
+                  } catch { /* continue anyway — can be configured from dashboard */ }
+                  // Mark onboarding complete
+                  try {
+                    await fetch('/api/onboarding', {
+                      method: 'PATCH',
+                      headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify({ onboardingComplete: true }),
+                    });
+                  } catch { /* ignore */ }
+                  next();
+                }} disabled={!aiKeyVerified}>
+                  Next <ArrowRight className="w-4 h-4" />
+                </PrimaryBtn>
+                <button
+                  type="button"
+                  onClick={async () => {
+                    // Mark onboarding complete without AI config
+                    try {
+                      await fetch('/api/onboarding', {
+                        method: 'PATCH',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ onboardingComplete: true }),
+                      });
+                    } catch { /* ignore */ }
+                    next();
+                  }}
+                  className="text-sm text-slate-400 hover:text-slate-200 transition-colors underline underline-offset-2"
+                >
+                  Skip for now
+                </button>
+              </div>
             </div>
           </div>
         )}
