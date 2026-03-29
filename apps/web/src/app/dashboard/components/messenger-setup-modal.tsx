@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
-import { X, Loader2, QrCode, Bot, Smartphone } from "lucide-react";
+import { X, Loader2, QrCode, Bot, Smartphone, CheckCircle } from "lucide-react";
 
 const MESSENGER_INFO: Record<
   string,
@@ -20,7 +20,7 @@ const MESSENGER_INFO: Record<
     title: "Telegram",
     icon: Bot,
     setupInstructions:
-      "Your Telegram bot is being created. Once ready, tap the link to start chatting.",
+      "Connect your assistant to Telegram in a few simple steps.",
   },
   discord: {
     title: "Discord",
@@ -41,6 +41,14 @@ const MESSENGER_INFO: Record<
   },
 };
 
+type TelegramPairingStatus =
+  | "pairing-start"
+  | "pairing-checking"
+  | "pairing-found"
+  | "pairing-confirming"
+  | "connected"
+  | "failed";
+
 interface MessengerSetupModalProps {
   messenger: string;
   onClose: () => void;
@@ -53,16 +61,107 @@ export function MessengerSetupModal({
   onConnected,
 }: MessengerSetupModalProps) {
   const info = MESSENGER_INFO[messenger];
+  const isTelegram = messenger === "telegram";
+
+  // Non-Telegram state
   const [status, setStatus] = useState<
-    "setting-up" | "ready" | "connected" | "failed" | "manual-token"
+    "setting-up" | "ready" | "connected" | "failed"
   >("setting-up");
   const [botLink, setBotLink] = useState<string | null>(null);
   const [qrCode, setQrCode] = useState<string | null>(null);
   const [controlUiUrl, setControlUiUrl] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [qrExpired, setQrExpired] = useState(false);
-  const [manualToken, setManualToken] = useState("");
 
+  // Telegram pairing state
+  const [telegramStatus, setTelegramStatus] = useState<TelegramPairingStatus>("pairing-start");
+  const [pairingToken, setPairingToken] = useState<string | null>(null);
+  const [telegramBotLink, setTelegramBotLink] = useState<string | null>(null);
+  const [telegramUsername, setTelegramUsername] = useState<string | null>(null);
+  const [telegramError, setTelegramError] = useState<string | null>(null);
+  const [checkMessage, setCheckMessage] = useState<string | null>(null);
+
+  // Telegram: start pairing on mount
+  useEffect(() => {
+    if (!isTelegram) return;
+    let cancelled = false;
+
+    const startPairing = async () => {
+      try {
+        const res = await fetch("/api/messaging/telegram/start-pairing", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+        });
+        if (cancelled) return;
+        if (!res.ok) {
+          setTelegramError(`Failed to start pairing (HTTP ${res.status})`);
+          setTelegramStatus("failed");
+          return;
+        }
+        const data = await res.json();
+        setPairingToken(data.pairingToken);
+        setTelegramBotLink(data.botLink);
+        setTelegramStatus("pairing-start");
+      } catch {
+        if (!cancelled) {
+          setTelegramError("Failed to start pairing");
+          setTelegramStatus("failed");
+        }
+      }
+    };
+
+    startPairing();
+    return () => { cancelled = true; };
+  }, [isTelegram]);
+
+  const handleCheckPairing = useCallback(async () => {
+    if (!pairingToken) return;
+    setTelegramStatus("pairing-checking");
+    setCheckMessage(null);
+    try {
+      const res = await fetch("/api/messaging/telegram/check-pairing", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ pairingToken }),
+      });
+      const data = await res.json();
+      if (data.paired) {
+        setTelegramUsername(data.telegramUsername);
+        setTelegramStatus("pairing-found");
+      } else {
+        setCheckMessage("No pairing found yet. Make sure you sent /start to the bot in Telegram.");
+        setTelegramStatus("pairing-start");
+      }
+    } catch {
+      setCheckMessage("Failed to check pairing. Try again.");
+      setTelegramStatus("pairing-start");
+    }
+  }, [pairingToken]);
+
+  const handleConfirmPairing = useCallback(async () => {
+    if (!pairingToken) return;
+    setTelegramStatus("pairing-confirming");
+    try {
+      const res = await fetch("/api/messaging/telegram/confirm-pairing", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ pairingToken }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        setTelegramStatus("connected");
+        onConnected?.(messenger);
+      } else {
+        setTelegramError(data.error || "Failed to confirm pairing");
+        setTelegramStatus("failed");
+      }
+    } catch {
+      setTelegramError("Failed to confirm pairing");
+      setTelegramStatus("failed");
+    }
+  }, [pairingToken, messenger, onConnected]);
+
+  // Non-Telegram: trigger setup
   const triggerSetup = useCallback(async () => {
     setStatus("setting-up");
     setError(null);
@@ -81,12 +180,8 @@ export function MessengerSetupModal({
       const data = await res.json();
 
       if (data.error) {
-        if (data.error === "manual_setup_required") {
-          setStatus("manual-token");
-        } else {
-          setError(data.error);
-          setStatus("failed");
-        }
+        setError(data.error);
+        setStatus("failed");
       } else if (data.botLink) {
         setBotLink(data.botLink);
         setStatus("ready");
@@ -111,13 +206,15 @@ export function MessengerSetupModal({
     }
   }, [messenger, onConnected]);
 
-  // Trigger setup on mount
+  // Non-Telegram: trigger setup on mount
   useEffect(() => {
+    if (isTelegram) return;
     triggerSetup();
-  }, [triggerSetup]);
+  }, [isTelegram, triggerSetup]);
 
   // Poll for QR-based connections (WhatsApp/Signal)
   useEffect(() => {
+    if (isTelegram) return;
     if (status !== "ready" || !qrCode) return;
     let cancelled = false;
     let attempts = 0;
@@ -150,10 +247,119 @@ export function MessengerSetupModal({
     return () => {
       cancelled = true;
     };
-  }, [status, qrCode, messenger, onConnected]);
+  }, [isTelegram, status, qrCode, messenger, onConnected]);
 
   if (!info) return null;
   const Icon = info.icon;
+
+  // Telegram-specific rendering
+  const renderTelegram = () => {
+    if (telegramStatus === "pairing-start" && !pairingToken) {
+      return (
+        <div className="flex items-center justify-center gap-3 py-8">
+          <Loader2 className="w-5 h-5 animate-spin text-violet-400" />
+          <span className="text-slate-300">Setting up Telegram pairing...</span>
+        </div>
+      );
+    }
+
+    if (telegramStatus === "pairing-start" && pairingToken) {
+      return (
+        <div className="space-y-4 pt-2">
+          <p className="text-sm text-slate-300">
+            To connect Telegram, tap the button below to open our bot, then send <code className="bg-slate-800 px-1.5 py-0.5 rounded text-xs text-violet-300">/start</code>
+          </p>
+          <a
+            href={telegramBotLink!}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="block w-full text-center rounded-lg bg-blue-500 hover:bg-blue-400 py-3 text-sm font-medium transition text-white"
+          >
+            Open in Telegram →
+          </a>
+          {checkMessage && (
+            <p className="text-xs text-amber-400 text-center">{checkMessage}</p>
+          )}
+          <button
+            type="button"
+            onClick={handleCheckPairing}
+            className="w-full text-center rounded-lg bg-slate-800 hover:bg-slate-700 py-2.5 text-sm font-medium transition border border-slate-700 text-white"
+          >
+            Check for Pairing
+          </button>
+        </div>
+      );
+    }
+
+    if (telegramStatus === "pairing-checking") {
+      return (
+        <div className="flex items-center justify-center gap-3 py-8">
+          <Loader2 className="w-5 h-5 animate-spin text-violet-400" />
+          <span className="text-slate-300">Checking for pairing...</span>
+        </div>
+      );
+    }
+
+    if (telegramStatus === "pairing-found") {
+      return (
+        <div className="space-y-4 pt-2 text-center">
+          <CheckCircle className="w-10 h-10 text-green-400 mx-auto" />
+          <p className="text-sm text-green-400 font-medium">
+            Pairing found!{telegramUsername ? ` Telegram user: @${telegramUsername}` : ""}
+          </p>
+          <button
+            type="button"
+            onClick={handleConfirmPairing}
+            className="w-full text-center rounded-lg bg-violet-600 hover:bg-violet-500 py-3 text-sm font-medium transition text-white"
+          >
+            Confirm Connection
+          </button>
+        </div>
+      );
+    }
+
+    if (telegramStatus === "pairing-confirming") {
+      return (
+        <div className="flex items-center justify-center gap-3 py-8">
+          <Loader2 className="w-5 h-5 animate-spin text-violet-400" />
+          <span className="text-slate-300">Confirming connection...</span>
+        </div>
+      );
+    }
+
+    if (telegramStatus === "connected") {
+      return (
+        <div className="text-center py-6 space-y-3">
+          <CheckCircle className="w-10 h-10 text-green-400 mx-auto" />
+          <p className="text-green-400 font-medium">Telegram is connected!</p>
+          <button
+            type="button"
+            onClick={onClose}
+            className="px-6 py-2.5 bg-violet-600 hover:bg-violet-500 text-white font-medium rounded-lg transition-colors text-sm"
+          >
+            Done
+          </button>
+        </div>
+      );
+    }
+
+    if (telegramStatus === "failed") {
+      return (
+        <div className="space-y-3 pt-2">
+          <p className="text-sm text-red-400 text-center">{telegramError}</p>
+          <button
+            type="button"
+            onClick={() => window.location.reload()}
+            className="w-full text-center rounded-lg bg-slate-800 hover:bg-slate-700 py-2.5 text-sm font-medium transition border border-slate-700 text-white"
+          >
+            Retry
+          </button>
+        </div>
+      );
+    }
+
+    return null;
+  };
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
@@ -180,8 +386,13 @@ export function MessengerSetupModal({
           </div>
         </div>
 
+        {/* Telegram flow */}
+        {isTelegram && renderTelegram()}
+
+        {/* Non-Telegram flows below */}
+
         {/* Setting up */}
-        {status === "setting-up" && (
+        {!isTelegram && status === "setting-up" && (
           <div className="flex items-center justify-center gap-3 py-8">
             <Loader2 className="w-5 h-5 animate-spin text-violet-400" />
             <span className="text-slate-300">
@@ -190,25 +401,9 @@ export function MessengerSetupModal({
           </div>
         )}
 
-        {/* Ready - Telegram bot link */}
-        {status === "ready" && messenger === "telegram" && botLink && (
-          <div className="space-y-3 pt-2">
-            <p className="text-sm text-green-400">
-              Bot created - tap to start chatting
-            </p>
-            <a
-              href={botLink}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="block w-full text-center rounded-lg bg-blue-500 hover:bg-blue-400 py-3 text-sm font-medium transition text-white"
-            >
-              Open in Telegram →
-            </a>
-          </div>
-        )}
-
         {/* Ready - QR code (WhatsApp/Signal) */}
-        {status === "ready" &&
+        {!isTelegram &&
+          status === "ready" &&
           qrCode &&
           !qrExpired &&
           (messenger === "whatsapp" || messenger === "signal") && (
@@ -243,7 +438,7 @@ export function MessengerSetupModal({
           )}
 
         {/* QR expired */}
-        {status === "ready" && qrExpired && (
+        {!isTelegram && status === "ready" && qrExpired && (
           <div className="space-y-3 pt-2">
             <p className="text-sm text-amber-400 text-center">
               QR code expired
@@ -259,9 +454,9 @@ export function MessengerSetupModal({
         )}
 
         {/* Ready - Discord/Slack link */}
-        {status === "ready" &&
+        {!isTelegram &&
+          status === "ready" &&
           botLink &&
-          messenger !== "telegram" &&
           messenger !== "whatsapp" &&
           messenger !== "signal" && (
             <div className="space-y-3 pt-2">
@@ -277,7 +472,7 @@ export function MessengerSetupModal({
           )}
 
         {/* Ready - Control UI link (WhatsApp) */}
-        {status === "ready" && controlUiUrl && !qrCode && (
+        {!isTelegram && status === "ready" && controlUiUrl && !qrCode && (
           <div className="space-y-3 pt-2">
             <p className="text-sm text-slate-300">
               Your assistant&apos;s control panel has a built-in WhatsApp setup. Tap the button below, then go to <strong>Channels</strong> and connect WhatsApp.
@@ -297,14 +492,14 @@ export function MessengerSetupModal({
         )}
 
         {/* Ready - generic (no link, no QR) */}
-        {status === "ready" && !botLink && !qrCode && !controlUiUrl && (
+        {!isTelegram && status === "ready" && !botLink && !qrCode && !controlUiUrl && (
           <p className="text-sm text-slate-300 text-center py-4">
             {info.setupInstructions}
           </p>
         )}
 
-        {/* Connected */}
-        {status === "connected" && (
+        {/* Connected (non-Telegram) */}
+        {!isTelegram && status === "connected" && (
           <div className="text-center py-6 space-y-3">
             <p className="text-green-400 font-medium">
               {info.title} is connected!
@@ -319,63 +514,8 @@ export function MessengerSetupModal({
           </div>
         )}
 
-        {/* Manual token entry (Telegram) */}
-        {status === "manual-token" && messenger === "telegram" && (
-          <div className="space-y-4 pt-2">
-            <div className="text-sm text-slate-300 space-y-2">
-              <p>Create a Telegram bot in 3 steps:</p>
-              <ol className="list-decimal ml-5 space-y-1 text-slate-400">
-                <li>Open <a href="https://t.me/BotFather" target="_blank" rel="noopener noreferrer" className="text-blue-400 underline">@BotFather</a> in Telegram</li>
-                <li>Send <code className="bg-slate-800 px-1.5 py-0.5 rounded text-xs">/newbot</code> and follow the prompts</li>
-                <li>Copy the bot token and paste it below</li>
-              </ol>
-            </div>
-            <input
-              type="text"
-              value={manualToken}
-              onChange={(e) => setManualToken(e.target.value)}
-              placeholder="Paste bot token (e.g. 123456:ABC-DEF...)"
-              className="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2.5 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-violet-500 transition"
-            />
-            <button
-              type="button"
-              disabled={!manualToken.includes(":")}
-              onClick={async () => {
-                setStatus("setting-up");
-                setError(null);
-                try {
-                  const res = await fetch("/api/messaging/setup", {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({ platform: "telegram", botToken: manualToken }),
-                  });
-                  const data = await res.json();
-                  if (data.status === "configured") {
-                    setStatus("connected");
-                    if (data.botLink) {
-                      setBotLink(data.botLink);
-                      onConnected?.("telegram", data.botLink);
-                    } else {
-                      onConnected?.("telegram");
-                    }
-                  } else if (data.error) {
-                    setError(data.error);
-                    setStatus("failed");
-                  }
-                } catch {
-                  setError("Failed to connect bot");
-                  setStatus("failed");
-                }
-              }}
-              className="w-full text-center rounded-lg bg-blue-600 hover:bg-blue-500 disabled:opacity-50 disabled:cursor-not-allowed py-2.5 text-sm font-medium transition text-white"
-            >
-              Connect Bot
-            </button>
-          </div>
-        )}
-
-        {/* Failed */}
-        {status === "failed" && (
+        {/* Failed (non-Telegram) */}
+        {!isTelegram && status === "failed" && (
           <div className="space-y-3 pt-2">
             <p className="text-sm text-red-400 text-center">{error}</p>
             <button
