@@ -92,22 +92,45 @@ async function handleCheckoutCompleted(session: Stripe.Checkout.Session) {
 
   const supabase: any = await createClient();
 
-  // Upsert subscription record
-  const { error: subError } = await supabase.from("subscriptions").upsert(
-    {
-      user_id: userId,
-      stripe_customer_id: customerId,
-      stripe_subscription_id: subscriptionId,
-      plan,
-      status: "active",
-      updated_at: new Date().toISOString(),
-    },
-    { onConflict: "user_id" },
-  );
+  // Insert or update subscription record.
+  // We avoid upsert({ onConflict: 'user_id' }) because the table may lack
+  // a unique constraint on user_id. Instead, check-then-insert/update.
+  const { data: existingSub } = await supabase
+    .from("subscriptions")
+    .select("id")
+    .eq("user_id", userId)
+    .maybeSingle();
 
-  if (subError) {
-    console.error("Failed to upsert subscription:", subError.message);
-    throw subError;
+  if (existingSub) {
+    const { error: subError } = await supabase
+      .from("subscriptions")
+      .update({
+        stripe_customer_id: customerId,
+        stripe_subscription_id: subscriptionId,
+        plan,
+        status: "active",
+        updated_at: new Date().toISOString(),
+      })
+      .eq("user_id", userId);
+    if (subError) {
+      console.error("Failed to update subscription:", subError.message);
+      throw subError;
+    }
+  } else {
+    const { error: subError } = await supabase
+      .from("subscriptions")
+      .insert({
+        user_id: userId,
+        stripe_customer_id: customerId,
+        stripe_subscription_id: subscriptionId,
+        plan,
+        status: "active",
+        updated_at: new Date().toISOString(),
+      });
+    if (subError) {
+      console.error("Failed to insert subscription:", subError.message);
+      throw subError;
+    }
   }
 
   // Update user's plan field

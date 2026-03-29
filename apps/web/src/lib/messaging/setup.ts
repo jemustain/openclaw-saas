@@ -95,7 +95,8 @@ export async function setupTelegramForAssistant(
 
   try {
     // Check if BotFather automation is configured
-    const hasBotFactory = !!(process.env.TELEGRAM_API_ID && process.env.TELEGRAM_API_HASH && process.env.TELEGRAM_SESSION_STRING);
+    const { env } = await import('../env');
+    const hasBotFactory = !!(env('TELEGRAM_API_ID') && env('TELEGRAM_API_HASH') && env('TELEGRAM_SESSION_STRING'));
 
     if (hasBotFactory) {
       // Create bot via BotFather automation
