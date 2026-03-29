@@ -8,6 +8,7 @@ interface Subscription {
   plan: string;
   status: string;
   current_period_end: string;
+  cancel_at_period_end: boolean;
 }
 
 export default function BillingPage() {
@@ -65,7 +66,9 @@ export default function BillingPage() {
 
   const isPro = plan === 'pro' || plan === 'Pro';
   const isActive = subscription?.status === 'active' || subscription?.status === 'trialing';
-  const nextBilling = subscription?.current_period_end
+  const isCancelling = isActive && subscription?.cancel_at_period_end === true;
+
+  const periodEndDate = subscription?.current_period_end
     ? new Date(subscription.current_period_end).toLocaleDateString('en-US', {
         year: 'numeric',
         month: 'long',
@@ -78,7 +81,7 @@ export default function BillingPage() {
       <div className="max-w-2xl space-y-8">
         <h1 className="text-2xl font-bold text-white">Billing</h1>
         <div className="rounded-xl border border-slate-800 bg-slate-900/50 p-6">
-          <p className="text-sm text-slate-400">Loading…</p>
+          <p className="text-sm text-slate-400">Loading...</p>
         </div>
       </div>
     );
@@ -92,9 +95,14 @@ export default function BillingPage() {
       <section className="space-y-4 rounded-xl border border-slate-800 bg-slate-900/50 p-6">
         <div className="flex items-center justify-between">
           <h2 className="text-lg font-semibold text-white">Current Plan</h2>
-          {isPro && isActive && (
-            <span className="rounded-full bg-emerald-500/20 px-3 py-1 text-xs font-medium text-emerald-400">
+          {isPro && isActive && !isCancelling && (
+            <span className="rounded-full bg-emerald-500/20 px-3 py-1 text-xs font-medium text-emerald-400 border border-emerald-500/30">
               Active
+            </span>
+          )}
+          {isCancelling && (
+            <span className="rounded-full bg-amber-500/20 px-3 py-1 text-xs font-medium text-amber-400 border border-amber-500/30">
+              Cancelling
             </span>
           )}
         </div>
@@ -115,10 +123,21 @@ export default function BillingPage() {
           )}
         </div>
 
-        {isPro && nextBilling && (
+        {/* Cancellation notice */}
+        {isCancelling && periodEndDate && (
+          <div className="rounded-lg border border-amber-500/30 bg-amber-500/10 p-4">
+            <p className="text-sm font-medium text-amber-300">Your subscription has been cancelled</p>
+            <p className="text-sm text-slate-400 mt-1">
+              You&apos;ll continue to have Pro access until <span className="text-white font-medium">{periodEndDate}</span>. After that, your account will switch to the Free plan.
+            </p>
+          </div>
+        )}
+
+        {/* Next billing (only if not cancelling) */}
+        {isPro && isActive && !isCancelling && periodEndDate && (
           <div className="rounded-lg border border-slate-700 bg-slate-800/50 p-4">
             <p className="text-sm text-slate-400">Next billing date</p>
-            <p className="text-sm font-medium text-white">{nextBilling}</p>
+            <p className="text-sm font-medium text-white">{periodEndDate}</p>
           </div>
         )}
 
@@ -128,12 +147,12 @@ export default function BillingPage() {
             disabled={portalLoading}
             className="rounded-lg bg-violet-600 px-5 py-2 text-sm font-medium text-white hover:bg-violet-500 disabled:opacity-50 transition"
           >
-            {portalLoading ? 'Loading…' : 'Manage Subscription'}
+            {portalLoading ? 'Loading...' : isCancelling ? 'Reactivate Subscription' : 'Manage Subscription'}
           </button>
         ) : (
           <div className="space-y-3">
             <div className="rounded-lg border border-violet-500/30 bg-violet-500/10 p-4">
-              <p className="text-sm font-medium text-violet-300">Upgrade to Pro — $12/mo</p>
+              <p className="text-sm font-medium text-violet-300">Upgrade to Pro - $12/mo</p>
               <p className="text-xs text-slate-400 mt-1">
                 Unlock all messengers, pro skills, and priority support.
               </p>
@@ -143,7 +162,7 @@ export default function BillingPage() {
               disabled={checkoutLoading}
               className="rounded-lg bg-violet-600 px-5 py-2 text-sm font-medium text-white hover:bg-violet-500 disabled:opacity-50 transition"
             >
-              {checkoutLoading ? 'Loading…' : 'Upgrade to Pro'}
+              {checkoutLoading ? 'Loading...' : 'Upgrade to Pro'}
             </button>
           </div>
         )}

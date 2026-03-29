@@ -192,11 +192,18 @@ async function handleSubscriptionUpdated(subscription: Stripe.Subscription) {
   const newPlan = plan ?? "free";
 
   // Update subscription
+  const rawSub = subscription as any;
+  const periodEnd = rawSub.current_period_end
+    ? new Date(rawSub.current_period_end * 1000).toISOString()
+    : null;
+
   const { error } = await supabase
     .from("subscriptions")
     .update({
       plan: newPlan,
       status: subscription.status,
+      cancel_at_period_end: subscription.cancel_at_period_end ?? false,
+      ...(periodEnd ? { current_period_end: periodEnd } : {}),
       updated_at: new Date().toISOString(),
     })
     .eq("stripe_subscription_id", subscription.id);
