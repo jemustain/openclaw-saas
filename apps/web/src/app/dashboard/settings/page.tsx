@@ -2,25 +2,11 @@
 
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
+import { TimezonePicker } from '@/components/ui/timezone-picker';
 
 function formatPlan(plan: string): string {
   if (!plan) return 'Free';
   return plan.charAt(0).toUpperCase() + plan.slice(1);
-}
-
-function friendlyTimezone(tz: string): string {
-  try {
-    const now = new Date();
-    const formatter = new Intl.DateTimeFormat('en-US', {
-      timeZone: tz,
-      timeZoneName: 'long',
-    });
-    const parts = formatter.formatToParts(now);
-    const tzName = parts.find((p) => p.type === 'timeZoneName')?.value ?? tz;
-    return tzName;
-  } catch {
-    return tz.replace(/_/g, ' ');
-  }
 }
 
 export default function SettingsPage() {
@@ -38,7 +24,6 @@ export default function SettingsPage() {
   const [deleteError, setDeleteError] = useState<string | null>(null);
 
   useEffect(() => {
-    // Auto-detect timezone from browser
     const detectedTz = Intl.DateTimeFormat().resolvedOptions().timeZone;
 
     fetch('/api/auth/me')
@@ -49,16 +34,6 @@ export default function SettingsPage() {
           setName(data.user.name ?? '');
           setTimezone(data.user.timezone ?? detectedTz);
           setPlan(data.user.plan ?? 'Free');
-
-          // If stored timezone differs from browser, auto-update
-          if (data.user.timezone !== detectedTz && detectedTz) {
-            setTimezone(detectedTz);
-            fetch('/api/auth/me', {
-              method: 'PATCH',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ timezone: detectedTz }),
-            }).catch(() => {});
-          }
         }
       })
       .catch(() => {
@@ -97,6 +72,7 @@ export default function SettingsPage() {
     }
   }
 
+  const isPro = plan === 'pro' || plan === 'Pro';
   const inputClass = 'w-full rounded-lg border border-slate-700 bg-slate-800 px-4 py-2.5 text-sm text-white placeholder-slate-500 focus:border-violet-500 focus:outline-none';
 
   return (
@@ -110,6 +86,17 @@ export default function SettingsPage() {
         <div>
           <label className="block text-sm text-slate-400 mb-1">Display Name</label>
           <input value={name} onChange={(e) => setName(e.target.value)} className={inputClass} />
+        </div>
+
+        <div>
+          <label className="block text-sm text-slate-400 mb-1">Timezone</label>
+          <TimezonePicker value={timezone} onChange={setTimezone} />
+          {!isPro && (
+            <p className="text-xs text-slate-500 mt-1.5">
+              Your 8-hour active window is based on this timezone.
+              Changing it will shift when your assistant is available.
+            </p>
+          )}
         </div>
 
         <button
@@ -136,12 +123,6 @@ export default function SettingsPage() {
             <span className="inline-flex items-center rounded-full bg-violet-600/20 px-3 py-1 text-sm font-medium text-violet-400 border border-violet-500/30">
               {formatPlan(plan)}
             </span>
-          </div>
-
-          <div>
-            <p className="text-sm text-slate-500 mb-1">Timezone</p>
-            <p className="text-sm text-white">{friendlyTimezone(timezone)}</p>
-            <p className="text-xs text-slate-500 mt-0.5">Detected from your browser</p>
           </div>
         </div>
       </section>
