@@ -23,9 +23,20 @@ export default function SkillsPage() {
   const [loading, setLoading] = useState(true);
   const [actionInProgress, setActionInProgress] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [userTier, setUserTier] = useState<SkillTier>("free");
 
-  // TODO: get from user session; for now assume free
-  const userTier: SkillTier = "free";
+  // Fetch user plan
+  useEffect(() => {
+    fetch("/api/auth/me")
+      .then((res) => res.ok ? res.json() : null)
+      .then((data) => {
+        const plan = data?.user?.plan ?? data?.user?.subscription?.plan;
+        if (plan === "pro" || plan === "starter") {
+          setUserTier(plan as SkillTier);
+        }
+      })
+      .catch(() => {});
+  }, []);
 
   const fetchInstalled = useCallback(async () => {
     try {
@@ -62,7 +73,8 @@ export default function SkillsPage() {
   }, [search, category]);
 
   async function toggleSkill(id: string, tier: SkillTier) {
-    if (tier !== "free" && userTier === "free") return;
+    const tierRank: Record<SkillTier, number> = { free: 0, starter: 1, pro: 2 };
+    if (tierRank[tier] > tierRank[userTier]) return;
     if (actionInProgress) return;
 
     const isInstalled = installedSkills.has(id);
@@ -160,7 +172,8 @@ export default function SkillsPage() {
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {filtered.map((skill) => {
-            const locked = skill.tier !== "free" && userTier === "free";
+            const tierRank: Record<SkillTier, number> = { free: 0, starter: 1, pro: 2 };
+            const locked = tierRank[skill.tier] > tierRank[userTier];
             const isInstalled = installedSkills.has(skill.id);
             const isBusy = actionInProgress === skill.id;
 
