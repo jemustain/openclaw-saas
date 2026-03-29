@@ -666,13 +666,23 @@ export default function OnboardingWizard() {
 
         {/* Ready state — WhatsApp/Signal: show QR code */}
         {status === 'ready' && qrCode && !qrExpired && (messengerId === 'whatsapp' || messengerId === 'signal') && (
-          <div className="space-y-2">
-            <p className="text-xs text-slate-300">Scan with {info.title} to connect</p>
+          <div className="space-y-3">
+            <div className="bg-slate-800/60 rounded-lg p-3 space-y-2">
+              <p className="text-xs font-medium text-slate-200">How to connect:</p>
+              <ol className="list-decimal ml-4 space-y-0.5 text-xs text-slate-400">
+                <li>Open <strong className="text-slate-300">WhatsApp</strong> on your phone</li>
+                <li>Go to <strong className="text-slate-300">Settings → Linked Devices</strong></li>
+                <li>Tap <strong className="text-slate-300">Link a Device</strong></li>
+                <li>Point your camera at the QR below</li>
+              </ol>
+              <p className="text-xs text-amber-400/80">⚠️ View this QR on a different screen than your phone</p>
+            </div>
             <img
               src={qrCode.startsWith('data:') ? qrCode : `data:image/png;base64,${qrCode}`}
               alt={`Scan QR code with ${info.title}`}
-              className="w-48 h-48 mx-auto rounded-lg"
+              className="w-48 h-48 mx-auto rounded-lg bg-white p-1"
             />
+            <p className="text-xs text-slate-500 text-center">Waiting for scan...</p>
           </div>
         )}
 

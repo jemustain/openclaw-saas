@@ -212,10 +212,21 @@ export function MessengerSetupModal({
           qrCode &&
           !qrExpired &&
           (messenger === "whatsapp" || messenger === "signal") && (
-            <div className="space-y-3 pt-2">
-              <p className="text-sm text-slate-300 text-center">
-                Scan with {info.title} to connect
-              </p>
+            <div className="space-y-4 pt-2">
+              <div className="bg-slate-800/60 rounded-lg p-3 space-y-2">
+                <p className="text-sm font-medium text-slate-200">
+                  How to connect:
+                </p>
+                <ol className="list-decimal ml-5 space-y-1 text-xs text-slate-400">
+                  <li>Open <strong className="text-slate-300">WhatsApp</strong> on your phone</li>
+                  <li>Go to <strong className="text-slate-300">Settings → Linked Devices</strong></li>
+                  <li>Tap <strong className="text-slate-300">Link a Device</strong></li>
+                  <li>Point your camera at the QR code below</li>
+                </ol>
+                <p className="text-xs text-amber-400/80 mt-1">
+                  ⚠️ You need to view this QR on a different screen than your phone (computer, tablet, etc.)
+                </p>
+              </div>
               <img
                 src={
                   qrCode.startsWith("data:")
@@ -223,8 +234,11 @@ export function MessengerSetupModal({
                     : `data:image/png;base64,${qrCode}`
                 }
                 alt={`Scan QR code with ${info.title}`}
-                className="w-48 h-48 mx-auto rounded-lg"
+                className="w-48 h-48 mx-auto rounded-lg bg-white p-1"
               />
+              <p className="text-xs text-slate-500 text-center">
+                QR refreshes automatically. Waiting for scan...
+              </p>
             </div>
           )}
 
