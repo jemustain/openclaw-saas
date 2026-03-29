@@ -532,19 +532,6 @@ async function setupTelegram(config) {
   }
   await runAsClaw(`openclaw channels add --channel telegram --token ${config.botToken}`);
   try {
-    const configPath = `${CLAW_HOME}/.openclaw/openclaw.json`;
-    const fs = require("fs");
-    const config_data = fs.existsSync(configPath) ? JSON.parse(fs.readFileSync(configPath, "utf8")) : {};
-    const channels = config_data.channels = config_data.channels || {};
-    const tg = channels.telegram = channels.telegram || {};
-    tg.dmPolicy = "open";
-    fs.writeFileSync(configPath, JSON.stringify(config_data, null, 2));
-    const { execSync } = require("child_process");
-    execSync(`chown ${CLAW_USER}:${CLAW_USER} ${configPath}`);
-  } catch (err) {
-    console.error("Failed to set dmPolicy:", err.message);
-  }
-  try {
     await execAsync4("systemctl restart openclaw-sidecar", { timeout: 15e3 });
     await new Promise((r) => setTimeout(r, 5e3));
   } catch {
@@ -553,7 +540,32 @@ async function setupTelegram(config) {
     } catch {
     }
   }
+  autoApproveFirstPairing("telegram", 10 * 6e4);
   return { status: "configured" };
+}
+function autoApproveFirstPairing(channel, windowMs) {
+  const deadline = Date.now() + windowMs;
+  const poll = async () => {
+    if (Date.now() > deadline) return;
+    try {
+      const { stdout } = await runAsClaw(
+        `openclaw pairing list ${channel} --json 2>/dev/null`,
+        1e4
+      );
+      const requests = JSON.parse(stdout.trim() || "[]");
+      if (Array.isArray(requests) && requests.length > 0) {
+        const code = requests[0].code ?? requests[0].pairingCode;
+        if (code) {
+          await runAsClaw(`openclaw pairing approve ${channel} ${code}`, 1e4);
+          console.log(`[auto-pair] Approved ${channel} pairing code ${code}`);
+          return;
+        }
+      }
+    } catch {
+    }
+    setTimeout(poll, 5e3);
+  };
+  setTimeout(poll, 3e3);
 }
 async function setupWhatsApp(_config) {
   if (whatsappCredentialsExist()) {
