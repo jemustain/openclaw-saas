@@ -2,14 +2,26 @@ import { Suspense } from "react";
 import { redirect } from "next/navigation";
 import { getSession } from "@/lib/auth/session";
 import { createClient } from "@/lib/supabase/server";
-import { AssistantHero } from "./components/assistant-card";
-import { UsageCard } from "./components/usage-card";
-import { ConnectionsCard } from "./components/connections-card";
-import { PlanCard } from "./components/plan-card";
+import { StatusBar } from "./components/status-bar";
+import { AssistantCard } from "./components/assistant-card";
+import { ConnectionsBadges } from "./components/connections-badges";
 import { AiModelCard } from "./components/ai-model-card";
+import { UsageCard } from "./components/usage-card";
+import { PlanBanner } from "./components/plan-banner";
 import { UpgradeBanner } from "./components/upgrade-banner";
-import { QuickActions } from "./components/quick-actions";
 import type { PlanKey } from "@/lib/stripe/config";
+
+function SectionHeading({ children }: { children: React.ReactNode }) {
+  return (
+    <h2 className="text-xs uppercase tracking-wider text-slate-500 font-semibold mb-3">
+      {children}
+    </h2>
+  );
+}
+
+function SectionDivider() {
+  return <div className="border-t border-slate-800" />;
+}
 
 async function DashboardContent({
   searchParams,
@@ -26,7 +38,7 @@ async function DashboardContent({
 
   const supabase: any = createClient();
 
-  // Fetch assistant status (include provider info)
+  // Fetch assistant status
   const { data: assistant } = await supabase
     .from("assistants")
     .select("id, status, ip_address, provider, region, created_at")
@@ -36,14 +48,13 @@ async function DashboardContent({
     .limit(1)
     .single();
 
-  // Fetch user record for plan, hosting preference, and messengers
+  // Fetch user record
   const { data: user } = await supabase
     .from("users")
     .select("plan, provider_preference, messengers, ai_provider, ai_api_key")
     .eq("id", session.userId)
     .single();
 
-  // Fallback to profiles table for plan if users table doesn't have it
   let plan: PlanKey = user?.plan ?? "free";
   if (!user?.plan) {
     const { data: profile } = await supabase
@@ -59,7 +70,6 @@ async function DashboardContent({
   const aiProvider: string | null = user?.ai_provider ?? null;
   const aiApiKey: string | null = user?.ai_api_key ?? null;
 
-  // Check provider token connections (Azure + DO need OAuth)
   let providerConnected = false;
   if (hosting === "oracle") {
     providerConnected = true;
@@ -74,38 +84,49 @@ async function DashboardContent({
   }
 
   return (
-    <div className="min-h-screen bg-slate-950 px-4 py-8 sm:px-6 lg:px-8">
-      <div className="mx-auto max-w-6xl">
+    <div className="min-h-screen bg-slate-950">
+      {/* Sticky status bar */}
+      <StatusBar assistant={assistant ?? null} plan={plan} />
+
+      <div className="mx-auto max-w-4xl px-4 py-6 sm:px-6 lg:px-8 space-y-6">
         {upgraded && <UpgradeBanner />}
 
-        {/* Hero Section — Full-width assistant status */}
-        <AssistantHero assistant={assistant ?? null} />
+        {/* Section: Assistant */}
+        <section>
+          <SectionHeading>Assistant</SectionHeading>
+          <AssistantCard assistant={assistant ?? null} />
+        </section>
 
-        {/* Quick Actions Bar */}
-        <QuickActions ipAddress={assistant?.ip_address ?? null} status={assistant?.status ?? null} />
+        <SectionDivider />
 
-        {/* 3-Column Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          {/* Column 1: Messengers */}
-          <div>
-            <ConnectionsCard
-              hosting={hosting}
-              providerConnected={providerConnected}
-              messengers={messengers}
-            />
-          </div>
+        {/* Section: Connections */}
+        <section>
+          <SectionHeading>Connections</SectionHeading>
+          <ConnectionsBadges
+            hosting={hosting}
+            providerConnected={providerConnected}
+            messengers={messengers}
+          />
+        </section>
 
-          {/* Column 2: AI Model + Usage stacked */}
-          <div className="space-y-6">
+        <SectionDivider />
+
+        {/* Section: Configuration */}
+        <section>
+          <SectionHeading>Configuration</SectionHeading>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <AiModelCard provider={aiProvider} apiKey={aiApiKey} />
             <UsageCard />
           </div>
+        </section>
 
-          {/* Column 3: Plan */}
-          <div>
-            <PlanCard plan={plan} />
-          </div>
-        </div>
+        <SectionDivider />
+
+        {/* Section: Plan */}
+        <section>
+          <SectionHeading>Plan</SectionHeading>
+          <PlanBanner plan={plan} />
+        </section>
       </div>
     </div>
   );
