@@ -25,7 +25,7 @@ export default function SettingsPage() {
   const [aiProvider, setAiProvider] = useState('');
   const [aiApiKeyMasked, setAiApiKeyMasked] = useState('');
   const [showAiChange, setShowAiChange] = useState(false);
-  const [newAiProvider, setNewAiProvider] = useState<'gemini' | 'openai' | 'anthropic' | ''>('');
+  const [newAiProvider, setNewAiProvider] = useState<'gemini' | 'openai' | 'anthropic' | 'github-copilot' | ''>('');
   const [newAiApiKey, setNewAiApiKey] = useState('');
   const [aiKeyVerifying, setAiKeyVerifying] = useState(false);
   const [aiKeyVerified, setAiKeyVerified] = useState(false);
@@ -115,8 +115,8 @@ export default function SettingsPage() {
             </div>
           ) : (
             <div className="space-y-3 rounded-lg border border-slate-700 bg-slate-800/50 p-4">
-              <div className="grid grid-cols-3 gap-2">
-                {(['gemini', 'openai', 'anthropic'] as const).map((p) => (
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                {(['gemini', 'openai', 'anthropic', 'github-copilot'] as const).map((p) => (
                   <button
                     key={p}
                     onClick={() => { setNewAiProvider(p); setNewAiApiKey(''); setAiKeyVerified(false); setAiKeyError(null); }}
@@ -124,7 +124,7 @@ export default function SettingsPage() {
                       newAiProvider === p ? 'bg-violet-600 text-white' : 'bg-slate-700 text-slate-300 hover:bg-slate-600'
                     }`}
                   >
-                    {p.charAt(0).toUpperCase() + p.slice(1)}
+                    {p === 'github-copilot' ? 'GitHub Copilot' : p.charAt(0).toUpperCase() + p.slice(1)}
                   </button>
                 ))}
               </div>
@@ -134,7 +134,7 @@ export default function SettingsPage() {
                     type="password"
                     value={newAiApiKey}
                     onChange={(e) => { setNewAiApiKey(e.target.value); setAiKeyVerified(false); setAiKeyError(null); }}
-                    placeholder={newAiProvider === 'gemini' ? 'AIza...' : newAiProvider === 'openai' ? 'sk-...' : 'sk-ant-...'}
+                    placeholder={newAiProvider === 'gemini' ? 'AIza...' : newAiProvider === 'openai' ? 'sk-...' : newAiProvider === 'github-copilot' ? 'ghp_... or github_pat_...' : 'sk-ant-...'}
                     className={inputClass}
                   />
                   <button

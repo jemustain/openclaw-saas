@@ -12,7 +12,7 @@ import {
   QrCode, Bot, Smartphone, AlertCircle, ExternalLink,
 } from 'lucide-react';
 
-const STEPS = ['Welcome', 'Hosting', 'Subscription', 'AI Model', 'Plan', 'Messengers', 'Skills', 'Setup & Connect', 'Ready'];
+const STEPS = ['Welcome', 'Hosting', 'Subscription', 'Plan', 'Messengers', 'Skills', 'Setup & Connect', 'AI Model', 'Ready'];
 
 const MESSENGERS = [
   { id: 'whatsapp', label: 'WhatsApp', icon: MessageCircle },
@@ -129,7 +129,7 @@ export default function OnboardingWizard() {
   const [botLinks, setBotLinks] = useState<Record<string, string>>({});
 
   // AI Model state
-  const [aiProvider, setAiProvider] = useState<'gemini' | 'openai' | 'anthropic' | ''>('');
+  const [aiProvider, setAiProvider] = useState<'gemini' | 'openai' | 'anthropic' | 'github-copilot' | ''>('');
   const [aiApiKey, setAiApiKey] = useState('');
   const [aiKeyVerified, setAiKeyVerified] = useState(false);
   const [aiKeyVerifying, setAiKeyVerifying] = useState(false);
@@ -181,7 +181,7 @@ export default function OnboardingWizard() {
     }
     if (upgraded === 'true' && !stepParam) {
       setPlan('pro');
-      setStep(5);
+      setStep(4);
       setMessengers(MESSENGERS.map((m) => m.id));
       setSkills(SKILLS.filter((s) => !s.pro).map((s) => s.id));
     }
@@ -282,7 +282,7 @@ export default function OnboardingWizard() {
 
   // Timer for setup step - persists launch time in sessionStorage
   useEffect(() => {
-    if (step !== 7 || setupDone) return;
+    if (step !== 6 || setupDone) return;
     // Recover or set launch timestamp
     let launchTime = Number(sessionStorage.getItem('sw_launch_ts') || '0');
     if (!launchTime) {
@@ -296,7 +296,7 @@ export default function OnboardingWizard() {
   }, [step, setupDone]);
 
   const saveAndLaunch = async () => {
-    goTo(7);
+    goTo(6);
     setServerActive(false);
     // Reset launch timer
     sessionStorage.setItem('sw_launch_ts', String(Date.now()));
@@ -315,7 +315,6 @@ export default function OnboardingWizard() {
           timezone, plan, windowStart, messengers, skills,
           onboardingComplete: false,
           ...(selectedSubId ? { azureSubscriptionId: selectedSubId } : {}),
-          ...(aiProvider ? { aiProvider, aiApiKey } : {}),
         }),
       });
     } catch {
@@ -1118,121 +1117,8 @@ export default function OnboardingWizard() {
           </div>
         )}
 
-        {/* Step 3: AI Model */}
+        {/* Step 3: Plan */}
         {step === 3 && (
-          <div className="space-y-6">
-            <div className="text-center">
-              <Key className="w-12 h-12 text-violet-500 mx-auto mb-4" />
-              <h2 className="text-2xl font-bold">Choose Your AI Model</h2>
-              <p className="text-slate-400 mt-2">Your assistant needs an AI model to think. Bring your own API key from one of these providers.</p>
-            </div>
-
-            <div className="grid gap-4">
-              <Card selected={aiProvider === 'gemini'} onClick={() => { setAiProvider('gemini'); setAiApiKey(''); setAiKeyVerified(false); setAiKeyError(null); }}>
-                <div className="flex items-start gap-3">
-                  <Sparkles className="w-8 h-8 text-blue-400 flex-shrink-0" />
-                  <div className="flex-1">
-                    <div className="flex items-center gap-2">
-                      <span className="font-semibold">Google Gemini</span>
-                      <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full bg-green-500/20 text-green-400 border border-green-500/40">Recommended</span>
-                    </div>
-                    <p className="text-sm text-slate-400 mt-1">Fast, affordable, great for everyday tasks</p>
-                    <p className="text-xs text-slate-500 mt-1">Models: Gemini 2.5 Flash, Gemini 2.5 Pro</p>
-                    <a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-xs text-violet-400 hover:text-violet-300 mt-2" onClick={(e) => e.stopPropagation()}>
-                      Get a key <ExternalLink className="w-3 h-3" />
-                    </a>
-                  </div>
-                </div>
-              </Card>
-
-              <Card selected={aiProvider === 'openai'} onClick={() => { setAiProvider('openai'); setAiApiKey(''); setAiKeyVerified(false); setAiKeyError(null); }}>
-                <div className="flex items-start gap-3">
-                  <Zap className="w-8 h-8 text-green-400 flex-shrink-0" />
-                  <div className="flex-1">
-                    <div className="font-semibold">OpenAI</div>
-                    <p className="text-sm text-slate-400 mt-1">GPT-4o and the latest reasoning models</p>
-                    <p className="text-xs text-slate-500 mt-1">Models: GPT-4o, GPT-4o mini, o3-mini</p>
-                    <a href="https://platform.openai.com/api-keys" target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-xs text-violet-400 hover:text-violet-300 mt-2" onClick={(e) => e.stopPropagation()}>
-                      Get a key <ExternalLink className="w-3 h-3" />
-                    </a>
-                  </div>
-                </div>
-              </Card>
-
-              <Card selected={aiProvider === 'anthropic'} onClick={() => { setAiProvider('anthropic'); setAiApiKey(''); setAiKeyVerified(false); setAiKeyError(null); }}>
-                <div className="flex items-start gap-3">
-                  <Bot className="w-8 h-8 text-orange-400 flex-shrink-0" />
-                  <div className="flex-1">
-                    <div className="font-semibold">Anthropic</div>
-                    <p className="text-sm text-slate-400 mt-1">Claude — excellent at writing and analysis</p>
-                    <p className="text-xs text-slate-500 mt-1">Models: Claude Sonnet 4, Claude Haiku</p>
-                    <a href="https://console.anthropic.com/settings/keys" target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-xs text-violet-400 hover:text-violet-300 mt-2" onClick={(e) => e.stopPropagation()}>
-                      Get a key <ExternalLink className="w-3 h-3" />
-                    </a>
-                  </div>
-                </div>
-              </Card>
-            </div>
-
-            {aiProvider && (
-              <div className="space-y-3">
-                <div className="flex gap-2">
-                  <input
-                    type="password"
-                    value={aiApiKey}
-                    onChange={(e) => { setAiApiKey(e.target.value); setAiKeyVerified(false); setAiKeyError(null); }}
-                    placeholder={aiProvider === 'gemini' ? 'AIza...' : aiProvider === 'openai' ? 'sk-...' : 'sk-ant-...'}
-                    className="flex-1 rounded-lg border border-slate-700 bg-slate-800 px-4 py-2.5 text-sm text-white placeholder-slate-500 focus:border-violet-500 focus:outline-none"
-                  />
-                  <button
-                    type="button"
-                    disabled={!aiApiKey || aiKeyVerifying || aiKeyVerified}
-                    onClick={async () => {
-                      setAiKeyVerifying(true);
-                      setAiKeyError(null);
-                      try {
-                        const res = await fetch('/api/ai/verify-key', {
-                          method: 'POST',
-                          headers: { 'Content-Type': 'application/json' },
-                          body: JSON.stringify({ provider: aiProvider, apiKey: aiApiKey }),
-                        });
-                        const data = await res.json();
-                        if (data.valid) {
-                          setAiKeyVerified(true);
-                        } else {
-                          setAiKeyError(data.error || 'Invalid API key');
-                        }
-                      } catch {
-                        setAiKeyError('Verification failed — check your connection');
-                      }
-                      setAiKeyVerifying(false);
-                    }}
-                    className="px-4 py-2.5 rounded-lg bg-slate-700 hover:bg-slate-600 disabled:opacity-50 disabled:cursor-not-allowed text-sm font-medium text-white transition-colors flex items-center gap-2"
-                  >
-                    {aiKeyVerifying ? <Loader2 className="w-4 h-4 animate-spin" /> : aiKeyVerified ? <Check className="w-4 h-4 text-green-400" /> : <Key className="w-4 h-4" />}
-                    {aiKeyVerifying ? 'Verifying...' : aiKeyVerified ? 'Verified' : 'Verify Key'}
-                  </button>
-                </div>
-                {aiKeyError && (
-                  <p className="text-sm text-red-400">{aiKeyError}</p>
-                )}
-                {aiKeyVerified && (
-                  <p className="text-sm text-green-400 flex items-center gap-1"><Check className="w-4 h-4" /> API key verified successfully</p>
-                )}
-              </div>
-            )}
-
-            <div className="flex justify-between items-center">
-              <BackBtn />
-              <PrimaryBtn onClick={next} disabled={!aiKeyVerified}>
-                Next <ArrowRight className="w-4 h-4" />
-              </PrimaryBtn>
-            </div>
-          </div>
-        )}
-
-        {/* Step 4: Plan */}
-        {step === 4 && (
           <div className="space-y-6">
             <h2 className="text-2xl font-bold text-center">Choose Your Plan</h2>
             <div className="grid sm:grid-cols-2 gap-4">
@@ -1282,7 +1168,7 @@ export default function OnboardingWizard() {
                   const res = await fetch('/api/stripe/checkout', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ plan: 'pro', returnUrl: '/onboarding?step=5&upgraded=true' }),
+                    body: JSON.stringify({ plan: 'pro', returnUrl: '/onboarding?step=4&upgraded=true' }),
                   });
                   const data = await res.json();
                   if (data.url) {
@@ -1298,8 +1184,8 @@ export default function OnboardingWizard() {
           </div>
         )}
 
-        {/* Step 5: Messengers */}
-        {step === 5 && (
+        {/* Step 4: Messengers */}
+        {step === 4 && (
           <div className="space-y-6">
             <h2 className="text-2xl font-bold text-center">Choose Your Messenger{plan === 'free' ? '' : 's'}</h2>
             <p className="text-slate-400 text-center">
@@ -1327,8 +1213,8 @@ export default function OnboardingWizard() {
           </div>
         )}
 
-        {/* Step 6: Skills */}
-        {step === 6 && (
+        {/* Step 5: Skills */}
+        {step === 5 && (
           <div className="space-y-6">
             <h2 className="text-2xl font-bold text-center">Choose Your Skills</h2>
             <p className="text-slate-400 text-center">
@@ -1368,8 +1254,8 @@ export default function OnboardingWizard() {
           </div>
         )}
 
-        {/* Step 7: Setup & Connect (provisioning + messenger setup) */}
-        {step === 7 && (
+        {/* Step 6: Setup & Connect (provisioning + messenger setup) */}
+        {step === 6 && (
           <div className="space-y-6">
             <h2 className="text-2xl font-bold text-center">
               {setupDone && serverActive ? 'Connect Your Messengers' : 'Setting Up Your Assistant'}
@@ -1438,12 +1324,7 @@ export default function OnboardingWizard() {
                 </p>
                 <PrimaryBtn
                   onClick={async () => {
-                    await fetch('/api/onboarding', {
-                      method: 'PATCH',
-                      headers: { 'Content-Type': 'application/json' },
-                      body: JSON.stringify({ onboardingComplete: true }),
-                    });
-                    goTo(8);
+                    goTo(7);
                   }}
                 >
                   Continue to Dashboard <ArrowRight className="w-4 h-4" />
@@ -1461,6 +1342,160 @@ export default function OnboardingWizard() {
             )}
           </div>
         )}
+
+        {/* Step 7: AI Model */}
+        {step === 7 && (
+          <div className="space-y-6">
+            <div className="text-center">
+              <Key className="w-12 h-12 text-violet-500 mx-auto mb-4" />
+              <h2 className="text-2xl font-bold">Choose Your AI Model</h2>
+              <p className="text-slate-400 mt-2">Your server is ready! Now choose an AI model for your assistant. Bring your own API key from one of these providers.</p>
+            </div>
+
+            <div className="grid gap-4">
+              <Card selected={aiProvider === 'gemini'} onClick={() => { setAiProvider('gemini'); setAiApiKey(''); setAiKeyVerified(false); setAiKeyError(null); }}>
+                <div className="flex items-start gap-3">
+                  <Sparkles className="w-8 h-8 text-blue-400 flex-shrink-0" />
+                  <div className="flex-1">
+                    <div className="flex items-center gap-2">
+                      <span className="font-semibold">Google Gemini</span>
+                      <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full bg-green-500/20 text-green-400 border border-green-500/40">Recommended</span>
+                    </div>
+                    <p className="text-sm text-slate-400 mt-1">Fast, affordable, great for everyday tasks</p>
+                    <p className="text-xs text-slate-500 mt-1">Models: Gemini 2.5 Flash, Gemini 2.5 Pro</p>
+                    <a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-xs text-violet-400 hover:text-violet-300 mt-2" onClick={(e) => e.stopPropagation()}>
+                      Get a key <ExternalLink className="w-3 h-3" />
+                    </a>
+                  </div>
+                </div>
+              </Card>
+
+              <Card selected={aiProvider === 'openai'} onClick={() => { setAiProvider('openai'); setAiApiKey(''); setAiKeyVerified(false); setAiKeyError(null); }}>
+                <div className="flex items-start gap-3">
+                  <Zap className="w-8 h-8 text-green-400 flex-shrink-0" />
+                  <div className="flex-1">
+                    <div className="font-semibold">OpenAI</div>
+                    <p className="text-sm text-slate-400 mt-1">GPT-4o and the latest reasoning models</p>
+                    <p className="text-xs text-slate-500 mt-1">Models: GPT-4o, GPT-4o mini, o3-mini</p>
+                    <a href="https://platform.openai.com/api-keys" target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-xs text-violet-400 hover:text-violet-300 mt-2" onClick={(e) => e.stopPropagation()}>
+                      Get a key <ExternalLink className="w-3 h-3" />
+                    </a>
+                  </div>
+                </div>
+              </Card>
+
+              <Card selected={aiProvider === 'anthropic'} onClick={() => { setAiProvider('anthropic'); setAiApiKey(''); setAiKeyVerified(false); setAiKeyError(null); }}>
+                <div className="flex items-start gap-3">
+                  <Bot className="w-8 h-8 text-orange-400 flex-shrink-0" />
+                  <div className="flex-1">
+                    <div className="font-semibold">Anthropic</div>
+                    <p className="text-sm text-slate-400 mt-1">Claude — excellent at writing and analysis</p>
+                    <p className="text-xs text-slate-500 mt-1">Models: Claude Sonnet 4, Claude Haiku</p>
+                    <a href="https://console.anthropic.com/settings/keys" target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-xs text-violet-400 hover:text-violet-300 mt-2" onClick={(e) => e.stopPropagation()}>
+                      Get a key <ExternalLink className="w-3 h-3" />
+                    </a>
+                  </div>
+                </div>
+              </Card>
+
+              <Card selected={aiProvider === 'github-copilot'} onClick={() => { setAiProvider('github-copilot'); setAiApiKey(''); setAiKeyVerified(false); setAiKeyError(null); }}>
+                <div className="flex items-start gap-3">
+                  <Code className="w-8 h-8 text-violet-400 flex-shrink-0" />
+                  <div className="flex-1">
+                    <div className="font-semibold">GitHub Copilot</div>
+                    <p className="text-sm text-slate-400 mt-1">Use your GitHub Copilot subscription for AI models</p>
+                    <p className="text-xs text-slate-500 mt-1">Models: GPT-4o, Claude Sonnet 4, Gemini 2.5 Pro</p>
+                    <a href="https://github.com/settings/tokens" target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-xs text-violet-400 hover:text-violet-300 mt-2" onClick={(e) => e.stopPropagation()}>
+                      Generate a token <ExternalLink className="w-3 h-3" />
+                    </a>
+                  </div>
+                </div>
+              </Card>
+            </div>
+
+            {aiProvider && (
+              <div className="space-y-3">
+                <div className="flex gap-2">
+                  <input
+                    type="password"
+                    value={aiApiKey}
+                    onChange={(e) => { setAiApiKey(e.target.value); setAiKeyVerified(false); setAiKeyError(null); }}
+                    placeholder={aiProvider === 'gemini' ? 'AIza...' : aiProvider === 'openai' ? 'sk-...' : aiProvider === 'github-copilot' ? 'ghp_... or github_pat_...' : 'sk-ant-...'}
+                    className="flex-1 rounded-lg border border-slate-700 bg-slate-800 px-4 py-2.5 text-sm text-white placeholder-slate-500 focus:border-violet-500 focus:outline-none"
+                  />
+                  <button
+                    type="button"
+                    disabled={!aiApiKey || aiKeyVerifying || aiKeyVerified}
+                    onClick={async () => {
+                      setAiKeyVerifying(true);
+                      setAiKeyError(null);
+                      try {
+                        const res = await fetch('/api/ai/verify-key', {
+                          method: 'POST',
+                          headers: { 'Content-Type': 'application/json' },
+                          body: JSON.stringify({ provider: aiProvider, apiKey: aiApiKey }),
+                        });
+                        const data = await res.json();
+                        if (data.valid) {
+                          setAiKeyVerified(true);
+                        } else {
+                          setAiKeyError(data.error || 'Invalid API key');
+                        }
+                      } catch {
+                        setAiKeyError('Verification failed — check your connection');
+                      }
+                      setAiKeyVerifying(false);
+                    }}
+                    className="px-4 py-2.5 rounded-lg bg-slate-700 hover:bg-slate-600 disabled:opacity-50 disabled:cursor-not-allowed text-sm font-medium text-white transition-colors flex items-center gap-2"
+                  >
+                    {aiKeyVerifying ? <Loader2 className="w-4 h-4 animate-spin" /> : aiKeyVerified ? <Check className="w-4 h-4 text-green-400" /> : <Key className="w-4 h-4" />}
+                    {aiKeyVerifying ? 'Verifying...' : aiKeyVerified ? 'Verified' : 'Verify Key'}
+                  </button>
+                </div>
+                {aiKeyError && (
+                  <p className="text-sm text-red-400">{aiKeyError}</p>
+                )}
+                {aiKeyVerified && (
+                  <p className="text-sm text-green-400 flex items-center gap-1"><Check className="w-4 h-4" /> API key verified successfully</p>
+                )}
+              </div>
+            )}
+
+            <div className="flex justify-between items-center">
+              <BackBtn />
+              <PrimaryBtn onClick={async () => {
+                // Save AI config to database
+                try {
+                  await fetch('/api/onboarding', {
+                    method: 'PATCH',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ aiProvider, aiApiKey }),
+                  });
+                } catch { /* continue anyway */ }
+                // Configure OpenClaw on the VM via sidecar
+                try {
+                  await fetch('/api/assistant/configure-ai', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ provider: aiProvider, apiKey: aiApiKey }),
+                  });
+                } catch { /* continue anyway — can be configured from dashboard */ }
+                // Mark onboarding complete
+                try {
+                  await fetch('/api/onboarding', {
+                    method: 'PATCH',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ onboardingComplete: true }),
+                  });
+                } catch { /* ignore */ }
+                next();
+              }} disabled={!aiKeyVerified}>
+                Finish Setup <ArrowRight className="w-4 h-4" />
+              </PrimaryBtn>
+            </div>
+          </div>
+        )}
+
 
         {/* Step 8: Ready */}
         {step === 8 && (
