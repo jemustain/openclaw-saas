@@ -117,7 +117,43 @@ async function setupTelegram(config: { botToken: string }): Promise<{ status: st
     try { await runAsClaw('openclaw gateway restart'); } catch {}
   }
 
+  // Auto-approve the first Telegram pairing request within the next 10 minutes.
+  // This lets the bot owner pair seamlessly while keeping strangers blocked.
+  autoApproveFirstPairing('telegram', 10 * 60_000);
+
   return { status: 'configured' };
+}
+
+/**
+ * Poll `openclaw pairing list <channel>` and approve the first pending request.
+ * Stops after one approval or when the timeout window closes.
+ */
+function autoApproveFirstPairing(channel: string, windowMs: number) {
+  const deadline = Date.now() + windowMs;
+  const poll = async () => {
+    if (Date.now() > deadline) return; // window expired
+    try {
+      const { stdout } = await runAsClaw(
+        `openclaw pairing list ${channel} --json 2>/dev/null`,
+        10_000,
+      );
+      const requests = JSON.parse(stdout.trim() || '[]');
+      if (Array.isArray(requests) && requests.length > 0) {
+        const code = requests[0].code ?? requests[0].pairingCode;
+        if (code) {
+          await runAsClaw(`openclaw pairing approve ${channel} ${code}`, 10_000);
+          console.log(`[auto-pair] Approved ${channel} pairing code ${code}`);
+          return; // done
+        }
+      }
+    } catch {
+      // pairing list may not return JSON or may have no requests yet
+    }
+    // Retry in 5 seconds
+    setTimeout(poll, 5_000);
+  };
+  // Start polling after a short delay (give the user time to open the bot)
+  setTimeout(poll, 3_000);
 }
 
 async function setupWhatsApp(_config: Record<string, unknown>): Promise<{ platform: string; status: string; qr?: string; controlUiUrl?: string; error?: string }> {

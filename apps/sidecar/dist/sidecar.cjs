@@ -553,7 +553,32 @@ async function setupTelegram(config) {
     } catch {
     }
   }
+  autoApproveFirstPairing("telegram", 10 * 6e4);
   return { status: "configured" };
+}
+function autoApproveFirstPairing(channel, windowMs) {
+  const deadline = Date.now() + windowMs;
+  const poll = async () => {
+    if (Date.now() > deadline) return;
+    try {
+      const { stdout } = await runAsClaw(
+        `openclaw pairing list ${channel} --json 2>/dev/null`,
+        1e4
+      );
+      const requests = JSON.parse(stdout.trim() || "[]");
+      if (Array.isArray(requests) && requests.length > 0) {
+        const code = requests[0].code ?? requests[0].pairingCode;
+        if (code) {
+          await runAsClaw(`openclaw pairing approve ${channel} ${code}`, 1e4);
+          console.log(`[auto-pair] Approved ${channel} pairing code ${code}`);
+          return;
+        }
+      }
+    } catch {
+    }
+    setTimeout(poll, 5e3);
+  };
+  setTimeout(poll, 3e3);
 }
 async function setupWhatsApp(_config) {
   if (whatsappCredentialsExist()) {
