@@ -182,7 +182,7 @@ export default function SkillsPage() {
                       </Link>
                       {skill.popular && (
                         <span className="ml-2 text-xs text-amber-400">
-                          ⭐ Popular
+                          Popular
                         </span>
                       )}
                     </div>

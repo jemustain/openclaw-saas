@@ -4,7 +4,7 @@ export default function NotFound() {
   return (
     <div className="flex min-h-[80vh] items-center justify-center px-4">
       <div className="w-full max-w-md rounded-2xl border border-zinc-800 bg-zinc-900/80 p-8 text-center shadow-xl backdrop-blur">
-        <div className="mb-4 text-5xl">🔍</div>
+        <div className="mb-4 text-5xl"></div>
         <h1 className="mb-2 text-xl font-semibold text-zinc-100">Page not found</h1>
         <p className="mb-6 text-sm text-zinc-400">
           We looked everywhere, but this page doesn't seem to exist.

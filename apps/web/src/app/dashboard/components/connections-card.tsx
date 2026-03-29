@@ -4,20 +4,20 @@ import { useEffect, useState, useCallback } from "react";
 import { MessengerSetupModal } from "./messenger-setup-modal";
 
 const PROVIDER_CONFIG: Record<string, { name: string; icon: string }> = {
-  oracle: { name: "Oracle Cloud", icon: "☁️" },
-  azure: { name: "Microsoft Azure", icon: "🔷" },
-  digitalocean: { name: "DigitalOcean", icon: "🌊" },
+  oracle: { name: "Oracle Cloud", icon: "" },
+  azure: { name: "Microsoft Azure", icon: "" },
+  digitalocean: { name: "DigitalOcean", icon: "" },
 };
 
 const MESSENGER_CONFIG: Record<
   string,
   { name: string; icon: string; color: string }
 > = {
-  telegram: { name: "Telegram", icon: "✈️", color: "text-blue-400" },
-  whatsapp: { name: "WhatsApp", icon: "💬", color: "text-green-400" },
-  discord: { name: "Discord", icon: "🎮", color: "text-indigo-400" },
-  slack: { name: "Slack", icon: "🔧", color: "text-purple-400" },
-  signal: { name: "Signal", icon: "🛡️", color: "text-blue-300" },
+  telegram: { name: "Telegram", icon: "", color: "text-blue-400" },
+  whatsapp: { name: "WhatsApp", icon: "", color: "text-green-400" },
+  discord: { name: "Discord", icon: "", color: "text-indigo-400" },
+  slack: { name: "Slack", icon: "", color: "text-purple-400" },
+  signal: { name: "Signal", icon: "", color: "text-blue-300" },
 };
 
 interface MessengerStatus {
@@ -137,7 +137,6 @@ export function ConnectionsCard({
 
           {!providerConfig && (
             <div className="flex items-center gap-2">
-              <span>☁️</span>
               <span className="text-slate-500 text-sm">
                 No cloud provider selected
               </span>
@@ -224,7 +223,6 @@ export function ConnectionsCard({
 
           {messengers.length === 0 && (
             <div className="flex items-center gap-2">
-              <span>💬</span>
               <span className="text-slate-500 text-sm">
                 No messengers configured
               </span>

@@ -46,10 +46,10 @@ export default async function AdminDashboard() {
   for (const p of (vmProfiles ?? []) as any[]) emailMap[p.id] = p.email;
 
   const stats = [
-    { label: 'Total Users', value: totalUsers ?? 0, icon: '👤' },
-    { label: 'Active Assistants', value: activeAssistants ?? 0, icon: '🤖' },
-    { label: 'Revenue', value: '$0', icon: '💰' },
-    { label: 'VMs Running', value: totalVMs ?? 0, icon: '🖥️' },
+    { label: 'Total Users', value: totalUsers ?? 0, icon: '' },
+    { label: 'Active Assistants', value: activeAssistants ?? 0, icon: '' },
+    { label: 'Revenue', value: '$0', icon: '' },
+    { label: 'VMs Running', value: totalVMs ?? 0, icon: '' },
   ];
 
   return (

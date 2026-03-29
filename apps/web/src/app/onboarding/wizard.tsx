@@ -675,7 +675,7 @@ export default function OnboardingWizard() {
                 <li>Tap <strong className="text-slate-300">Link a Device</strong></li>
                 <li>Point your camera at the QR below</li>
               </ol>
-              <p className="text-xs text-amber-400/80">⚠️ View this QR on a different screen than your phone</p>
+              <p className="text-xs text-amber-400/80">View this QR on a different screen than your phone</p>
             </div>
             <img
               src={qrCode.startsWith('data:') ? qrCode : `data:image/png;base64,${qrCode}`}

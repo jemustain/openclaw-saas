@@ -13,7 +13,7 @@ export function ErrorCard({ title, message, onRetry, homeLink = true }: ErrorCar
   return (
     <div className="flex min-h-[60vh] items-center justify-center px-4">
       <div className="w-full max-w-md rounded-2xl border border-zinc-800 bg-zinc-900/80 p-8 text-center shadow-xl backdrop-blur">
-        <div className="mb-4 text-4xl">😕</div>
+        <div className="mb-4 text-4xl"></div>
         <h1 className="mb-2 text-xl font-semibold text-zinc-100">{title}</h1>
         <p className="mb-6 text-sm text-zinc-400">{message}</p>
         <div className="flex flex-col items-center gap-3">
