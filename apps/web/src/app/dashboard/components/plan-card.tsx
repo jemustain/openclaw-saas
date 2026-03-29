@@ -28,7 +28,7 @@ export function PlanCard({ plan }: { plan: PlanKey }) {
       if (data.url) {
         window.location.href = data.url;
       } else {
-        setError(data.error ?? "Failed to create checkout session");
+        setError(data.error ? `${data.error}${data.detail ? ': ' + data.detail : ''}` : "Failed to create checkout session");
         setLoading(false);
       }
     } catch (err) {
