@@ -8,9 +8,9 @@ interface BotCreationResult {
 }
 
 // Config from env
-const API_ID = parseInt(process.env.TELEGRAM_API_ID ?? '0', 10);
-const API_HASH = process.env.TELEGRAM_API_HASH ?? '';
-const SESSION_STRING = process.env.TELEGRAM_SESSION_STRING ?? '';
+const API_ID = parseInt((process.env.TELEGRAM_API_ID ?? '0').trim(), 10);
+const API_HASH = (process.env.TELEGRAM_API_HASH ?? '').trim();
+const SESSION_STRING = (process.env.TELEGRAM_SESSION_STRING ?? '').trim();
 
 // Singleton client
 let client: TelegramClient | null = null;
