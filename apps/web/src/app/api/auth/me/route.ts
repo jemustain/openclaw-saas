@@ -17,7 +17,7 @@ export async function GET() {
 
   const { data: subscription } = await supabase
     .from('subscriptions')
-    .select('stripe_customer_id, stripe_subscription_id, plan, status, current_period_end')
+    .select('stripe_customer_id, stripe_subscription_id, plan, status, current_period_end, cancel_at_period_end')
     .eq('user_id', session.userId)
     .single();
 
