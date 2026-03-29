@@ -6,6 +6,7 @@ import { AssistantCard } from "./components/assistant-card";
 import { UsageCard } from "./components/usage-card";
 import { ConnectionsCard } from "./components/connections-card";
 import { PlanCard } from "./components/plan-card";
+import { AiModelCard } from "./components/ai-model-card";
 import { UpgradeBanner } from "./components/upgrade-banner";
 import type { PlanKey } from "@/lib/stripe/config";
 
@@ -37,7 +38,7 @@ async function DashboardContent({
   // Fetch user record for plan, hosting preference, and messengers
   const { data: user } = await supabase
     .from("users")
-    .select("plan, provider_preference, messengers")
+    .select("plan, provider_preference, messengers, ai_provider, ai_api_key")
     .eq("id", session.userId)
     .single();
 
@@ -54,6 +55,8 @@ async function DashboardContent({
 
   const hosting: string | undefined = user?.provider_preference ?? undefined;
   const messengers: string[] = user?.messengers ?? [];
+  const aiProvider: string | null = user?.ai_provider ?? null;
+  const aiApiKey: string | null = user?.ai_api_key ?? null;
 
   // Check provider token connections (Azure + DO need OAuth)
   let providerConnected = false;
@@ -84,6 +87,7 @@ async function DashboardContent({
             messengers={messengers}
           />
           <PlanCard plan={plan} />
+          <AiModelCard provider={aiProvider} apiKey={aiApiKey} />
         </div>
       </div>
     </div>
