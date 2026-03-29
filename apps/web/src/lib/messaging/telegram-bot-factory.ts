@@ -79,19 +79,45 @@ export async function createTelegramBot(
       lastMsg.includes('already taken') ||
       lastMsg.includes('already been taken')
     ) {
-      // Try with a random suffix
+      // The bot already exists from a previous run. Request its token via /token.
+      try {
+        await tg.sendMessage(botFather, { message: '/token' });
+        await sleep(1500);
+        await tg.sendMessage(botFather, { message: `@${botUsername}` });
+        await sleep(2000);
+
+        const tokenMsgs = await tg.getMessages(botFather, { limit: 3 });
+        for (const msg of tokenMsgs) {
+          const tokenMatch = (msg.text ?? '').match(/(\d+:[A-Za-z0-9_-]+)/);
+          if (tokenMatch) {
+            return {
+              botUsername,
+              botToken: tokenMatch[1],
+              botDisplayName: botName,
+            };
+          }
+        }
+      } catch {
+        // Fall through to random suffix fallback
+      }
+
+      // /token didn't work (maybe bot is owned by a different account).
+      // Try with a random suffix.
       const fallbackUsername = `sw_${shortId}_${Math.floor(Math.random() * 999)}_bot`;
+      await tg.sendMessage(botFather, { message: '/newbot' });
+      await sleep(1500);
+      await tg.sendMessage(botFather, { message: botName });
+      await sleep(1500);
       await tg.sendMessage(botFather, { message: fallbackUsername });
       await sleep(2000);
 
-      const retryMsgs = await tg.getMessages(botFather, { limit: 2 });
+      const retryMsgs = await tg.getMessages(botFather, { limit: 3 });
       for (const msg of retryMsgs) {
         const tokenMatch = (msg.text ?? '').match(/(\d+:[A-Za-z0-9_-]+)/);
         if (tokenMatch) {
-          botToken = tokenMatch[1];
           return {
             botUsername: fallbackUsername,
-            botToken,
+            botToken: tokenMatch[1],
             botDisplayName: botName,
           };
         }
