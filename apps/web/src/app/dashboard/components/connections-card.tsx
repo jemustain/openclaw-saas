@@ -3,12 +3,6 @@
 import { useEffect, useState, useCallback } from "react";
 import { MessengerSetupModal } from "./messenger-setup-modal";
 
-const PROVIDER_CONFIG: Record<string, { name: string; icon: string }> = {
-  oracle: { name: "Oracle Cloud", icon: "" },
-  azure: { name: "Microsoft Azure", icon: "" },
-  digitalocean: { name: "DigitalOcean", icon: "" },
-};
-
 const MESSENGER_CONFIG: Record<
   string,
   { name: string; icon: string; color: string }
@@ -34,8 +28,6 @@ interface ConnectionsCardProps {
 }
 
 export function ConnectionsCard({
-  hosting,
-  providerConnected = false,
   messengers = [],
 }: ConnectionsCardProps) {
   const [messengerStatuses, setMessengerStatuses] = useState<
@@ -49,7 +41,6 @@ export function ConnectionsCard({
       const res = await fetch("/api/messaging/status");
       if (res.ok) {
         const data = await res.json();
-        // Transform platforms object to array format
         const platforms = data.platforms ?? {};
         const statuses: MessengerStatus[] = Object.entries(platforms).map(
           ([key, val]: [string, any]) => ({
@@ -61,9 +52,7 @@ export function ConnectionsCard({
         );
         setMessengerStatuses(statuses);
       }
-    } catch {
-      // silently fail
-    }
+    } catch {}
   }, []);
 
   useEffect(() => {
@@ -77,78 +66,29 @@ export function ConnectionsCard({
   const handleDisconnect = async (messengerKey: string) => {
     setDisconnecting(messengerKey);
     try {
-      const res = await fetch('/api/messaging/disconnect', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+      const res = await fetch("/api/messaging/disconnect", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ platform: messengerKey }),
       });
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));
-        console.error('Disconnect failed:', data.error);
+        console.error("Disconnect failed:", data.error);
       }
     } catch (err) {
-      console.error('Disconnect error:', err);
+      console.error("Disconnect error:", err);
     } finally {
       setDisconnecting(null);
       fetchMessengerStatus();
     }
   };
 
-  const providerConfig = hosting ? PROVIDER_CONFIG[hosting] : null;
-
-  // Oracle is always active (we manage it), Azure/DO need OAuth
-  const needsOAuth = hosting === "azure" || hosting === "digitalocean";
-  const providerActive = hosting === "oracle" || providerConnected;
-
   return (
     <>
-      <div className="rounded-xl border border-slate-800 bg-slate-900 p-6">
-        <h2 className="text-lg font-semibold text-white mb-4">Connections</h2>
+      <div className="rounded-xl border border-slate-800 bg-slate-900 p-6 h-full">
+        <h2 className="text-lg font-semibold text-white mb-4">Messengers</h2>
 
         <div className="space-y-3">
-          {/* Cloud Provider */}
-          {providerConfig && (
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <span>{providerConfig.icon}</span>
-                <span className="text-slate-300">{providerConfig.name}</span>
-                {providerActive ? (
-                  <span className="text-green-500 text-xs">● Active</span>
-                ) : (
-                  <span className="text-slate-600 text-xs">
-                    ● Not connected
-                  </span>
-                )}
-              </div>
-              {providerActive ? (
-                <span className="rounded-md bg-green-900/30 px-3 py-1 text-xs text-green-400">
-                  Active
-                </span>
-              ) : needsOAuth ? (
-                <a
-                  href={`/api/auth/${hosting}`}
-                  className="rounded-md bg-indigo-600 px-3 py-1 text-xs text-white hover:bg-indigo-500"
-                >
-                  Connect
-                </a>
-              ) : null}
-            </div>
-          )}
-
-          {!providerConfig && (
-            <div className="flex items-center gap-2">
-              <span className="text-slate-500 text-sm">
-                No cloud provider selected
-              </span>
-            </div>
-          )}
-
-          {/* Divider */}
-          {messengers.length > 0 && (
-            <div className="border-t border-slate-800 my-2" />
-          )}
-
-          {/* Messengers */}
           {messengers.map((m) => {
             const config = MESSENGER_CONFIG[m];
             if (!config) return null;
@@ -195,7 +135,7 @@ export function ConnectionsCard({
                       onClick={() => handleDisconnect(m)}
                       className="rounded-md bg-red-900/50 px-3 py-1 text-xs text-red-400 hover:bg-red-900/80 disabled:opacity-50"
                     >
-                      {disconnecting === m ? 'Disconnecting…' : 'Disconnect'}
+                      {disconnecting === m ? "Disconnecting…" : "Disconnect"}
                     </button>
                   </div>
                 )}
@@ -222,16 +162,11 @@ export function ConnectionsCard({
           })}
 
           {messengers.length === 0 && (
-            <div className="flex items-center gap-2">
-              <span className="text-slate-500 text-sm">
-                No messengers configured
-              </span>
-            </div>
+            <p className="text-slate-500 text-sm">No messengers configured</p>
           )}
         </div>
       </div>
 
-      {/* Messenger setup modal */}
       {setupModal && (
         <MessengerSetupModal
           messenger={setupModal}
