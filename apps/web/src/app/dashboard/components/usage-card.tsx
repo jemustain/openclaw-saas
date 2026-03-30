@@ -3,18 +3,48 @@
 import { useEffect, useState, useCallback } from "react";
 
 interface UsageData {
-  messagesUsed: number;
-  hoursActive: number;
+  messages_today: number;
+  messages_limit: number | null;
+  hours_active: number;
+  hours_limit: number;
   plan: string;
-  limit: number | null;
+}
+
+function ProgressBar({
+  value,
+  max,
+  unlimited,
+}: {
+  value: number;
+  max: number | null;
+  unlimited?: boolean;
+}) {
+  if (unlimited || max === null) return null;
+  const pct = Math.min((value / max) * 100, 100);
+  const color =
+    pct >= 100
+      ? "bg-red-500"
+      : pct >= 80
+        ? "bg-amber-500"
+        : "bg-indigo-500";
+
+  return (
+    <div className="mt-2 h-2 rounded-full bg-slate-800 overflow-hidden">
+      <div
+        className={`h-full rounded-full transition-all ${color}`}
+        style={{ width: `${pct}%` }}
+      />
+    </div>
+  );
 }
 
 export function UsageCard() {
   const [data, setData] = useState<UsageData>({
-    messagesUsed: 0,
-    hoursActive: 0,
+    messages_today: 0,
+    messages_limit: 50,
+    hours_active: 0,
+    hours_limit: 8,
     plan: "free",
-    limit: 100,
   });
 
   const fetchUsage = useCallback(async () => {
@@ -35,8 +65,9 @@ export function UsageCard() {
     return () => clearInterval(interval);
   }, [fetchUsage]);
 
-  const { messagesUsed, hoursActive, plan, limit } = data;
-  const pct = limit ? Math.min((messagesUsed / limit) * 100, 100) : 0;
+  const { messages_today, messages_limit, hours_active, hours_limit, plan } =
+    data;
+  const isUnlimitedMessages = messages_limit === null;
 
   return (
     <div className="rounded-xl border border-slate-800 bg-slate-900 p-6">
@@ -44,47 +75,48 @@ export function UsageCard() {
         Today&apos;s Usage
       </h2>
 
+      {/* Messages */}
       <div className="mb-4">
         <p className="text-sm text-slate-400 mb-1">Messages today</p>
-        {limit ? (
-          <>
-            <p className="text-slate-100 text-2xl font-bold">
-              {messagesUsed}{" "}
-              <span className="text-base font-normal text-slate-500">
-                / {limit}
-              </span>
-            </p>
-            <div className="mt-2 h-2 rounded-full bg-slate-800 overflow-hidden">
-              <div
-                className={`h-full rounded-full transition-all ${pct > 80 ? "bg-amber-500" : "bg-indigo-500"}`}
-                style={{ width: `${pct}%` }}
-              />
-            </div>
-            <p className="text-xs text-slate-500 mt-1">
-              You&apos;ve used {messagesUsed} of your {limit} daily messages
-            </p>
-          </>
-        ) : (
-          <p className="text-slate-100 text-2xl font-bold">
-            {messagesUsed}{" "}
-            <span className="text-base font-normal text-slate-500">
-              unlimited
-            </span>
+        <p className="text-slate-100 text-2xl font-bold">
+          {messages_today}{" "}
+          <span className="text-base font-normal text-slate-500">
+            {isUnlimitedMessages ? "unlimited" : `/ ${messages_limit}`}
+          </span>
+        </p>
+        <ProgressBar
+          value={messages_today}
+          max={messages_limit}
+          unlimited={isUnlimitedMessages}
+        />
+        {!isUnlimitedMessages && (
+          <p className="text-xs text-slate-500 mt-1">
+            {messages_today >= messages_limit!
+              ? "Daily message limit reached"
+              : `${messages_limit! - messages_today} messages remaining`}
           </p>
         )}
       </div>
 
-      <div>
+      {/* Hours */}
+      <div className="mb-4">
         <p className="text-sm text-slate-400 mb-1">Hours active today</p>
         <p className="text-slate-100 text-2xl font-bold">
-          {hoursActive.toFixed(1)}
-          <span className="text-base font-normal text-slate-500">h</span>
+          {hours_active.toFixed(1)}
+          <span className="text-base font-normal text-slate-500">
+            {" "}
+            / {hours_limit}h
+          </span>
         </p>
+        <ProgressBar value={hours_active} max={hours_limit} />
+        {hours_active >= hours_limit && (
+          <p className="text-xs text-red-400 mt-1">
+            Daily hours limit reached
+          </p>
+        )}
       </div>
 
-      {plan !== "free" && (
-        <p className="text-xs text-indigo-400 mt-3 capitalize">{plan} plan</p>
-      )}
+      <p className="text-xs text-indigo-400 capitalize">{plan} plan</p>
     </div>
   );
 }
