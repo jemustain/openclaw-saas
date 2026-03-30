@@ -17,9 +17,11 @@ function maskKey(key: string): string {
 export function AiModelCard({
   provider,
   apiKey,
+  disabled = false,
 }: {
   provider?: string | null;
   apiKey?: string | null;
+  disabled?: boolean;
 }) {
   const configured = !!provider && !!apiKey;
   const label = provider ? PROVIDER_LABELS[provider] ?? provider : null;
@@ -44,12 +46,18 @@ export function AiModelCard({
         </>
       )}
 
-      <Link
-        href="/settings/ai"
-        className="inline-block rounded-lg bg-indigo-600 px-4 py-2 text-sm text-white hover:bg-indigo-500"
-      >
-        {configured ? "Change" : "Set up AI provider"}
-      </Link>
+      {disabled ? (
+        <span className="inline-block rounded-lg bg-slate-700 px-4 py-2 text-sm text-slate-500 cursor-not-allowed">
+          {configured ? "Change" : "Set up AI provider"}
+        </span>
+      ) : (
+        <Link
+          href="/settings/ai"
+          className="inline-block rounded-lg bg-indigo-600 px-4 py-2 text-sm text-white hover:bg-indigo-500"
+        >
+          {configured ? "Change" : "Set up AI provider"}
+        </Link>
+      )}
     </div>
   );
 }

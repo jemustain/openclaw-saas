@@ -5,12 +5,14 @@ import Link from "next/link";
 interface QuickActionsProps {
   ipAddress?: string | null;
   isActive: boolean;
+  disabled?: boolean;
 }
 
-export function QuickActions({ ipAddress, isActive }: QuickActionsProps) {
+export function QuickActions({ ipAddress, isActive, disabled }: QuickActionsProps) {
+  const disableAll = disabled || !isActive;
   return (
     <div className="flex flex-wrap gap-3">
-      {isActive && ipAddress ? (
+      {isActive && ipAddress && !disabled ? (
         <a
           href={`http://${ipAddress}:8787`}
           target="_blank"
@@ -27,13 +29,20 @@ export function QuickActions({ ipAddress, isActive }: QuickActionsProps) {
         </span>
       )}
 
-      <Link
-        href="/dashboard/settings"
-        className="inline-flex items-center gap-2 rounded-full bg-slate-800 px-5 py-2 text-sm font-medium text-slate-200 hover:bg-slate-700 transition-colors"
-      >
-        <span className="text-base">⚙</span>
-        Settings
-      </Link>
+      {disableAll ? (
+        <span className="inline-flex items-center gap-2 rounded-full bg-slate-800 px-5 py-2 text-sm font-medium text-slate-500 cursor-not-allowed">
+          <span className="text-base">⚙</span>
+          Settings
+        </span>
+      ) : (
+        <Link
+          href="/dashboard/settings"
+          className="inline-flex items-center gap-2 rounded-full bg-slate-800 px-5 py-2 text-sm font-medium text-slate-200 hover:bg-slate-700 transition-colors"
+        >
+          <span className="text-base">⚙</span>
+          Settings
+        </Link>
+      )}
 
       <span className="inline-flex items-center gap-2 rounded-full bg-slate-800 px-5 py-2 text-sm font-medium text-slate-500 cursor-not-allowed">
         <span className="text-base">📋</span>

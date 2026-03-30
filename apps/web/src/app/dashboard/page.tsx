@@ -56,6 +56,7 @@ async function DashboardContent({
   const aiApiKey: string | null = user?.ai_api_key ?? null;
 
   const isActive = assistant?.status === "active";
+  const isProvisioning = assistant?.status === "provisioning" || assistant?.status === "destroying";
 
   return (
     <div className="min-h-screen bg-slate-950 px-4 py-8 sm:px-6 lg:px-8">
@@ -69,18 +70,19 @@ async function DashboardContent({
         <QuickActions
           ipAddress={assistant?.ip_address}
           isActive={isActive}
+          disabled={isProvisioning}
         />
 
         {/* Three-column grid */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           {/* Col 1: Connections */}
           <div>
-            <ConnectionsCard messengers={messengers} />
+            <ConnectionsCard messengers={messengers} disabled={isProvisioning} />
           </div>
 
           {/* Col 2: AI Model + Usage stacked */}
           <div className="space-y-6">
-            <AiModelCard provider={aiProvider} apiKey={aiApiKey} />
+            <AiModelCard provider={aiProvider} apiKey={aiApiKey} disabled={isProvisioning} />
             <UsageCard />
           </div>
 
