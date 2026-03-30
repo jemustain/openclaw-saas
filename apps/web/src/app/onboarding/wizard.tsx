@@ -187,6 +187,48 @@ export default function OnboardingWizard() {
     }
   }, [searchParams]);
 
+  // Resume provisioning state on page load/return
+  useEffect(() => {
+    async function checkExistingAssistant() {
+      try {
+        const res = await fetch('/api/assistant/status');
+        if (!res.ok) return;
+        const data = await res.json();
+        const assistant = data.assistant;
+
+        if (!assistant) return; // No assistant yet, normal flow
+
+        if (assistant.status === 'active') {
+          // VM is already active - jump to Setup & Connect step
+          setServerActive(true);
+          setSetupDone(true);
+          setSetupStatus((prev) => [...prev, 'Server is online']);
+          setStep((currentStep) => {
+            if (currentStep < 7) return 7;
+            return currentStep; // Don't jump backward
+          });
+        } else if (assistant.status === 'provisioning') {
+          // VM is provisioning - jump to Setup & Connect and start polling
+          setStep((currentStep) => {
+            if (currentStep < 7) {
+              setServerActive(false);
+              setSetupDone(false);
+              setSetupStatus((prev) => [...prev, 'Resuming provisioning...']);
+              return 7;
+            }
+            return currentStep;
+          });
+        }
+      } catch {
+        // Ignore errors - user might not have started yet
+      }
+    }
+
+    // Only check after a small delay to let searchParams effect run first
+    const timer = setTimeout(checkExistingAssistant, 500);
+    return () => clearTimeout(timer);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
   const goTo = useCallback((next: number) => {
     setDirection(next > step ? 1 : -1);
     setAnimating(true);
