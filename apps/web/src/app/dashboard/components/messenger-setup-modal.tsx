@@ -429,8 +429,8 @@ export function MessengerSetupModal({
 
         {/* Non-Telegram flows below */}
 
-        {/* Setting up */}
-        {!isTelegram && status === "setting-up" && (
+        {/* Setting up - show spinner only for non-WhatsApp or QR mode */}
+        {!isTelegram && status === "setting-up" && !(isWhatsApp && waMethod === "phone") && (
           <div className="flex items-center justify-center gap-3 py-8">
             <Loader2 className="w-5 h-5 animate-spin text-violet-400" />
             <span className="text-slate-300">
@@ -439,9 +439,9 @@ export function MessengerSetupModal({
           </div>
         )}
 
-        {/* Ready - QR code or Phone pairing (WhatsApp/Signal) */}
+        {/* Ready OR setting-up with phone method - QR code or Phone pairing (WhatsApp/Signal) */}
         {!isTelegram &&
-          status === "ready" &&
+          (status === "ready" || (status === "setting-up" && isWhatsApp && waMethod === "phone")) &&
           (qrCode || isWhatsApp) &&
           !qrExpired &&
           (messenger === "whatsapp" || messenger === "signal") && (
