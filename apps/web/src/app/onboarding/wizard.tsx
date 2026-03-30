@@ -17,9 +17,6 @@ const STEPS = ['Welcome', 'Hosting', 'Subscription', 'AI Provider', 'Plan', 'Mes
 const MESSENGERS = [
   { id: 'whatsapp', label: 'WhatsApp', icon: MessageCircle },
   { id: 'telegram', label: 'Telegram', icon: Send },
-  { id: 'discord', label: 'Discord', icon: Hash },
-  { id: 'slack', label: 'Slack', icon: Slack },
-  { id: 'signal', label: 'Signal', icon: Shield },
 ];
 
 type SkillDef = {

@@ -24,7 +24,7 @@ const NETWORK_API = '2024-05-01';
 const RESOURCE_API = '2024-07-01';
 
 const DEFAULT_REGION = 'southcentralus';
-const RG_NAME = 'shiftworker-rg';
+const RG_PREFIX = 'sw-rg-';
 const VNET_NAME = 'shiftworker-vnet';
 const SUBNET_NAME = 'default';
 const NSG_NAME = 'shiftworker-nsg';
@@ -112,6 +112,7 @@ export async function advanceProvisioning(assistant: Assistant): Promise<Assista
   if (!step || step === 'done') return assistant;
 
   const token = await getUserToken(assistant.user_id);
+  const rgName = `${RG_PREFIX}${assistant.id.split('-')[0]}`;
 
   switch (step) {
     case 'validate': {
@@ -175,7 +176,7 @@ export async function advanceProvisioning(assistant: Assistant): Promise<Assista
 
     case 'create_rg': {
       const { subscriptionId } = pd;
-      const path = `/subscriptions/${subscriptionId}/resourceGroups/${RG_NAME}?api-version=${RESOURCE_API}`;
+      const path = `/subscriptions/${subscriptionId}/resourceGroups/${rgName}?api-version=${RESOURCE_API}`;
       const region = pd.region ?? DEFAULT_REGION;
 
       // Check if RG exists in a different region - delete it first
@@ -208,7 +209,7 @@ export async function advanceProvisioning(assistant: Assistant): Promise<Assista
 
     case 'create_nsg': {
       const { subscriptionId } = pd;
-      const base = `/subscriptions/${subscriptionId}/resourceGroups/${RG_NAME}/providers`;
+      const base = `/subscriptions/${subscriptionId}/resourceGroups/${rgName}/providers`;
       const nsgPath = `${base}/Microsoft.Network/networkSecurityGroups/${NSG_NAME}?api-version=${NETWORK_API}`;
 
       // Check if already provisioned from a previous attempt
@@ -275,8 +276,8 @@ export async function advanceProvisioning(assistant: Assistant): Promise<Assista
 
     case 'create_vnet': {
       const { subscriptionId } = pd;
-      const base = `/subscriptions/${subscriptionId}/resourceGroups/${RG_NAME}/providers`;
-      const nsgId = `/subscriptions/${subscriptionId}/resourceGroups/${RG_NAME}/providers/Microsoft.Network/networkSecurityGroups/${NSG_NAME}`;
+      const base = `/subscriptions/${subscriptionId}/resourceGroups/${rgName}/providers`;
+      const nsgId = `/subscriptions/${subscriptionId}/resourceGroups/${rgName}/providers/Microsoft.Network/networkSecurityGroups/${NSG_NAME}`;
       const vnetPath = `${base}/Microsoft.Network/virtualNetworks/${VNET_NAME}?api-version=${NETWORK_API}`;
 
       const state = await checkProvisioningState(token, vnetPath);
@@ -314,7 +315,7 @@ export async function advanceProvisioning(assistant: Assistant): Promise<Assista
 
     case 'create_ip': {
       const { subscriptionId, vmName } = pd;
-      const base = `/subscriptions/${subscriptionId}/resourceGroups/${RG_NAME}/providers`;
+      const base = `/subscriptions/${subscriptionId}/resourceGroups/${rgName}/providers`;
       const ipPath = `${base}/Microsoft.Network/publicIPAddresses/${vmName}-ip?api-version=${NETWORK_API}`;
 
       const state = await checkProvisioningState(token, ipPath);
@@ -344,10 +345,10 @@ export async function advanceProvisioning(assistant: Assistant): Promise<Assista
 
     case 'create_nic': {
       const { subscriptionId, vmName } = pd;
-      const base = `/subscriptions/${subscriptionId}/resourceGroups/${RG_NAME}/providers`;
-      const subnetId = `/subscriptions/${subscriptionId}/resourceGroups/${RG_NAME}/providers/Microsoft.Network/virtualNetworks/${VNET_NAME}/subnets/${SUBNET_NAME}`;
-      const nsgId = `/subscriptions/${subscriptionId}/resourceGroups/${RG_NAME}/providers/Microsoft.Network/networkSecurityGroups/${NSG_NAME}`;
-      const ipId = `/subscriptions/${subscriptionId}/resourceGroups/${RG_NAME}/providers/Microsoft.Network/publicIPAddresses/${vmName}-ip`;
+      const base = `/subscriptions/${subscriptionId}/resourceGroups/${rgName}/providers`;
+      const subnetId = `/subscriptions/${subscriptionId}/resourceGroups/${rgName}/providers/Microsoft.Network/virtualNetworks/${VNET_NAME}/subnets/${SUBNET_NAME}`;
+      const nsgId = `/subscriptions/${subscriptionId}/resourceGroups/${rgName}/providers/Microsoft.Network/networkSecurityGroups/${NSG_NAME}`;
+      const ipId = `/subscriptions/${subscriptionId}/resourceGroups/${rgName}/providers/Microsoft.Network/publicIPAddresses/${vmName}-ip`;
       const nicPath = `${base}/Microsoft.Network/networkInterfaces/${vmName}-nic?api-version=${NETWORK_API}`;
 
       const state = await checkProvisioningState(token, nicPath);
@@ -386,8 +387,8 @@ export async function advanceProvisioning(assistant: Assistant): Promise<Assista
 
     case 'create_vm': {
       const { subscriptionId, vmName, vmSize, cloudInit } = pd;
-      const base = `/subscriptions/${subscriptionId}/resourceGroups/${RG_NAME}/providers`;
-      const nicId = `/subscriptions/${subscriptionId}/resourceGroups/${RG_NAME}/providers/Microsoft.Network/networkInterfaces/${vmName}-nic`;
+      const base = `/subscriptions/${subscriptionId}/resourceGroups/${rgName}/providers`;
+      const nicId = `/subscriptions/${subscriptionId}/resourceGroups/${rgName}/providers/Microsoft.Network/networkInterfaces/${vmName}-nic`;
       const vmPath = `${base}/Microsoft.Compute/virtualMachines/${vmName}?api-version=${COMPUTE_API}`;
 
       // Check if already exists
@@ -468,7 +469,7 @@ export async function advanceProvisioning(assistant: Assistant): Promise<Assista
 
     case 'wait_vm': {
       const { subscriptionId, vmName } = pd;
-      const base = `/subscriptions/${subscriptionId}/resourceGroups/${RG_NAME}/providers`;
+      const base = `/subscriptions/${subscriptionId}/resourceGroups/${rgName}/providers`;
       const vmPath = `${base}/Microsoft.Compute/virtualMachines/${vmName}?api-version=${COMPUTE_API}`;
 
       const state = await checkProvisioningState(token, vmPath);
