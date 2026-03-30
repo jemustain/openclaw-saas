@@ -70,7 +70,7 @@ describe("GET /api/usage/today", () => {
     const json = await res.json();
     expect(json).toEqual({
       messages_today: 0,
-      messages_limit: 50,
+      messages_limit: 100,
       hours_active: 0,
       hours_limit: 8,
       plan: "free",
@@ -87,7 +87,7 @@ describe("GET /api/usage/today", () => {
     const res = await todayGET();
     const json = await res.json();
     expect(json.messages_today).toBe(30);
-    expect(json.messages_limit).toBe(50);
+    expect(json.messages_limit).toBe(100);
     expect(json.hours_active).toBe(3.5);
     expect(json.hours_limit).toBe(8);
     expect(json.plan).toBe("free");
