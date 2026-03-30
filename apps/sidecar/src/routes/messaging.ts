@@ -179,6 +179,18 @@ async function requestWhatsAppPairingCode(phoneNumber: string): Promise<{ pairin
     } catch {}
   }
 
+  // Stop the gateway's WhatsApp channel to avoid socket conflicts.
+  // Both Baileys sockets can't use the same auth state simultaneously.
+  try {
+    await runAsClaw('openclaw gateway stop --channel whatsapp 2>/dev/null', 10_000);
+  } catch {}
+  // Also kill any lingering WA login sessions via the gateway RPC
+  try {
+    await gatewayRpc('web.login.start', { channel: 'whatsapp', force: true }, 5_000);
+  } catch {}
+  // Brief pause to let the gateway release the connection
+  await new Promise(r => setTimeout(r, 2000));
+
   const { state, saveCreds } = await useMultiFileAuthState(authDir);
   const { version } = await fetchLatestBaileysVersion();
 
