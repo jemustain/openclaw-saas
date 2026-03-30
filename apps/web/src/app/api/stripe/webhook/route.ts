@@ -10,18 +10,7 @@ import { env } from "@/lib/env";
 import { apiError, handleApiError } from "@/lib/errors";
 
 // Idempotency
-const processedEvents = new Set<string>();
-const MAX_PROCESSED_EVENTS = 10_000;
-
-function markProcessed(eventId: string): boolean {
-  if (processedEvents.has(eventId)) return false;
-  if (processedEvents.size >= MAX_PROCESSED_EVENTS) {
-    const first = processedEvents.values().next().value;
-    if (first) processedEvents.delete(first);
-  }
-  processedEvents.add(eventId);
-  return true;
-}
+import { markProcessed } from "@/lib/stripe/idempotency";
 
 export async function POST(req: NextRequest) {
   const body = await req.text();
@@ -200,7 +189,7 @@ async function handleSubscriptionResumed(subscription: Stripe.Subscription) {
 
 async function handleInvoicePaid(invoice: Stripe.Invoice) {
   const customerId = invoice.customer as string;
-  const subscriptionId = invoice.subscription as string;
+  const subscriptionId = (invoice as any).subscription as string;
   console.log(`[stripe-webhook] Invoice paid: cust=${customerId} inv=${invoice.id}`);
   if (!subscriptionId) return;
 
@@ -223,4 +212,5 @@ async function handlePaymentFailed(invoice: Stripe.Invoice) {
   }
 }
 
-export { markProcessed, processedEvents };
+// For testing - export via a separate module, not from the route
+// See __tests__/webhook-idempotency.test.ts
