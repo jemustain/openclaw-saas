@@ -27,9 +27,11 @@ export default function BillingPage() {
           setSubscription(data.user.subscription ?? null);
         }
       })
-      .catch(() => {})
+      .catch(() => { setFetchError('Failed to load billing info'); })
       .finally(() => setLoading(false));
   }, []);
+
+  const [fetchError, setFetchError] = useState<string | null>(null);
 
   async function openPortal() {
     setPortalLoading(true);
@@ -78,10 +80,38 @@ export default function BillingPage() {
 
   if (loading) {
     return (
-      <div className="max-w-2xl space-y-8">
+      <div className="max-w-2xl space-y-8" data-testid="billing-skeleton">
+        <div className="h-8 w-24 animate-pulse rounded bg-slate-800" />
+        <div className="rounded-xl border border-slate-800 bg-slate-900/50 p-6 space-y-4">
+          <div className="flex items-center justify-between">
+            <div className="h-5 w-28 animate-pulse rounded bg-slate-800" />
+            <div className="h-6 w-16 animate-pulse rounded-full bg-slate-800" />
+          </div>
+          <div className="h-8 w-24 animate-pulse rounded bg-slate-800" />
+          <div className="h-4 w-48 animate-pulse rounded bg-slate-800/60" />
+          <div className="h-10 w-40 animate-pulse rounded-lg bg-slate-800" />
+        </div>
+        <div className="rounded-xl border border-slate-800 bg-slate-900/50 p-6 space-y-3">
+          <div className="h-5 w-24 animate-pulse rounded bg-slate-800" />
+          <div className="h-4 w-full animate-pulse rounded bg-slate-800/60" />
+          <div className="h-4 w-3/4 animate-pulse rounded bg-slate-800/60" />
+        </div>
+      </div>
+    );
+  }
+
+  if (fetchError) {
+    return (
+      <div className="max-w-2xl space-y-8" data-testid="billing-error">
         <h1 className="text-2xl font-bold text-white">Billing</h1>
         <div className="rounded-xl border border-slate-800 bg-slate-900/50 p-6">
-          <p className="text-sm text-slate-400">Loading...</p>
+          <p className="text-sm text-red-400 mb-3">{fetchError}</p>
+          <button
+            onClick={() => window.location.reload()}
+            className="rounded-lg bg-indigo-600 px-4 py-2 text-sm text-white hover:bg-indigo-500"
+          >
+            Retry
+          </button>
         </div>
       </div>
     );

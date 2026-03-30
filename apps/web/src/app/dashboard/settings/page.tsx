@@ -31,6 +31,8 @@ export default function SettingsPage() {
   const [aiKeyVerified, setAiKeyVerified] = useState(false);
   const [aiKeyError, setAiKeyError] = useState<string | null>(null);
   const [aiSaving, setAiSaving] = useState(false);
+  const [pageLoading, setPageLoading] = useState(true);
+  const [pageError, setPageError] = useState<string | null>(null);
 
   useEffect(() => {
     const detectedTz = Intl.DateTimeFormat().resolvedOptions().timeZone;
@@ -49,7 +51,9 @@ export default function SettingsPage() {
       })
       .catch(() => {
         setTimezone(detectedTz);
-      });
+        setPageError('Failed to load settings');
+      })
+      .finally(() => setPageLoading(false));
   }, []);
 
   async function handleSave() {
@@ -85,6 +89,45 @@ export default function SettingsPage() {
 
   const isPro = plan === 'pro' || plan === 'Pro';
   const inputClass = 'w-full rounded-lg border border-slate-700 bg-slate-800 px-4 py-2.5 text-sm text-white placeholder-slate-500 focus:border-violet-500 focus:outline-none';
+
+  if (pageLoading) {
+    return (
+      <div className="max-w-2xl space-y-8" data-testid="settings-skeleton">
+        <div className="h-8 w-32 animate-pulse rounded bg-slate-800" />
+        <div className="rounded-xl border border-slate-800 bg-slate-900/50 p-6 space-y-4">
+          <div className="h-5 w-20 animate-pulse rounded bg-slate-800" />
+          <div className="h-10 w-full animate-pulse rounded-lg bg-slate-800" />
+          <div className="h-10 w-full animate-pulse rounded-lg bg-slate-800" />
+          <div className="h-10 w-full animate-pulse rounded-lg bg-slate-800" />
+          <div className="h-9 w-28 animate-pulse rounded-lg bg-slate-800" />
+        </div>
+        <div className="rounded-xl border border-slate-800 bg-slate-900/50 p-6 space-y-4">
+          <div className="h-5 w-20 animate-pulse rounded bg-slate-800" />
+          <div className="grid gap-4 sm:grid-cols-2">
+            <div className="h-10 animate-pulse rounded bg-slate-800" />
+            <div className="h-10 animate-pulse rounded bg-slate-800" />
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (pageError) {
+    return (
+      <div className="max-w-2xl space-y-8" data-testid="settings-error">
+        <h1 className="text-2xl font-bold text-white">Settings</h1>
+        <div className="rounded-xl border border-slate-800 bg-slate-900/50 p-6">
+          <p className="text-sm text-red-400 mb-3">{pageError}</p>
+          <button
+            onClick={() => window.location.reload()}
+            className="rounded-lg bg-indigo-600 px-4 py-2 text-sm text-white hover:bg-indigo-500"
+          >
+            Retry
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="max-w-2xl space-y-8">
