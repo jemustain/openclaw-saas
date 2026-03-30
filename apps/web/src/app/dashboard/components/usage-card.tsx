@@ -128,7 +128,7 @@ export function UsageCard() {
       <div className="mb-4">
         <p className="text-sm text-slate-400 mb-1">Hours active today</p>
         <p className="text-slate-100 text-2xl font-bold">
-          {hours_active.toFixed(1)}
+          {(hours_active ?? 0).toFixed(1)}
           <span className="text-base font-normal text-slate-500"> / {hours_limit}h</span>
         </p>
         <ProgressBar value={hours_active} max={hours_limit} />
