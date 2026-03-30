@@ -10,11 +10,7 @@ export default defineConfig({
     },
   },
   test: {
-    environment: 'node',
-    environmentMatchGlobs: [
-      ['src/components/**/*.test.tsx', 'jsdom'],
-      ['src/app/**/*.test.tsx', 'jsdom'],
-    ],
+    environment: 'jsdom',
     coverage: {
       provider: 'v8',
       include: [
