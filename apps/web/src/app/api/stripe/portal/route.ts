@@ -3,16 +3,13 @@ import { stripe } from "@/lib/stripe/client";
 import { getSession } from "@/lib/auth/session";
 import { createClient } from "@/lib/supabase/server";
 import { env } from "@/lib/env";
+import { apiError, handleApiError, ERR } from "@/lib/errors";
 
-/**
- * POST /api/stripe/portal
- * Creates a Stripe Customer Portal session for the authenticated user.
- */
 export async function POST(req: NextRequest) {
   try {
     const session = await getSession();
     if (!session) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+      return apiError(ERR.UNAUTHORIZED, 401);
     }
 
     const supabase: any = createClient();
@@ -23,10 +20,7 @@ export async function POST(req: NextRequest) {
       .single();
 
     if (!subscription?.stripe_customer_id) {
-      return NextResponse.json(
-        { error: "No subscription found" },
-        { status: 404 },
-      );
+      return apiError("No subscription found.", 404);
     }
 
     const portalSession = await stripe.billingPortal.sessions.create({
@@ -35,9 +29,7 @@ export async function POST(req: NextRequest) {
     });
 
     return NextResponse.json({ url: portalSession.url });
-  } catch (err: unknown) {
-    console.error("Stripe portal error:", err);
-    const message = err instanceof Error ? err.message : "Internal error";
-    return NextResponse.json({ error: message }, { status: 500 });
+  } catch (err) {
+    return handleApiError(err, 'stripe/portal');
   }
 }

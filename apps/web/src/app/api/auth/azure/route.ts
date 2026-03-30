@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import crypto from 'crypto';
+import { apiError, ERR, handleApiError } from '@/lib/errors';
 
 export async function GET() {
   const clientId = process.env.AZURE_CLIENT_ID?.trim();

@@ -1,12 +1,13 @@
 import { NextResponse } from 'next/server';
 import { getSession } from '@/lib/auth/session';
 import { createClient } from '@/lib/supabase/server';
+import { apiError, ERR, handleApiError } from '@/lib/errors';
 
 export async function POST(request: Request) {
   try {
     const session = await getSession();
     if (!session) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+      return apiError(ERR.UNAUTHORIZED, 401);
     }
 
     const { pairingToken } = (await request.json()) as { pairingToken: string };
@@ -37,6 +38,6 @@ export async function POST(request: Request) {
     return NextResponse.json({ paired: false });
   } catch (err) {
     console.error('check-pairing error:', err);
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+    return apiError(ERR.INTERNAL, 500);
   }
 }

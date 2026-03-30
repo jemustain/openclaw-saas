@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { checkMessageLimit } from "@/lib/billing/plan-enforcement";
+import { apiError, ERR, handleApiError } from "@/lib/errors";
 
 /**
  * GET /api/usage/check?assistant_id=xxx
@@ -12,7 +13,7 @@ export async function GET(req: NextRequest) {
   const token = authHeader?.replace("Bearer ", "");
 
   if (!token || token !== process.env.SIDECAR_API_TOKEN) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    return apiError(ERR.UNAUTHORIZED, 401);
   }
 
   const assistantId = req.nextUrl.searchParams.get("assistant_id");

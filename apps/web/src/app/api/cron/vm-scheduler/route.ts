@@ -2,6 +2,7 @@ import { NextRequest } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { isInWindow, powerOnDroplet, powerOffDroplet } from '@/lib/vm/scheduler';
 import { advanceProvisioning } from '@/lib/vm/provisioning-steps';
+import { apiError, ERR, handleApiError } from '@/lib/errors';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';

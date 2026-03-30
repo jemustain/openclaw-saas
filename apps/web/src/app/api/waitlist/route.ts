@@ -3,6 +3,7 @@ import { NextResponse } from 'next/server';
 import { Resend } from 'resend';
 import { generateToken } from '@/lib/waitlist-token';
 import { waitlistWelcomeEmail } from '@/lib/emails/waitlist-welcome';
+import { apiError, ERR, handleApiError } from '@/lib/errors';
 
 let _resend: Resend | null = null;
 function getResend() {
