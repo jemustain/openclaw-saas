@@ -16,8 +16,9 @@ export async function POST(request: NextRequest) {
 
   try {
     if (provider === 'gemini') {
+      // Use gemini-2.5-flash - available on free tier (2.0-flash may not be)
       const res = await fetch(
-        `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`,
+        `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`,
         {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -28,6 +29,10 @@ export async function POST(request: NextRequest) {
         }
       );
       if (!res.ok) {
+        const status = res.status;
+        if (status === 429) {
+          return NextResponse.json({ valid: false, error: 'API key is valid but rate limited. Try again in a moment.' });
+        }
         return NextResponse.json({ valid: false, error: 'Invalid API key.' });
       }
       return NextResponse.json({ valid: true });
