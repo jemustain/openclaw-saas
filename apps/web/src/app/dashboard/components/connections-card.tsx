@@ -23,6 +23,28 @@ interface MessengerStatus {
   botLink?: string | null;
 }
 
+export function ConnectionsCardSkeleton() {
+  return (
+    <div className="rounded-xl border border-slate-800 bg-slate-900 p-6" data-testid="connections-card-skeleton">
+      <div className="flex items-center justify-between mb-4">
+        <div className="h-5 w-28 animate-pulse rounded bg-slate-800" />
+      </div>
+      <div className="space-y-3">
+        {[1, 2].map((i) => (
+          <div key={i} className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <div className="h-5 w-5 animate-pulse rounded bg-slate-800" />
+              <div className="h-4 w-20 animate-pulse rounded bg-slate-800/60" />
+              <div className="h-3 w-16 animate-pulse rounded bg-slate-800/40" />
+            </div>
+            <div className="h-6 w-16 animate-pulse rounded-md bg-slate-800" />
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 interface ConnectionsCardProps {
   messengers?: string[];
   disabled?: boolean;
@@ -61,9 +83,14 @@ export function ConnectionsCard({
         setMessengerStatuses(statuses);
       }
     } catch {
-      // silently fail
+      setFetchError("Failed to load connections");
+    } finally {
+      setFetchLoading(false);
     }
   }, []);
+
+  const [fetchLoading, setFetchLoading] = useState(true);
+  const [fetchError, setFetchError] = useState<string | null>(null);
 
   useEffect(() => {
     fetchMessengerStatus();
@@ -129,6 +156,23 @@ export function ConnectionsCard({
     }
     setSetupModal(key);
   };
+
+  if (fetchLoading) return <ConnectionsCardSkeleton />;
+
+  if (fetchError && messengerStatuses.length === 0) {
+    return (
+      <div className="rounded-xl border border-slate-800 bg-slate-900 p-6" data-testid="connections-card-error">
+        <h2 className="text-lg font-semibold text-white mb-2">Connections</h2>
+        <p className="text-sm text-red-400 mb-3">{fetchError}</p>
+        <button
+          onClick={() => { setFetchLoading(true); fetchMessengerStatus(); }}
+          className="rounded-lg bg-indigo-600 px-4 py-2 text-sm text-white hover:bg-indigo-500"
+        >
+          Retry
+        </button>
+      </div>
+    );
+  }
 
   return (
     <>
