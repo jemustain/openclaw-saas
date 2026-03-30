@@ -361,6 +361,25 @@ export async function destroyVM(
   await azureFetch(token, `${base}/Microsoft.Network/publicIPAddresses/${vmName}-ip?api-version=${NETWORK_API}`, {
     method: 'DELETE',
   }).catch(() => {});
+
+  // Delete OS disk (Azure auto-names it: {vmName}_disk1_{guid})
+  // List disks in the resource group and delete any belonging to this VM
+  try {
+    const disksRes = await azureFetch(
+      token,
+      `/subscriptions/${subscriptionId}/resourceGroups/${resourceGroup}/providers/Microsoft.Compute/disks?api-version=${COMPUTE_API}`,
+    );
+    const disks = disksRes?.value ?? [];
+    for (const disk of disks) {
+      if (disk.name?.startsWith(`${vmName}_disk`)) {
+        await azureFetch(token, `/subscriptions/${subscriptionId}/resourceGroups/${resourceGroup}/providers/Microsoft.Compute/disks/${disk.name}?api-version=${COMPUTE_API}`, {
+          method: 'DELETE',
+        }).catch(() => {});
+      }
+    }
+  } catch {
+    // Best-effort disk cleanup
+  }
 }
 
 async function pollDeletion(token: string, path: string, timeoutMs = 120_000) {
