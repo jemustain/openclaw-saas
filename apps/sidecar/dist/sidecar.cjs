@@ -466,6 +466,12 @@ var import_child_process4 = require("child_process");
 var import_util4 = require("util");
 var import_fs2 = require("fs");
 var import_ws = __toESM(require("ws"));
+var import_pino = __toESM(require("pino"));
+var makeWASocket = require("@whiskeysockets/baileys").default;
+var { useMultiFileAuthState, fetchLatestBaileysVersion } = (
+  // eslint-disable-next-line @typescript-eslint/no-var-requires
+  require("@whiskeysockets/baileys")
+);
 var execAsync4 = (0, import_util4.promisify)(import_child_process4.exec);
 var router6 = (0, import_express6.Router)();
 var VALID_PLATFORMS = ["whatsapp", "telegram", "signal", "discord", "slack"];
@@ -580,7 +586,79 @@ function autoApproveFirstPairing(channel, windowMs) {
   };
   setTimeout(poll, 3e3);
 }
-async function setupWhatsApp(_config) {
+async function requestWhatsAppPairingCode(phoneNumber) {
+  const authDir = `${CLAW_HOME}/.openclaw/credentials/whatsapp`;
+  if (!(0, import_fs2.existsSync)(authDir)) {
+    (0, import_fs2.mkdirSync)(authDir, { recursive: true });
+    try {
+      await execAsync4(`chown -R ${CLAW_USER}:${CLAW_USER} ${authDir}`);
+    } catch {
+    }
+  }
+  const { state, saveCreds } = await useMultiFileAuthState(authDir);
+  const { version } = await fetchLatestBaileysVersion();
+  const sock = makeWASocket({
+    version,
+    auth: state,
+    printQRInTerminal: false,
+    logger: (0, import_pino.default)({ level: "silent" })
+  });
+  sock.ev.on("creds.update", saveCreds);
+  return new Promise((resolve2) => {
+    let resolved = false;
+    const timeout = setTimeout(() => {
+      if (!resolved) {
+        resolved = true;
+        try {
+          sock.end(void 0);
+        } catch {
+        }
+        resolve2({ error: "Timed out waiting for pairing code" });
+      }
+    }, 3e4);
+    sock.ev.on("connection.update", async (update) => {
+      const { connection, qr } = update;
+      if (qr && !resolved) {
+        try {
+          const digits = phoneNumber.replace(/[^0-9]/g, "");
+          const code = await sock.requestPairingCode(digits);
+          resolved = true;
+          clearTimeout(timeout);
+          resolve2({ pairingCode: code });
+        } catch (err) {
+          resolved = true;
+          clearTimeout(timeout);
+          try {
+            sock.end(void 0);
+          } catch {
+          }
+          resolve2({ error: err.message || "Failed to request pairing code" });
+        }
+      }
+      if (connection === "open") {
+        try {
+          await runAsClaw("openclaw gateway restart");
+        } catch {
+        }
+      }
+      if (connection === "close") {
+        if (!resolved) {
+          resolved = true;
+          clearTimeout(timeout);
+          resolve2({ error: "Connection closed before pairing code was issued" });
+        }
+      }
+    });
+  });
+}
+async function setupWhatsApp(config) {
+  if (config.method === "pairing-code" && typeof config.phoneNumber === "string") {
+    const result = await requestWhatsAppPairingCode(config.phoneNumber);
+    if (result.pairingCode) {
+      return { platform: "whatsapp", status: "pairing", pairingCode: result.pairingCode };
+    }
+    return { platform: "whatsapp", status: "error", error: result.error || "Failed to get pairing code" };
+  }
   if (whatsappCredentialsExist()) {
     try {
       const { stdout } = await runAsClaw("openclaw channels status --channel whatsapp 2>/dev/null", 1e4);
@@ -605,8 +683,8 @@ async function setupWhatsApp(_config) {
   let gatewayToken = "";
   try {
     const { stdout } = await runAsClaw(`cat ${CLAW_HOME}/.openclaw/openclaw.json`, 5e3);
-    const config = JSON.parse(stdout.trim());
-    gatewayToken = config?.gateway?.auth?.token ?? "";
+    const config2 = JSON.parse(stdout.trim());
+    gatewayToken = config2?.gateway?.auth?.token ?? "";
   } catch {
   }
   const controlUiUrl = `http://${getLocalIp()}:8787${gatewayToken ? `/#token=${gatewayToken}` : ""}`;

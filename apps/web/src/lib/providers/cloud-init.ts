@@ -121,7 +121,7 @@ write_files:
       mkdir -p /opt/shiftworker/sidecar/dist
       cd /opt/shiftworker/sidecar
       curl -sf -L "https://raw.githubusercontent.com/jemustain/openclaw-saas/main/apps/sidecar/dist/sidecar.cjs" -o dist/sidecar.cjs
-      echo '{"dependencies":{"express":"^4.21.0","ws":"^8.18.0"}}' > package.json
+      echo '{"dependencies":{"@whiskeysockets/baileys":"^6.7.16","express":"^4.21.0","pino":"^9.6.0","ws":"^8.18.0"}}' > package.json
       npm install --production 2>/dev/null
       # Install sidecar auto-update script and cron job
       curl -sf -L "https://raw.githubusercontent.com/jemustain/openclaw-saas/main/apps/sidecar/scripts/auto-update.sh" -o /opt/shiftworker/sidecar/auto-update.sh
