@@ -23,10 +23,12 @@ interface MessengerStatus {
 
 interface ConnectionsCardProps {
   messengers?: string[];
+  disabled?: boolean;
 }
 
 export function ConnectionsCard({
   messengers = [],
+  disabled = false,
 }: ConnectionsCardProps) {
   const [messengerStatuses, setMessengerStatuses] = useState<
     MessengerStatus[]
@@ -131,7 +133,7 @@ export function ConnectionsCard({
                     )}
                     <button
                       type="button"
-                      disabled={disconnecting === m}
+                      disabled={disconnecting === m || disabled}
                       onClick={() => handleDisconnect(m)}
                       className="rounded-md bg-red-900/50 px-3 py-1 text-xs text-red-400 hover:bg-red-900/80 disabled:opacity-50"
                     >
@@ -142,8 +144,9 @@ export function ConnectionsCard({
                 {!connected && configured && (
                   <button
                     type="button"
+                    disabled={disabled}
                     onClick={() => setSetupModal(m)}
-                    className="rounded-md bg-amber-600 px-3 py-1 text-xs text-white hover:bg-amber-500"
+                    className="rounded-md bg-amber-600 px-3 py-1 text-xs text-white hover:bg-amber-500 disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     Reconnect
                   </button>
@@ -151,8 +154,9 @@ export function ConnectionsCard({
                 {!connected && !configured && (
                   <button
                     type="button"
+                    disabled={disabled}
                     onClick={() => setSetupModal(m)}
-                    className="rounded-md bg-slate-800 px-3 py-1 text-xs text-slate-400 hover:bg-slate-700"
+                    className="rounded-md bg-slate-800 px-3 py-1 text-xs text-slate-400 hover:bg-slate-700 disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     Set up
                   </button>
