@@ -1395,8 +1395,8 @@ export default function OnboardingWizard() {
                         {aiProvider === 'gemini' ? 'Google Gemini' : aiProvider === 'openai' ? 'OpenAI' : aiProvider === 'anthropic' ? 'Anthropic' : aiProvider === 'github-copilot' ? 'GitHub Copilot' : 'AI Provider'}
                       </span>
                     </div>
-                    <span className={`text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full ${aiKeyVerified ? 'bg-green-500/20 text-green-400' : 'bg-amber-500/20 text-amber-400'}`}>
-                      {aiKeyVerified ? 'Connected' : 'Pending'}
+                    <span className={`text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full ${aiKeyVerified ? 'bg-green-500/20 text-green-400' : 'bg-slate-800 text-slate-400'}`}>
+                      {aiKeyVerified ? 'Connected' : 'Waiting…'}
                     </span>
                   </div>
                   {serverActive && !aiKeyVerified && (
