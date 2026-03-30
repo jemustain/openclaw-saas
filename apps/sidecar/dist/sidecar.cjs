@@ -595,6 +595,15 @@ async function requestWhatsAppPairingCode(phoneNumber) {
     } catch {
     }
   }
+  try {
+    await runAsClaw("openclaw gateway stop --channel whatsapp 2>/dev/null", 1e4);
+  } catch {
+  }
+  try {
+    await gatewayRpc("web.login.start", { channel: "whatsapp", force: true }, 5e3);
+  } catch {
+  }
+  await new Promise((r) => setTimeout(r, 2e3));
   const { state, saveCreds } = await useMultiFileAuthState(authDir);
   const { version } = await fetchLatestBaileysVersion();
   const sock = makeWASocket({
