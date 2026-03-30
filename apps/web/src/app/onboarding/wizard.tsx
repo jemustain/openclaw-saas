@@ -604,10 +604,46 @@ export default function OnboardingWizard() {
           setStatus('ready');
         }
       } catch {
-        setError('Failed to set up — please try again');
+        // Setup may have succeeded but timed out - check status before giving up
+        try {
+          await new Promise(r => setTimeout(r, 3000));
+          const statusRes = await fetch('/api/messaging/status');
+          if (statusRes.ok) {
+            const statusData = await statusRes.json();
+            const platformStatus = statusData?.platforms?.[messengerId] || statusData?.statuses?.find?.((s: any) => s.messenger === messengerId);
+            if (platformStatus?.connected || platformStatus?.configured) {
+              setStatus('connected');
+              if (platformStatus.botLink) {
+                setBotLink(platformStatus.botLink);
+                onReady?.(messengerId, platformStatus.botLink);
+              }
+              return;
+            }
+          }
+        } catch { /* ignore */ }
+        setError('Setup timed out — please try again');
         setStatus('failed');
       }
     }, [messengerId, onReady]);
+
+    // Poll status while setup is in progress — self-heals if setup call times out
+    useEffect(() => {
+      if (status !== 'setting-up') return;
+      const interval = setInterval(async () => {
+        try {
+          const res = await fetch('/api/messaging/status');
+          if (!res.ok) return;
+          const data = await res.json();
+          const ps = data?.platforms?.[messengerId];
+          if (ps?.connected || ps?.configured) {
+            setStatus('connected');
+            if (ps.botLink) setBotLink(ps.botLink);
+            onReady?.(messengerId, ps.botLink || '');
+          }
+        } catch { /* ignore */ }
+      }, 5000);
+      return () => clearInterval(interval);
+    }, [status, messengerId, onReady]);
 
     // Auto-trigger setup when server comes online (all messengers)
     useEffect(() => {

@@ -48,15 +48,15 @@ export async function createTelegramBot(
   const botFather = await tg.getEntity('BotFather');
 
   await tg.sendMessage(botFather, { message: '/newbot' });
-  await sleep(1500);
+  await sleep(1000);
 
   // Send the display name
   await tg.sendMessage(botFather, { message: botName });
-  await sleep(1500);
+  await sleep(1000);
 
   // Send the username
   await tg.sendMessage(botFather, { message: botUsername });
-  await sleep(2000);
+  await sleep(1500);
 
   // Read the response — BotFather sends back the token
   const messages = await tg.getMessages(botFather, { limit: 3 });
@@ -82,9 +82,9 @@ export async function createTelegramBot(
       // The bot already exists from a previous run. Request its token via /token.
       try {
         await tg.sendMessage(botFather, { message: '/token' });
-        await sleep(1500);
+        await sleep(1000);
         await tg.sendMessage(botFather, { message: `@${botUsername}` });
-        await sleep(2000);
+        await sleep(1500);
 
         const tokenMsgs = await tg.getMessages(botFather, { limit: 3 });
         for (const msg of tokenMsgs) {
@@ -105,11 +105,11 @@ export async function createTelegramBot(
       // Try with a random suffix.
       const fallbackUsername = `sw_${shortId}_${Math.floor(Math.random() * 999)}_bot`;
       await tg.sendMessage(botFather, { message: '/newbot' });
-      await sleep(1500);
+      await sleep(1000);
       await tg.sendMessage(botFather, { message: botName });
-      await sleep(1500);
+      await sleep(1000);
       await tg.sendMessage(botFather, { message: fallbackUsername });
-      await sleep(2000);
+      await sleep(1500);
 
       const retryMsgs = await tg.getMessages(botFather, { limit: 3 });
       for (const msg of retryMsgs) {
@@ -162,9 +162,9 @@ export async function deleteTelegramBot(botUsername: string): Promise<void> {
   const botFather = await tg.getEntity('BotFather');
 
   await tg.sendMessage(botFather, { message: '/deletebot' });
-  await sleep(1500);
+  await sleep(1000);
   await tg.sendMessage(botFather, { message: `@${botUsername}` });
-  await sleep(1500);
+  await sleep(1000);
   // BotFather asks "Are you sure?" — confirm
   await tg.sendMessage(botFather, { message: 'Yes, I am totally sure.' });
   await sleep(1000);

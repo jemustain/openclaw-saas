@@ -2,6 +2,8 @@ import { createClient } from '@/lib/supabase/server';
 import { getSession } from '@/lib/auth/session';
 import { NextResponse } from 'next/server';
 
+export const maxDuration = 15;
+
 const SIDECAR_PORT = 8788;
 
 export async function GET() {

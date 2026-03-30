@@ -7,6 +7,8 @@ import {
 } from '@/lib/messaging/setup';
 import { NextResponse } from 'next/server';
 
+export const maxDuration = 60; // BotFather automation can take 15-30s
+
 export async function POST(request: Request) {
   try {
     const session = await getSession();
