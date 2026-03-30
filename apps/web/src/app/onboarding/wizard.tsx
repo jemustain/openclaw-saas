@@ -1052,8 +1052,18 @@ export default function OnboardingWizard() {
 
             <div className="flex justify-between items-center">
               <BackBtn />
-              <PrimaryBtn onClick={next} disabled={!aiProvider}>
-                Next <ArrowRight className="w-4 h-4" />
+              <PrimaryBtn onClick={() => {
+                if (aiProvider === 'github-copilot') {
+                  if (process.env.NEXT_PUBLIC_GITHUB_CLIENT_ID) {
+                    window.location.href = `/api/auth/github?returnTo=${encodeURIComponent('/onboarding?step=3')}`;
+                  } else {
+                    next();
+                  }
+                } else {
+                  next();
+                }
+              }} disabled={!aiProvider}>
+                {aiProvider === 'github-copilot' && process.env.NEXT_PUBLIC_GITHUB_CLIENT_ID ? 'Connect with GitHub' : 'Next'} <ArrowRight className="w-4 h-4" />
               </PrimaryBtn>
             </div>
           </div>
@@ -1276,7 +1286,20 @@ export default function OnboardingWizard() {
                   </div>
                   {serverActive && !aiKeyVerified && (
                     <div className="space-y-3">
-                      <p className="text-xs text-slate-400">Enter your API key to connect your AI provider.</p>
+                      {aiProvider === 'github-copilot' && process.env.NEXT_PUBLIC_GITHUB_CLIENT_ID ? (
+                        <>
+                          <p className="text-xs text-slate-400">Sign in with GitHub to connect your Copilot subscription.</p>
+                          <a
+                            href={`/api/auth/github?returnTo=${encodeURIComponent('/onboarding?step=7')}`}
+                            className="inline-flex items-center gap-2 px-4 py-2.5 rounded-lg bg-slate-800 hover:bg-slate-700 border border-slate-600 text-sm font-medium text-white transition-colors"
+                          >
+                            <Code className="w-4 h-4" />
+                            Sign in with GitHub
+                          </a>
+                        </>
+                      ) : (
+                        <>
+                          <p className="text-xs text-slate-400">Enter your API key to connect your AI provider.</p>
                       <div className="flex gap-2">
                         <input
                           type="password"
@@ -1338,6 +1361,8 @@ export default function OnboardingWizard() {
                       >
                         Get a key <ExternalLink className="w-3 h-3" />
                       </a>
+                        </>
+                      )}
                     </div>
                   )}
                   {serverActive && aiKeyVerified && (
