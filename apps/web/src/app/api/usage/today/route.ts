@@ -31,7 +31,7 @@ export async function GET() {
   if (!assistant) {
     return NextResponse.json({
       messages_today: 0,
-      messages_limit: plan === "free" ? 50 : null,
+      messages_limit: plan === "free" ? 100 : null,
       hours_active: 0,
       hours_limit: plan === "free" ? 8 : 24,
       plan,
@@ -47,7 +47,7 @@ export async function GET() {
 
   return NextResponse.json({
     messages_today: usage?.messages_sent ?? 0,
-    messages_limit: plan === "free" ? 50 : null,
+    messages_limit: plan === "free" ? 100 : null,
     hours_active: usage?.hours_active ?? 0,
     hours_limit: plan === "free" ? 8 : 24,
     plan,

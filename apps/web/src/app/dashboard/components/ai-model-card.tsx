@@ -52,7 +52,7 @@ export function AiModelCard({
         </span>
       ) : (
         <Link
-          href="/settings/ai"
+          href="/dashboard/settings"
           className="inline-block rounded-lg bg-indigo-600 px-4 py-2 text-sm text-white hover:bg-indigo-500"
         >
           {configured ? "Change" : "Set up AI provider"}

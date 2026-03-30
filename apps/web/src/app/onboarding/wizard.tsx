@@ -1132,7 +1132,7 @@ export default function OnboardingWizard() {
                         <span className="font-semibold">Anthropic</span>
                         <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full bg-slate-700 text-slate-400">Coming Soon</span>
                       </div>
-                      <p className="text-sm text-slate-400 mt-1">Claude \u2014 excellent at writing and analysis</p>
+                      <p className="text-sm text-slate-400 mt-1">Claude — excellent at writing and analysis</p>
                       <p className="text-xs text-slate-500 mt-1">Models: Claude Sonnet 4, Claude Haiku</p>
                     </div>
                   </div>
