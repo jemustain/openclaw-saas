@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
 vi.mock('stripe', () => ({
-  default: function() {
+  default: function(this: any) {
     this.customers = { list: vi.fn() };
   },
 }));
