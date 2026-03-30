@@ -1,8 +1,18 @@
 import { Router, Request, Response } from 'express';
 import { exec } from 'child_process';
 import { promisify } from 'util';
-import { existsSync } from 'fs';
+import { existsSync, mkdirSync } from 'fs';
 import WebSocket from 'ws';
+
+// eslint-disable-next-line @typescript-eslint/no-var-requires
+const makeWASocket = require('@whiskeysockets/baileys').default;
+const { useMultiFileAuthState, fetchLatestBaileysVersion } =
+  // eslint-disable-next-line @typescript-eslint/no-var-requires
+  require('@whiskeysockets/baileys') as {
+    useMultiFileAuthState: (folder: string) => Promise<{ state: any; saveCreds: () => Promise<void> }>;
+    fetchLatestBaileysVersion: () => Promise<{ version: number[]; isLatest: boolean }>;
+  };
+import pino from 'pino';
 
 const execAsync = promisify(exec);
 const router = Router();
@@ -156,7 +166,86 @@ function autoApproveFirstPairing(channel: string, windowMs: number) {
   setTimeout(poll, 3_000);
 }
 
-async function setupWhatsApp(_config: Record<string, unknown>): Promise<{ platform: string; status: string; qr?: string; controlUiUrl?: string; error?: string }> {
+/**
+ * Request a WhatsApp pairing code via Baileys.
+ * Returns the 8-character code the user enters on their phone.
+ */
+async function requestWhatsAppPairingCode(phoneNumber: string): Promise<{ pairingCode?: string; error?: string }> {
+  const authDir = `${CLAW_HOME}/.openclaw/credentials/whatsapp`;
+  if (!existsSync(authDir)) {
+    mkdirSync(authDir, { recursive: true });
+    try {
+      await execAsync(`chown -R ${CLAW_USER}:${CLAW_USER} ${authDir}`);
+    } catch {}
+  }
+
+  const { state, saveCreds } = await useMultiFileAuthState(authDir);
+  const { version } = await fetchLatestBaileysVersion();
+
+  const sock = makeWASocket({
+    version,
+    auth: state,
+    printQRInTerminal: false,
+    logger: pino({ level: 'silent' }) as any,
+  });
+
+  sock.ev.on('creds.update', saveCreds);
+
+  return new Promise((resolve) => {
+    let resolved = false;
+    const timeout = setTimeout(() => {
+      if (!resolved) {
+        resolved = true;
+        try { sock.end(undefined); } catch {}
+        resolve({ error: 'Timed out waiting for pairing code' });
+      }
+    }, 30_000);
+
+    sock.ev.on('connection.update', async (update: any) => {
+      const { connection, qr } = update;
+
+      // When the QR event fires, the socket is ready to request a pairing code
+      if (qr && !resolved) {
+        try {
+          const digits = phoneNumber.replace(/[^0-9]/g, '');
+          const code: string = await sock.requestPairingCode(digits);
+          resolved = true;
+          clearTimeout(timeout);
+          resolve({ pairingCode: code });
+        } catch (err: any) {
+          resolved = true;
+          clearTimeout(timeout);
+          try { sock.end(undefined); } catch {}
+          resolve({ error: err.message || 'Failed to request pairing code' });
+        }
+      }
+
+      if (connection === 'open') {
+        // Successfully paired — restart gateway to pick up new creds
+        try { await runAsClaw('openclaw gateway restart'); } catch {}
+      }
+
+      if (connection === 'close') {
+        if (!resolved) {
+          resolved = true;
+          clearTimeout(timeout);
+          resolve({ error: 'Connection closed before pairing code was issued' });
+        }
+      }
+    });
+  });
+}
+
+async function setupWhatsApp(config: Record<string, unknown>): Promise<{ platform: string; status: string; qr?: string; pairingCode?: string; controlUiUrl?: string; error?: string }> {
+  // Handle pairing-code method
+  if (config.method === 'pairing-code' && typeof config.phoneNumber === 'string') {
+    const result = await requestWhatsAppPairingCode(config.phoneNumber);
+    if (result.pairingCode) {
+      return { platform: 'whatsapp', status: 'pairing', pairingCode: result.pairingCode };
+    }
+    return { platform: 'whatsapp', status: 'error', error: result.error || 'Failed to get pairing code' };
+  }
+
   // Check if already connected via credential files
   if (whatsappCredentialsExist()) {
     try {
