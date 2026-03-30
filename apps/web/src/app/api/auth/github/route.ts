@@ -1,16 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { apiError, ERR, handleApiError } from '@/lib/errors';
+import crypto from 'crypto';
 
-/**
- * GitHub OAuth initiation for Copilot API access.
- *
- * Environment variables required:
- * - GITHUB_CLIENT_ID: from GitHub OAuth App
- * - GITHUB_CLIENT_SECRET: from GitHub OAuth App
- */
 export async function GET(req: NextRequest) {
   const clientId = process.env.GITHUB_CLIENT_ID;
-  if (!clientId) {
+  const clientSecret = process.env.GITHUB_CLIENT_SECRET;
+  if (!clientId || !clientSecret) {
     return NextResponse.json(
       { error: 'GitHub OAuth not configured. Set GITHUB_CLIENT_ID and GITHUB_CLIENT_SECRET.' },
       { status: 500 }
@@ -20,9 +14,11 @@ export async function GET(req: NextRequest) {
   const url = new URL(req.url);
   const returnTo = url.searchParams.get('returnTo') || '/onboarding?step=7';
 
-  const state = Buffer.from(
-    JSON.stringify({ returnTo, purpose: 'ai-provider', ts: Date.now() })
-  ).toString('base64url');
+  const nonce = crypto.randomBytes(16).toString('hex');
+  const payload = JSON.stringify({ returnTo, purpose: 'ai-provider', ts: Date.now(), nonce });
+  const payloadB64 = Buffer.from(payload).toString('base64url');
+  const hmac = crypto.createHmac('sha256', clientSecret).update(payloadB64).digest('base64url');
+  const state = `${payloadB64}.${hmac}`;
 
   const redirectUri = `${url.origin}/api/auth/github/callback`;
 
