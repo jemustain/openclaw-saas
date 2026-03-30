@@ -116,19 +116,36 @@ export default function SettingsPage() {
           ) : (
             <div className="space-y-3 rounded-lg border border-slate-700 bg-slate-800/50 p-4">
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-                {(['gemini', 'openai', 'anthropic', 'github-copilot'] as const).map((p) => (
-                  <button
-                    key={p}
-                    onClick={() => { setNewAiProvider(p); setNewAiApiKey(''); setAiKeyVerified(false); setAiKeyError(null); }}
-                    className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
-                      newAiProvider === p ? 'bg-violet-600 text-white' : 'bg-slate-700 text-slate-300 hover:bg-slate-600'
-                    }`}
-                  >
-                    {p === 'github-copilot' ? 'GitHub Copilot' : p.charAt(0).toUpperCase() + p.slice(1)}
-                  </button>
-                ))}
+                {(['gemini', 'openai', 'anthropic', 'github-copilot'] as const).map((p) => {
+                  const isComingSoon = p === 'openai' || p === 'anthropic';
+                  return (
+                    <button
+                      key={p}
+                      disabled={isComingSoon}
+                      onClick={() => { if (!isComingSoon) { setNewAiProvider(p); setNewAiApiKey(''); setAiKeyVerified(false); setAiKeyError(null); } }}
+                      className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
+                        isComingSoon ? 'bg-slate-800 text-slate-500 opacity-50 cursor-not-allowed' :
+                        newAiProvider === p ? 'bg-violet-600 text-white' : 'bg-slate-700 text-slate-300 hover:bg-slate-600'
+                      }`}
+                    >
+                      {p === 'github-copilot' ? 'GitHub Copilot' : p.charAt(0).toUpperCase() + p.slice(1)}
+                      {isComingSoon && <span className="block text-[9px] uppercase tracking-wider text-slate-500">Soon</span>}
+                    </button>
+                  );
+                })}
               </div>
               {newAiProvider && (
+                newAiProvider === 'github-copilot' && process.env.NEXT_PUBLIC_GITHUB_CLIENT_ID ? (
+                  <div className="space-y-2">
+                    <p className="text-sm text-slate-400">Sign in with GitHub to connect your Copilot subscription.</p>
+                    <a
+                      href={`/api/auth/github?returnTo=${encodeURIComponent('/dashboard/settings')}`}
+                      className="inline-flex items-center gap-2 px-4 py-2.5 rounded-lg bg-slate-700 hover:bg-slate-600 border border-slate-600 text-sm font-medium text-white transition-colors"
+                    >
+                      Sign in with GitHub
+                    </a>
+                  </div>
+                ) : (
                 <div className="flex gap-2">
                   <input
                     type="password"
@@ -158,6 +175,7 @@ export default function SettingsPage() {
                     {aiKeyVerifying ? 'Verifying...' : aiKeyVerified ? '✓ Verified' : 'Verify'}
                   </button>
                 </div>
+              )
               )}
               {aiKeyError && <p className="text-sm text-red-400">{aiKeyError}</p>}
               <div className="flex gap-2">
