@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
-import { useState } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { LayoutDashboard, Puzzle, Settings, CreditCard, LogOut } from 'lucide-react';
 
 const links = [
@@ -23,6 +23,27 @@ export function DashboardNav({ userName = 'User', plan = 'Free' }: DashboardNavP
   const [open, setOpen] = useState(false);
   const [signingOut, setSigningOut] = useState(false);
 
+  const handleKeyDown = useCallback((e: KeyboardEvent) => {
+    if (e.key === 'Escape') setOpen(false);
+  }, []);
+
+  useEffect(() => {
+    if (open) {
+      document.addEventListener('keydown', handleKeyDown);
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = '';
+    }
+    return () => {
+      document.removeEventListener('keydown', handleKeyDown);
+      document.body.style.overflow = '';
+    };
+  }, [open, handleKeyDown]);
+
+  useEffect(() => {
+    setOpen(false);
+  }, [pathname]);
+
   async function handleSignOut() {
     setSigningOut(true);
     try {
@@ -40,10 +61,16 @@ export function DashboardNav({ userName = 'User', plan = 'Free' }: DashboardNavP
 
   return (
     <>
-      {/* Mobile top bar */}
-      <div className="lg:hidden flex items-center justify-between bg-slate-900 border-b border-slate-800 px-4 py-3">
+      {/* Mobile top bar — fixed so content scrolls beneath */}
+      <div className="lg:hidden fixed top-0 left-0 right-0 z-50 flex items-center justify-between bg-slate-900 border-b border-slate-800 px-4 h-14">
         <span className="text-white font-semibold">ShiftWorker</span>
-        <button onClick={() => setOpen(!open)} className="text-slate-300 hover:text-white" aria-label="Toggle nav">
+        <button
+          onClick={() => setOpen(!open)}
+          className="min-h-[44px] min-w-[44px] flex items-center justify-center text-slate-300 hover:text-white transition-colors"
+          aria-label={open ? 'Close navigation' : 'Open navigation'}
+          aria-expanded={open}
+          data-testid="nav-toggle"
+        >
           <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
             {open ? (
               <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
@@ -54,15 +81,31 @@ export function DashboardNav({ userName = 'User', plan = 'Free' }: DashboardNavP
         </button>
       </div>
 
-      {/* Sidebar */}
-      <aside className={`
-        fixed inset-y-0 left-0 z-40 w-64 bg-slate-900 border-r border-slate-800 flex flex-col
-        transform transition-transform lg:translate-x-0 lg:static lg:z-auto
-        ${open ? 'translate-x-0' : '-translate-x-full'}
-      `}>
+      {/* Spacer for fixed mobile header */}
+      <div className="lg:hidden h-14 shrink-0" />
+
+      {/* Mobile overlay with fade */}
+      <div
+        className={`fixed inset-0 z-40 bg-black/50 lg:hidden transition-opacity duration-200 ${
+          open ? 'opacity-100' : 'opacity-0 pointer-events-none'
+        }`}
+        onClick={() => setOpen(false)}
+        aria-hidden="true"
+        data-testid="nav-overlay"
+      />
+
+      {/* Sidebar with slide */}
+      <aside
+        className={`fixed inset-y-0 left-0 z-50 w-64 bg-slate-900 border-r border-slate-800 flex flex-col transition-transform duration-200 ease-in-out lg:translate-x-0 lg:static lg:z-auto ${open ? 'translate-x-0' : '-translate-x-full'}`}
+        role="navigation"
+        aria-label="Dashboard navigation"
+        data-testid="nav-sidebar"
+      >
         <div className="hidden lg:flex items-center gap-2 px-6 py-5 border-b border-slate-800">
           <Link href="/" className="text-lg font-bold text-white">ShiftWorker</Link>
         </div>
+
+        <div className="lg:hidden h-14 shrink-0" />
 
         <div className="px-4 py-4 border-b border-slate-800">
           <p className="text-sm text-white font-medium truncate">{userName}</p>
@@ -71,19 +114,19 @@ export function DashboardNav({ userName = 'User', plan = 'Free' }: DashboardNavP
           </span>
         </div>
 
-        <nav className="flex-1 px-3 py-4 space-y-1">
+        <nav className="flex-1 px-3 py-4 space-y-1 overflow-y-auto">
           {links.map(({ href, label, icon: Icon }) => (
             <Link
               key={href}
               href={href}
               onClick={() => setOpen(false)}
-              className={`flex items-center gap-3 rounded-lg px-3 py-2 text-sm transition ${
+              className={`flex items-center gap-3 rounded-lg px-3 min-h-[44px] text-sm transition-colors ${
                 isActive(href)
                   ? 'bg-violet-600/20 text-violet-300 font-medium'
                   : 'text-slate-400 hover:text-white hover:bg-slate-800'
               }`}
             >
-              <Icon className="h-4 w-4" />
+              <Icon className="h-5 w-5 shrink-0" />
               {label}
             </Link>
           ))}
@@ -93,18 +136,13 @@ export function DashboardNav({ userName = 'User', plan = 'Free' }: DashboardNavP
           <button
             onClick={handleSignOut}
             disabled={signingOut}
-            className="flex items-center gap-3 w-full rounded-lg px-3 py-2 text-sm text-slate-400 hover:text-white hover:bg-slate-800 transition disabled:opacity-50"
+            className="flex items-center gap-3 w-full rounded-lg px-3 min-h-[44px] text-sm text-slate-400 hover:text-white hover:bg-slate-800 transition-colors disabled:opacity-50"
           >
-            <LogOut className="h-4 w-4" />
+            <LogOut className="h-5 w-5 shrink-0" />
             {signingOut ? 'Signing out…' : 'Sign Out'}
           </button>
         </div>
       </aside>
-
-      {/* Mobile overlay */}
-      {open && (
-        <div className="fixed inset-0 z-30 bg-black/50 lg:hidden" onClick={() => setOpen(false)} />
-      )}
     </>
   );
 }
