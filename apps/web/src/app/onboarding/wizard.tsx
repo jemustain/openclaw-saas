@@ -559,9 +559,6 @@ export default function OnboardingWizard() {
     onReady?: (platform: string, link: string) => void;
   }) => {
     const info = MESSENGER_SETUP_INFO[messengerId];
-    const isTelegram = messengerId === 'telegram';
-
-    // Non-Telegram state
     const [status, setStatus] = useState<'waiting' | 'setting-up' | 'ready' | 'connected' | 'failed'>('waiting');
     const [botLink, setBotLink] = useState<string | null>(null);
     const [qrCode, setQrCode] = useState<string | null>(null);
@@ -569,94 +566,7 @@ export default function OnboardingWizard() {
     const [error, setError] = useState<string | null>(null);
     const [qrExpired, setQrExpired] = useState(false);
 
-    // Telegram pairing state
-    type TelegramStatus = 'waiting' | 'pairing-start' | 'pairing-checking' | 'pairing-found' | 'pairing-confirming' | 'connected' | 'failed';
-    const [tgStatus, setTgStatus] = useState<TelegramStatus>('waiting');
-    const [pairingToken, setPairingToken] = useState<string | null>(null);
-    const [tgBotLink, setTgBotLink] = useState<string | null>(null);
-    const [tgUsername, setTgUsername] = useState<string | null>(null);
-    const [tgError, setTgError] = useState<string | null>(null);
-    const [checkMessage, setCheckMessage] = useState<string | null>(null);
-
-    // Telegram: start pairing when server is active
-    useEffect(() => {
-      if (!isTelegram || !isServerActive || tgStatus !== 'waiting') return;
-      let cancelled = false;
-      const startPairing = async () => {
-        try {
-          const res = await fetch('/api/messaging/telegram/start-pairing', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-          });
-          if (cancelled) return;
-          if (!res.ok) {
-            setTgError(`Failed to start pairing (HTTP ${res.status})`);
-            setTgStatus('failed');
-            return;
-          }
-          const data = await res.json();
-          setPairingToken(data.pairingToken);
-          setTgBotLink(data.botLink);
-          setTgStatus('pairing-start');
-        } catch {
-          if (!cancelled) {
-            setTgError('Failed to start pairing');
-            setTgStatus('failed');
-          }
-        }
-      };
-      startPairing();
-      return () => { cancelled = true; };
-    }, [isTelegram, isServerActive, tgStatus]);
-
-    const handleCheckPairing = useCallback(async () => {
-      if (!pairingToken) return;
-      setTgStatus('pairing-checking');
-      setCheckMessage(null);
-      try {
-        const res = await fetch('/api/messaging/telegram/check-pairing', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ pairingToken }),
-        });
-        const data = await res.json();
-        if (data.paired) {
-          setTgUsername(data.telegramUsername);
-          setTgStatus('pairing-found');
-        } else {
-          setCheckMessage('No pairing found yet. Make sure you sent /start to the bot in Telegram.');
-          setTgStatus('pairing-start');
-        }
-      } catch {
-        setCheckMessage('Failed to check pairing. Try again.');
-        setTgStatus('pairing-start');
-      }
-    }, [pairingToken]);
-
-    const handleConfirmPairing = useCallback(async () => {
-      if (!pairingToken) return;
-      setTgStatus('pairing-confirming');
-      try {
-        const res = await fetch('/api/messaging/telegram/confirm-pairing', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ pairingToken }),
-        });
-        const data = await res.json();
-        if (data.success) {
-          setTgStatus('connected');
-          onReady?.(messengerId, tgBotLink || '');
-        } else {
-          setTgError(data.error || 'Failed to confirm pairing');
-          setTgStatus('failed');
-        }
-      } catch {
-        setTgError('Failed to confirm pairing');
-        setTgStatus('failed');
-      }
-    }, [pairingToken, messengerId, tgBotLink, onReady]);
-
-    // Non-Telegram: trigger setup
+    // Trigger setup via sidecar (all messengers including Telegram)
     const triggerSetup = useCallback(async () => {
       setStatus('setting-up');
       setError(null);
@@ -699,16 +609,14 @@ export default function OnboardingWizard() {
       }
     }, [messengerId, onReady]);
 
-    // Non-Telegram: auto-trigger setup when server comes online
+    // Auto-trigger setup when server comes online (all messengers)
     useEffect(() => {
-      if (isTelegram) return;
       if (!isServerActive || status !== 'waiting') return;
       triggerSetup();
-    }, [isTelegram, isServerActive, status, triggerSetup]);
+    }, [isServerActive, status, triggerSetup]);
 
     // Poll for QR-based connections (WhatsApp/Signal)
     useEffect(() => {
-      if (isTelegram) return;
       if (status !== 'ready' || !qrCode) return;
       let cancelled = false;
       let attempts = 0;
@@ -737,30 +645,24 @@ export default function OnboardingWizard() {
       };
       poll();
       return () => { cancelled = true; };
-    }, [isTelegram, status, qrCode, messengerId, onReady]);
+    }, [status, qrCode, messengerId, onReady]);
 
     if (!info) return null;
     const Icon = info.icon;
 
     // Determine badge for display
-    const effectiveStatus = isTelegram ? tgStatus : status;
     const badgeClass =
-      effectiveStatus === 'waiting' ? 'bg-slate-800 text-slate-400' :
-      (effectiveStatus === 'setting-up' || effectiveStatus === 'pairing-checking' || effectiveStatus === 'pairing-confirming') ? 'bg-amber-500/20 text-amber-400' :
-      (effectiveStatus === 'connected') ? 'bg-violet-500/20 text-violet-400' :
-      effectiveStatus === 'failed' ? 'bg-red-500/20 text-red-400' :
-      effectiveStatus === 'pairing-found' ? 'bg-green-500/20 text-green-400' :
+      status === 'waiting' ? 'bg-slate-800 text-slate-400' :
+      status === 'setting-up' ? 'bg-amber-500/20 text-amber-400' :
+      status === 'connected' ? 'bg-violet-500/20 text-violet-400' :
+      status === 'failed' ? 'bg-red-500/20 text-red-400' :
       'bg-green-500/20 text-green-400';
 
     const badgeLabel =
-      effectiveStatus === 'waiting' ? 'Waiting…' :
-      effectiveStatus === 'setting-up' ? 'Setting up…' :
-      effectiveStatus === 'pairing-start' ? 'Ready' :
-      effectiveStatus === 'pairing-checking' ? 'Checking…' :
-      effectiveStatus === 'pairing-found' ? 'Paired' :
-      effectiveStatus === 'pairing-confirming' ? 'Confirming…' :
-      effectiveStatus === 'connected' ? 'Connected' :
-      effectiveStatus === 'failed' ? 'Failed' :
+      status === 'waiting' ? 'Waiting…' :
+      status === 'setting-up' ? 'Setting up…' :
+      status === 'connected' ? 'Connected' :
+      status === 'failed' ? 'Failed' :
       'Ready';
 
     return (
@@ -775,92 +677,13 @@ export default function OnboardingWizard() {
           </span>
         </div>
 
-        {/* === Telegram pairing flow === */}
-        {isTelegram && tgStatus === 'waiting' && (
-          <p className="text-xs text-slate-400 leading-relaxed">{info.pendingMsg}</p>
-        )}
-
-        {isTelegram && tgStatus === 'pairing-start' && pairingToken && (
-          <div className="space-y-3">
-            <p className="text-xs text-slate-300">
-              Tap the button below to open our bot in Telegram, then send <code className="bg-slate-800 px-1 rounded text-violet-300">/start</code>
-            </p>
-            <a
-              href={tgBotLink!}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="block w-full text-center rounded-lg bg-blue-500 hover:bg-blue-400 py-3 text-sm font-medium transition"
-            >
-              Open in Telegram →
-            </a>
-            {checkMessage && (
-              <p className="text-xs text-amber-400 text-center">{checkMessage}</p>
-            )}
-            <button
-              type="button"
-              onClick={handleCheckPairing}
-              className="w-full text-center rounded-lg bg-slate-800 hover:bg-slate-700 py-2 text-sm font-medium transition border border-slate-700"
-            >
-              Check for Pairing
-            </button>
-          </div>
-        )}
-
-        {isTelegram && tgStatus === 'pairing-checking' && (
-          <div className="flex items-center gap-2 text-sm text-slate-300">
-            <Loader2 className="w-4 h-4 animate-spin text-violet-400" />
-            Checking for pairing…
-          </div>
-        )}
-
-        {isTelegram && tgStatus === 'pairing-found' && (
-          <div className="space-y-3 text-center">
-            <p className="text-xs text-green-400 font-medium">
-              ✅ Pairing found!{tgUsername ? ` Telegram user: @${tgUsername}` : ''}
-            </p>
-            <button
-              type="button"
-              onClick={handleConfirmPairing}
-              className="w-full text-center rounded-lg bg-violet-600 hover:bg-violet-500 py-2.5 text-sm font-medium transition"
-            >
-              Confirm Connection
-            </button>
-          </div>
-        )}
-
-        {isTelegram && tgStatus === 'pairing-confirming' && (
-          <div className="flex items-center gap-2 text-sm text-slate-300">
-            <Loader2 className="w-4 h-4 animate-spin text-violet-400" />
-            Confirming connection…
-          </div>
-        )}
-
-        {isTelegram && tgStatus === 'connected' && (
-          <p className="text-xs text-green-400">Telegram is connected!</p>
-        )}
-
-        {isTelegram && tgStatus === 'failed' && (
-          <div className="space-y-2">
-            <p className="text-xs text-red-400">{tgError}</p>
-            <button
-              type="button"
-              onClick={() => { setTgStatus('waiting'); setTgError(null); }}
-              className="w-full text-center rounded-lg bg-slate-800 hover:bg-slate-700 py-2 text-sm font-medium transition border border-slate-700"
-            >
-              Retry
-            </button>
-          </div>
-        )}
-
-        {/* === Non-Telegram flows (unchanged) === */}
-
         {/* Waiting state */}
-        {!isTelegram && status === 'waiting' && (
+        {status === 'waiting' && (
           <p className="text-xs text-slate-400 leading-relaxed">{info.pendingMsg}</p>
         )}
 
         {/* Setting up state */}
-        {!isTelegram && status === 'setting-up' && (
+        {status === 'setting-up' && (
           <div className="flex items-center gap-2 text-sm text-slate-300">
             <Loader2 className="w-4 h-4 animate-spin text-violet-400" />
             {messengerId === 'whatsapp' ? 'Generating QR code…' :
@@ -869,7 +692,7 @@ export default function OnboardingWizard() {
         )}
 
         {/* Ready state — WhatsApp/Signal: show QR code */}
-        {!isTelegram && status === 'ready' && qrCode && !qrExpired && (messengerId === 'whatsapp' || messengerId === 'signal') && (
+        {status === 'ready' && qrCode && !qrExpired && (messengerId === 'whatsapp' || messengerId === 'signal') && (
           <div className="space-y-3">
             <div className="bg-slate-800/60 rounded-lg p-3 space-y-2">
               <p className="text-xs font-medium text-slate-200">How to connect:</p>
@@ -891,7 +714,7 @@ export default function OnboardingWizard() {
         )}
 
         {/* Ready state — WhatsApp Control UI link */}
-        {!isTelegram && status === 'ready' && controlUiUrl && !qrCode && (
+        {status === 'ready' && controlUiUrl && !qrCode && (
           <div className="space-y-2">
             <p className="text-xs text-slate-300">
               Open your assistant&apos;s control panel to connect WhatsApp. Go to <strong>Channels</strong> and scan the QR code.
@@ -908,7 +731,7 @@ export default function OnboardingWizard() {
         )}
 
         {/* QR expired */}
-        {!isTelegram && status === 'ready' && qrExpired && (
+        {status === 'ready' && qrExpired && (
           <div className="space-y-2">
             <p className="text-xs text-amber-400">QR code expired</p>
             <button
@@ -922,7 +745,7 @@ export default function OnboardingWizard() {
         )}
 
         {/* Ready state — Discord/Slack: show link */}
-        {!isTelegram && status === 'ready' && botLink && messengerId !== 'whatsapp' && messengerId !== 'signal' && (
+        {status === 'ready' && botLink && messengerId !== 'whatsapp' && messengerId !== 'signal' && (
           <div className="space-y-2">
             <p className="text-xs text-slate-300">{info.readyMsg}</p>
             <a
@@ -937,17 +760,17 @@ export default function OnboardingWizard() {
         )}
 
         {/* Ready state — generic (no link, no QR) */}
-        {!isTelegram && status === 'ready' && !botLink && !qrCode && (
+        {status === 'ready' && !botLink && !qrCode && (
           <p className="text-xs text-slate-300">{info.readyMsg}</p>
         )}
 
         {/* Connected state */}
-        {!isTelegram && status === 'connected' && (
+        {status === 'connected' && (
           <p className="text-xs text-green-400">{info.title} is connected!</p>
         )}
 
         {/* Failed state */}
-        {!isTelegram && status === 'failed' && (
+        {status === 'failed' && (
           <div className="space-y-2">
             <p className="text-xs text-red-400">{error}</p>
             <button
