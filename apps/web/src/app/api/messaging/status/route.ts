@@ -1,6 +1,7 @@
 import { createClient } from '@/lib/supabase/server';
 import { getSession } from '@/lib/auth/session';
 import { NextResponse } from 'next/server';
+import { apiError, handleApiError, ERR } from '@/lib/errors';
 
 export const maxDuration = 15;
 
@@ -10,10 +11,9 @@ export async function GET() {
   try {
     const session = await getSession();
     if (!session) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+      return apiError(ERR.UNAUTHORIZED, 401);
     }
 
-    // Get the user's active assistant
     const supabase: any = createClient();
     const { data: assistant } = await supabase
       .from('assistants')
@@ -27,13 +27,9 @@ export async function GET() {
       .single();
 
     if (!assistant) {
-      return NextResponse.json(
-        { error: 'No active assistant found' },
-        { status: 404 },
-      );
+      return apiError(ERR.NO_ACTIVE_ASSISTANT, 404);
     }
 
-    // Build platform status from stored data
     const platforms: Record<
       string,
       { configured: boolean; connected: boolean; botLink?: string }
@@ -51,22 +47,18 @@ export async function GET() {
       },
     };
 
-    // Try to get live status from sidecar
     if (assistant.ip_address && assistant.sidecar_token) {
       try {
         const res = await fetch(
           `http://${assistant.ip_address}:${SIDECAR_PORT}/messaging/status`,
           {
-            headers: {
-              Authorization: `Bearer ${assistant.sidecar_token}`,
-            },
+            headers: { Authorization: `Bearer ${assistant.sidecar_token}` },
             signal: AbortSignal.timeout(5000),
           },
         );
         if (res.ok) {
           const live = await res.json();
           const livePlatforms = live.platforms ?? live;
-          // Merge live connection status
           if (livePlatforms.telegram?.connected !== undefined) {
             platforms.telegram.connected = livePlatforms.telegram.connected;
           }
@@ -80,9 +72,7 @@ export async function GET() {
     }
 
     return NextResponse.json({ platforms });
-  } catch (err: unknown) {
-    console.error('Messaging status error:', err);
-    const message = err instanceof Error ? err.message : String(err);
-    return NextResponse.json({ error: message }, { status: 500 });
+  } catch (err) {
+    return handleApiError(err, 'messaging/status');
   }
 }

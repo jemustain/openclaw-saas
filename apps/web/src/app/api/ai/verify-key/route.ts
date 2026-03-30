@@ -1,16 +1,17 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getSession } from '@/lib/auth/session';
+import { apiError, ERR } from '@/lib/errors';
 
 export async function POST(request: NextRequest) {
   const session = await getSession();
   if (!session) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    return apiError(ERR.UNAUTHORIZED, 401);
   }
 
   const { provider, apiKey } = await request.json();
 
   if (!provider || !apiKey) {
-    return NextResponse.json({ valid: false, error: 'Provider and API key are required' });
+    return NextResponse.json({ valid: false, error: 'Provider and API key are required.' });
   }
 
   try {
@@ -27,8 +28,7 @@ export async function POST(request: NextRequest) {
         }
       );
       if (!res.ok) {
-        const data = await res.json().catch(() => ({}));
-        return NextResponse.json({ valid: false, error: data.error?.message || 'Invalid API key' });
+        return NextResponse.json({ valid: false, error: 'Invalid API key.' });
       }
       return NextResponse.json({ valid: true });
     }
@@ -47,8 +47,7 @@ export async function POST(request: NextRequest) {
         }),
       });
       if (!res.ok) {
-        const data = await res.json().catch(() => ({}));
-        return NextResponse.json({ valid: false, error: data.error?.message || 'Invalid API key' });
+        return NextResponse.json({ valid: false, error: 'Invalid API key.' });
       }
       return NextResponse.json({ valid: true });
     }
@@ -68,8 +67,7 @@ export async function POST(request: NextRequest) {
         }),
       });
       if (!res.ok) {
-        const data = await res.json().catch(() => ({}));
-        return NextResponse.json({ valid: false, error: data.error?.message || 'Invalid API key' });
+        return NextResponse.json({ valid: false, error: 'Invalid API key.' });
       }
       return NextResponse.json({ valid: true });
     }
@@ -88,14 +86,13 @@ export async function POST(request: NextRequest) {
         }),
       });
       if (!res.ok) {
-        const data = await res.json().catch(() => ({}));
-        return NextResponse.json({ valid: false, error: data.error?.message || 'Invalid token' });
+        return NextResponse.json({ valid: false, error: 'Invalid token.' });
       }
       return NextResponse.json({ valid: true });
     }
 
-    return NextResponse.json({ valid: false, error: 'Unknown provider' });
-  } catch (err: any) {
-    return NextResponse.json({ valid: false, error: err.message || 'Verification failed' });
+    return NextResponse.json({ valid: false, error: 'Unknown provider.' });
+  } catch {
+    return NextResponse.json({ valid: false, error: 'Verification failed. Please try again.' });
   }
 }

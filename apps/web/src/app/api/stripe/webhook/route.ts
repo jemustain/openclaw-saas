@@ -7,11 +7,10 @@ import { resumeAssistant } from "@/lib/vm/lifecycle";
 import { handleCancellation } from "@/lib/billing/cancellation";
 import { onSubscriptionConfirmed, onPaymentFailed as sendPaymentFailedEmail } from "@/lib/email/triggers";
 import { env } from "@/lib/env";
+import { apiError } from "@/lib/errors";
 
 /**
  * POST /api/stripe/webhook
- *
- * Handles Stripe webhook events for subscription lifecycle management.
  */
 export async function POST(req: NextRequest) {
   const body = await req.text();
@@ -19,40 +18,27 @@ export async function POST(req: NextRequest) {
   const webhookSecret = env("STRIPE_WEBHOOK_SECRET");
 
   if (!sig || !webhookSecret) {
-    return NextResponse.json(
-      { error: "Missing signature or webhook secret" },
-      { status: 400 },
-    );
+    return apiError("Missing signature or webhook secret.", 400);
   }
 
   let event: Stripe.Event;
   try {
-    event = stripe.webhooks.constructEvent(
-      body,
-      sig,
-      webhookSecret,
-    );
+    event = stripe.webhooks.constructEvent(body, sig, webhookSecret);
   } catch (err) {
     console.error("Webhook signature verification failed:", err);
-    return NextResponse.json({ error: "Invalid signature" }, { status: 400 });
+    return apiError("Invalid signature.", 400);
   }
 
   try {
     switch (event.type) {
       case "checkout.session.completed":
-        await handleCheckoutCompleted(
-          event.data.object as Stripe.Checkout.Session,
-        );
+        await handleCheckoutCompleted(event.data.object as Stripe.Checkout.Session);
         break;
       case "customer.subscription.updated":
-        await handleSubscriptionUpdated(
-          event.data.object as Stripe.Subscription,
-        );
+        await handleSubscriptionUpdated(event.data.object as Stripe.Subscription);
         break;
       case "customer.subscription.deleted":
-        await handleSubscriptionDeleted(
-          event.data.object as Stripe.Subscription,
-        );
+        await handleSubscriptionDeleted(event.data.object as Stripe.Subscription);
         break;
       case "invoice.payment_failed":
         await handlePaymentFailed(event.data.object as Stripe.Invoice);
@@ -61,18 +47,15 @@ export async function POST(req: NextRequest) {
         console.log(`Unhandled event type: ${event.type}`);
     }
   } catch (err) {
-    console.error(`Error processing ${event.type}:`, err);
-    return NextResponse.json(
-      { error: "Webhook handler failed" },
-      { status: 500 },
-    );
+    console.error(`[stripe/webhook] Error processing ${event.type}:`, err);
+    return apiError("Webhook processing failed.", 500);
   }
 
   return NextResponse.json({ received: true });
 }
 
 // ---------------------------------------------------------------------------
-// Event handlers
+// Event handlers (unchanged internal logic)
 // ---------------------------------------------------------------------------
 
 async function handleCheckoutCompleted(session: Stripe.Checkout.Session) {
@@ -86,15 +69,10 @@ async function handleCheckoutCompleted(session: Stripe.Checkout.Session) {
     return;
   }
 
-  console.log(
-    `Checkout completed: user=${userId} subscription=${subscriptionId} customer=${customerId} plan=${plan}`,
-  );
+  console.log(`Checkout completed: user=${userId} subscription=${subscriptionId} customer=${customerId} plan=${plan}`);
 
   const supabase: any = await createClient();
 
-  // Insert or update subscription record.
-  // We avoid upsert({ onConflict: 'user_id' }) because the table may lack
-  // a unique constraint on user_id. Instead, check-then-insert/update.
   const { data: existingSub } = await supabase
     .from("subscriptions")
     .select("id")
@@ -133,7 +111,6 @@ async function handleCheckoutCompleted(session: Stripe.Checkout.Session) {
     }
   }
 
-  // Update user's plan field
   const { error: userError } = await supabase
     .from("users")
     .update({ plan, updated_at: new Date().toISOString() })
@@ -143,12 +120,10 @@ async function handleCheckoutCompleted(session: Stripe.Checkout.Session) {
     console.error("Failed to update user plan:", userError.message);
   }
 
-  // Send subscription confirmed email (fire-and-forget)
   onSubscriptionConfirmed(userId).catch((err) =>
     console.error("[email] Failed to send subscription-confirmed email:", err),
   );
 
-  // If upgrading from free, resume assistant for 24/7
   if (plan !== "free") {
     const { data: assistant } = await supabase
       .from("assistants")
@@ -176,7 +151,6 @@ async function handleSubscriptionUpdated(subscription: Stripe.Subscription) {
 
   const supabase: any = await createClient();
 
-  // Get existing subscription record
   const { data: existingSub } = await supabase
     .from("subscriptions")
     .select("user_id, plan")
@@ -191,7 +165,6 @@ async function handleSubscriptionUpdated(subscription: Stripe.Subscription) {
   const previousPlan = existingSub.plan;
   const newPlan = plan ?? "free";
 
-  // Update subscription
   const rawSub = subscription as any;
   const periodEnd = rawSub.current_period_end
     ? new Date(rawSub.current_period_end * 1000).toISOString()
@@ -213,13 +186,11 @@ async function handleSubscriptionUpdated(subscription: Stripe.Subscription) {
     throw error;
   }
 
-  // Update user plan
   await supabase
     .from("users")
     .update({ plan: newPlan, updated_at: new Date().toISOString() })
     .eq("id", existingSub.user_id);
 
-  // If upgraded from free → paid, resume assistant
   if (previousPlan === "free" && newPlan !== "free") {
     const { data: assistant } = await supabase
       .from("assistants")
@@ -276,7 +247,6 @@ async function handlePaymentFailed(invoice: Stripe.Invoice) {
     console.error("Failed to update subscription status:", error.message);
   }
 
-  // Send payment failed email
   const { data: sub } = await supabase
     .from("subscriptions")
     .select("user_id")

@@ -11,6 +11,7 @@ import {
   ShoppingCart, Plane, DollarSign, CalendarDays,
   QrCode, Bot, Smartphone, AlertCircle, ExternalLink,
 } from 'lucide-react';
+import ProgressIndicator from './progress-indicator';
 
 const STEPS = ['Welcome', 'Hosting', 'Subscription', 'AI Provider', 'Plan', 'Messengers', 'Skills', 'Setup & Connect', 'Ready'];
 
@@ -821,17 +822,8 @@ export default function OnboardingWizard() {
 
   return (
     <div className="min-h-screen bg-slate-950 text-white flex flex-col items-center justify-center p-4">
-      {/* Progress dots */}
-      <div className="flex gap-2 mb-8">
-        {STEPS.map((_, i) => (
-          <div
-            key={i}
-            className={`w-2.5 h-2.5 rounded-full transition-colors ${
-              i === step ? 'bg-violet-600' : i < step ? 'bg-violet-600/50' : 'bg-slate-700'
-            }`}
-          />
-        ))}
-      </div>
+      {/* Progress indicator */}
+      <ProgressIndicator currentStep={step} />
 
       <div
         className={`w-full max-w-2xl transition-all duration-200 ${

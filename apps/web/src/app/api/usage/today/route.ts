@@ -19,12 +19,21 @@ export async function GET() {
     .limit(1)
     .single();
 
+  const { data: user } = await supabase
+    .from("users")
+    .select("plan")
+    .eq("id", session.userId)
+    .single();
+
+  const plan = user?.plan ?? "free";
+
   if (!assistant) {
     return NextResponse.json({
-      messagesUsed: 0,
-      hoursActive: 0,
-      plan: "free",
-      limit: 100,
+      messages_today: 0,
+      messages_limit: plan === "free" ? 50 : null,
+      hours_active: 0,
+      hours_limit: plan === "free" ? 8 : 24,
+      plan,
     });
   }
 
@@ -35,18 +44,11 @@ export async function GET() {
     .eq("date", today)
     .single();
 
-  const { data: user } = await supabase
-    .from("users")
-    .select("plan")
-    .eq("id", session.userId)
-    .single();
-
-  const plan = user?.plan ?? "free";
-
   return NextResponse.json({
-    messagesUsed: usage?.messages_sent ?? 0,
-    hoursActive: usage?.hours_active ?? 0,
+    messages_today: usage?.messages_sent ?? 0,
+    messages_limit: plan === "free" ? 50 : null,
+    hours_active: usage?.hours_active ?? 0,
+    hours_limit: plan === "free" ? 8 : 24,
     plan,
-    limit: plan === "free" ? 100 : null,
   });
 }
