@@ -1006,27 +1006,37 @@ export default function OnboardingWizard() {
                 </div>
               </Card>
 
-              <Card selected={aiProvider === 'openai'} onClick={() => setAiProvider('openai')}>
-                <div className="flex items-start gap-3">
-                  <Zap className="w-8 h-8 text-green-400 flex-shrink-0" />
-                  <div className="flex-1">
-                    <div className="font-semibold">OpenAI</div>
-                    <p className="text-sm text-slate-400 mt-1">GPT-4o and the latest reasoning models</p>
-                    <p className="text-xs text-slate-500 mt-1">Models: GPT-4o, GPT-4o mini, o3-mini</p>
+              <div className="opacity-50 cursor-not-allowed">
+                <Card selected={false} disabled>
+                  <div className="flex items-start gap-3">
+                    <Zap className="w-8 h-8 text-green-400 flex-shrink-0" />
+                    <div className="flex-1">
+                      <div className="flex items-center gap-2">
+                        <span className="font-semibold">OpenAI</span>
+                        <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full bg-slate-700 text-slate-400">Coming Soon</span>
+                      </div>
+                      <p className="text-sm text-slate-400 mt-1">GPT-4o and the latest reasoning models</p>
+                      <p className="text-xs text-slate-500 mt-1">Models: GPT-4o, GPT-4o mini, o3-mini</p>
+                    </div>
                   </div>
-                </div>
-              </Card>
+                </Card>
+              </div>
 
-              <Card selected={aiProvider === 'anthropic'} onClick={() => setAiProvider('anthropic')}>
-                <div className="flex items-start gap-3">
-                  <Bot className="w-8 h-8 text-orange-400 flex-shrink-0" />
-                  <div className="flex-1">
-                    <div className="font-semibold">Anthropic</div>
-                    <p className="text-sm text-slate-400 mt-1">Claude \u2014 excellent at writing and analysis</p>
-                    <p className="text-xs text-slate-500 mt-1">Models: Claude Sonnet 4, Claude Haiku</p>
+              <div className="opacity-50 cursor-not-allowed">
+                <Card selected={false} disabled>
+                  <div className="flex items-start gap-3">
+                    <Bot className="w-8 h-8 text-orange-400 flex-shrink-0" />
+                    <div className="flex-1">
+                      <div className="flex items-center gap-2">
+                        <span className="font-semibold">Anthropic</span>
+                        <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full bg-slate-700 text-slate-400">Coming Soon</span>
+                      </div>
+                      <p className="text-sm text-slate-400 mt-1">Claude \u2014 excellent at writing and analysis</p>
+                      <p className="text-xs text-slate-500 mt-1">Models: Claude Sonnet 4, Claude Haiku</p>
+                    </div>
                   </div>
-                </div>
-              </Card>
+                </Card>
+              </div>
 
               <Card selected={aiProvider === 'github-copilot'} onClick={() => setAiProvider('github-copilot')}>
                 <div className="flex items-start gap-3">
