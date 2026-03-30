@@ -9,7 +9,7 @@ import {
   MessageCircle, Send, Hash, Slack, Shield,
   Mail, Globe, Bell, FileText, Sun, Lock,
   ShoppingCart, Plane, DollarSign, CalendarDays,
-  QrCode, Bot, Smartphone, AlertCircle, ExternalLink,
+  QrCode, Bot, Smartphone, AlertCircle, ExternalLink, Phone,
 } from 'lucide-react';
 import ProgressIndicator from './progress-indicator';
 
@@ -564,6 +564,16 @@ export default function OnboardingWizard() {
     const [error, setError] = useState<string | null>(null);
     const [qrExpired, setQrExpired] = useState(false);
 
+    const isWhatsApp = messengerId === 'whatsapp';
+    const [waMethod, setWaMethod] = useState<'qr' | 'phone'>(() => {
+      if (typeof window !== 'undefined' && window.innerWidth < 768) return 'phone';
+      return 'qr';
+    });
+    const [phoneNumber, setPhoneNumber] = useState('');
+    const [pairingCode, setPairingCode] = useState<string | null>(null);
+    const [phoneLoading, setPhoneLoading] = useState(false);
+    const [phoneError, setPhoneError] = useState<string | null>(null);
+
     // Trigger setup via sidecar (all messengers including Telegram)
     const triggerSetup = useCallback(async () => {
       setStatus('setting-up');
@@ -623,6 +633,22 @@ export default function OnboardingWizard() {
         setStatus('failed');
       }
     }, [messengerId, onReady]);
+
+    const requestPairingCode = useCallback(async () => {
+      if (!phoneNumber.trim()) return;
+      setPhoneLoading(true); setPhoneError(null); setPairingCode(null);
+      try {
+        const res = await fetch('/api/messaging/whatsapp/pairing-code', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ phoneNumber: phoneNumber.trim() }),
+        });
+        const data = await res.json();
+        if (!res.ok || data.error) setPhoneError(data.error || `Failed (${res.status})`);
+        else if (data.pairingCode) setPairingCode(data.pairingCode);
+        else setPhoneError('No pairing code returned');
+      } catch { setPhoneError('Failed to request pairing code'); }
+      setPhoneLoading(false);
+    }, [phoneNumber]);
 
     // Poll status while setup is in progress — self-heals if setup call times out
     useEffect(() => {
@@ -725,25 +751,75 @@ export default function OnboardingWizard() {
           </div>
         )}
 
-        {/* Ready state — WhatsApp/Signal: show QR code */}
-        {status === 'ready' && qrCode && !qrExpired && (messengerId === 'whatsapp' || messengerId === 'signal') && (
+        {/* Ready state — WhatsApp/Signal: QR or phone pairing */}
+        {status === 'ready' && (qrCode || isWhatsApp) && !qrExpired && (messengerId === 'whatsapp' || messengerId === 'signal') && (
           <div className="space-y-3">
-            <div className="bg-slate-800/60 rounded-lg p-3 space-y-2">
-              <p className="text-xs font-medium text-slate-200">How to connect:</p>
-              <ol className="list-decimal ml-4 space-y-0.5 text-xs text-slate-400">
-                <li>Open <strong className="text-slate-300">WhatsApp</strong> on your phone</li>
-                <li>Go to <strong className="text-slate-300">Settings → Linked Devices</strong></li>
-                <li>Tap <strong className="text-slate-300">Link a Device</strong></li>
-                <li>Point your camera at the QR below</li>
-              </ol>
-              <p className="text-xs text-amber-400/80">View this QR on a different screen than your phone</p>
-            </div>
-            <img
-              src={qrCode.startsWith('data:') ? qrCode : `data:image/png;base64,${qrCode}`}
-              alt={`Scan QR code with ${info.title}`}
-              className="w-48 h-48 mx-auto rounded-lg bg-white p-1"
-            />
-            <p className="text-xs text-slate-500 text-center">Waiting for scan...</p>
+            {isWhatsApp && (
+              <div className="flex rounded-lg bg-slate-800 p-0.5">
+                <button type="button" onClick={() => setWaMethod('qr')}
+                  className={`flex-1 flex items-center justify-center gap-1.5 py-1.5 rounded-md text-xs font-medium transition ${waMethod === 'qr' ? 'bg-violet-600 text-white' : 'text-slate-400 hover:text-white'}`}>
+                  <QrCode className="w-3 h-3" /> QR Code
+                </button>
+                <button type="button" onClick={() => setWaMethod('phone')}
+                  className={`flex-1 flex items-center justify-center gap-1.5 py-1.5 rounded-md text-xs font-medium transition ${waMethod === 'phone' ? 'bg-violet-600 text-white' : 'text-slate-400 hover:text-white'}`}>
+                  <Smartphone className="w-3 h-3" /> Phone Number
+                </button>
+              </div>
+            )}
+            {(waMethod === 'qr' || !isWhatsApp) && qrCode && (
+              <>
+                <div className="bg-slate-800/60 rounded-lg p-3 space-y-2">
+                  <p className="text-xs font-medium text-slate-200">How to connect:</p>
+                  <ol className="list-decimal ml-4 space-y-0.5 text-xs text-slate-400">
+                    <li>Open <strong className="text-slate-300">WhatsApp</strong> on your phone</li>
+                    <li>Go to <strong className="text-slate-300">Settings → Linked Devices</strong></li>
+                    <li>Tap <strong className="text-slate-300">Link a Device</strong></li>
+                    <li>Point your camera at the QR below</li>
+                  </ol>
+                  <p className="text-xs text-amber-400/80">View this QR on a different screen than your phone</p>
+                </div>
+                <img src={qrCode.startsWith('data:') ? qrCode : `data:image/png;base64,${qrCode}`}
+                  alt={`Scan QR code with ${info.title}`} className="w-48 h-48 mx-auto rounded-lg bg-white p-1" />
+                <p className="text-xs text-slate-500 text-center">Waiting for scan...</p>
+              </>
+            )}
+            {waMethod === 'phone' && isWhatsApp && (
+              <div className="space-y-2">
+                <div className="bg-slate-800/60 rounded-lg p-3 space-y-2">
+                  <p className="text-xs font-medium text-slate-200">Link with phone number:</p>
+                  <ol className="list-decimal ml-4 space-y-0.5 text-xs text-slate-400">
+                    <li>Enter your WhatsApp phone number</li>
+                    <li>Tap <strong className="text-slate-300">Get Code</strong></li>
+                    <li>In WhatsApp: <strong className="text-slate-300">Settings → Linked Devices → Link a Device</strong></li>
+                    <li>Tap <strong className="text-slate-300">Link with Phone Number</strong></li>
+                    <li>Enter the code shown here</li>
+                  </ol>
+                </div>
+                {!pairingCode && (
+                  <>
+                    <div className="flex gap-2">
+                      <input type="tel" value={phoneNumber} onChange={(e) => setPhoneNumber(e.target.value)}
+                        placeholder="+1 234 567 8900"
+                        className="flex-1 rounded-lg border border-slate-700 bg-slate-800 px-3 py-2 text-xs text-white placeholder-slate-500 focus:border-violet-500 focus:outline-none" />
+                      <button type="button" onClick={requestPairingCode} disabled={!phoneNumber.trim() || phoneLoading}
+                        className="px-3 py-2 rounded-lg bg-violet-600 hover:bg-violet-500 disabled:opacity-50 disabled:cursor-not-allowed text-xs font-medium text-white transition-colors flex items-center gap-1">
+                        {phoneLoading ? <Loader2 className="w-3 h-3 animate-spin" /> : 'Get Code'}
+                      </button>
+                    </div>
+                    {phoneError && <p className="text-xs text-red-400">{phoneError}</p>}
+                  </>
+                )}
+                {pairingCode && (
+                  <div className="text-center space-y-2">
+                    <p className="text-xs text-slate-400">Enter this code in WhatsApp:</p>
+                    <div className="text-2xl font-mono font-bold tracking-[0.3em] text-white bg-slate-800 rounded-lg py-3">{pairingCode}</div>
+                    <p className="text-xs text-slate-500">Waiting for connection...</p>
+                    <button type="button" onClick={() => { setPairingCode(null); setPhoneError(null); }}
+                      className="text-xs text-violet-400 hover:text-violet-300">Request a new code</button>
+                  </div>
+                )}
+              </div>
+            )}
           </div>
         )}
 

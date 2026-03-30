@@ -264,6 +264,38 @@ export async function setupWhatsAppForAssistant(
 }
 
 /**
+ * Request a WhatsApp pairing code for phone-to-phone setup.
+ */
+export async function requestWhatsAppPairingCode(
+  assistantId: string,
+  phoneNumber: string,
+): Promise<{ pairingCode?: string; error?: string }> {
+  const supabase = await createClient();
+  const { data: assistant } = await (supabase as any)
+    .from('assistants')
+    .select('ip_address, sidecar_token, whatsapp_connected')
+    .eq('id', assistantId)
+    .single();
+  if (!assistant?.ip_address || !assistant?.sidecar_token) {
+    return { error: 'VM not ready yet' };
+  }
+  if (assistant.whatsapp_connected) {
+    return { error: 'WhatsApp is already connected' };
+  }
+  try {
+    const result = await callSidecar(
+      assistant.ip_address, assistant.sidecar_token, 'whatsapp',
+      { method: 'pairing-code', phoneNumber },
+    );
+    if (result.pairingCode) return { pairingCode: result.pairingCode as string };
+    return { error: (result.error as string) || 'Failed to generate pairing code' };
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : String(err);
+    return { error: message };
+  }
+}
+
+/**
  * Call the sidecar teardown endpoint to remove a messaging channel.
  */
 async function callSidecarTeardown(
