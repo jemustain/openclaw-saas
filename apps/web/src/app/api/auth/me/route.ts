@@ -1,11 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getSession } from '@/lib/auth/session';
 import { createClient } from '@/lib/supabase/server';
+import { apiError, ERR } from '@/lib/errors';
 
 export async function GET() {
   const session = await getSession();
   if (!session) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    return apiError(ERR.UNAUTHORIZED, 401);
   }
 
   const supabase: any = createClient();
@@ -21,7 +22,6 @@ export async function GET() {
     .eq('user_id', session.userId)
     .single();
 
-  // Mask ai_api_key: show first 4 + last 4 chars
   const maskedKey = user?.ai_api_key
     ? user.ai_api_key.length > 8
       ? user.ai_api_key.slice(0, 4) + '••••••••' + user.ai_api_key.slice(-4)
@@ -41,7 +41,7 @@ export async function GET() {
 export async function PATCH(request: NextRequest) {
   const session = await getSession();
   if (!session) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    return apiError(ERR.UNAUTHORIZED, 401);
   }
 
   const body = await request.json();
