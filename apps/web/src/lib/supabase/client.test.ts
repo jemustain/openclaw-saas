@@ -17,14 +17,12 @@ describe('supabase browser client', () => {
     expect(client).toBeDefined();
   });
 
-  it('returns proxy on server when env missing', async () => {
+  it('throws when env vars are missing', async () => {
     delete process.env.NEXT_PUBLIC_SUPABASE_URL;
     delete process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
     // Reset module to clear cached client
     vi.resetModules();
     const { createClient } = await import('./client');
-    const client = createClient();
-    // Accessing any property on the proxy should throw
-    expect(() => (client as any).from('test')).toThrow('Supabase not configured');
+    expect(() => createClient()).toThrow('Missing NEXT_PUBLIC_SUPABASE_URL');
   });
 });
