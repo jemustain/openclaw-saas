@@ -3,7 +3,7 @@
 import { useEffect, useState, useCallback } from "react";
 import { MessengerSetupModal } from "./messenger-setup-modal";
 
-const ALL_MESSENGERS = ["telegram", "whatsapp", "discord", "slack", "signal"] as const;
+const ALL_MESSENGERS = ["telegram", "whatsapp"] as const;
 
 const MESSENGER_CONFIG: Record<
   string,

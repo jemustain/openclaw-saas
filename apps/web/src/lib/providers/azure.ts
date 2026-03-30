@@ -11,7 +11,7 @@ const DEFAULT_IMAGE = {
   sku: 'server',
   version: 'latest',
 };
-const RG_NAME = 'shiftworker-rg';
+const RG_PREFIX = 'sw-rg-';
 const VNET_NAME = 'shiftworker-vnet';
 const SUBNET_NAME = 'default';
 const NSG_NAME = 'shiftworker-nsg';
@@ -113,15 +113,18 @@ async function waitForProvision(token: string, path: string, timeoutMs = 300_000
 export async function ensureResourceGroup(
   token: string,
   subscriptionId: string,
+  assistantId: string,
   region?: string,
 ): Promise<string> {
   const loc = region ?? DEFAULT_REGION;
-  const path = `/subscriptions/${subscriptionId}/resourceGroups/${RG_NAME}?api-version=${RESOURCE_API}`;
+  const shortId = assistantId.split('-')[0];
+  const rgName = `${RG_PREFIX}${shortId}`;
+  const path = `/subscriptions/${subscriptionId}/resourceGroups/${rgName}?api-version=${RESOURCE_API}`;
   await azureFetch(token, path, {
     method: 'PUT',
     body: JSON.stringify({ location: loc }),
   });
-  return RG_NAME;
+  return rgName;
 }
 
 export async function ensureNetworking(
@@ -342,44 +345,13 @@ export async function destroyVM(
   resourceGroup: string,
   vmName: string,
 ): Promise<void> {
-  const base = `/subscriptions/${subscriptionId}/resourceGroups/${resourceGroup}/providers`;
-
-  // Delete VM first
-  await azureFetch(token, `${base}/Microsoft.Compute/virtualMachines/${vmName}?api-version=${COMPUTE_API}`, {
-    method: 'DELETE',
-  });
-  // Wait for VM deletion
-  await pollDeletion(token, `${base}/Microsoft.Compute/virtualMachines/${vmName}?api-version=${COMPUTE_API}`);
-
-  // Delete NIC
-  await azureFetch(token, `${base}/Microsoft.Network/networkInterfaces/${vmName}-nic?api-version=${NETWORK_API}`, {
-    method: 'DELETE',
-  }).catch(() => {}); // May already be gone
-  await pollDeletion(token, `${base}/Microsoft.Network/networkInterfaces/${vmName}-nic?api-version=${NETWORK_API}`);
-
-  // Delete public IP
-  await azureFetch(token, `${base}/Microsoft.Network/publicIPAddresses/${vmName}-ip?api-version=${NETWORK_API}`, {
-    method: 'DELETE',
-  }).catch(() => {});
-
-  // Delete OS disk (Azure auto-names it: {vmName}_disk1_{guid})
-  // List disks in the resource group and delete any belonging to this VM
-  try {
-    const disksRes = await azureFetch(
-      token,
-      `/subscriptions/${subscriptionId}/resourceGroups/${resourceGroup}/providers/Microsoft.Compute/disks?api-version=${COMPUTE_API}`,
-    );
-    const disks = disksRes?.value ?? [];
-    for (const disk of disks) {
-      if (disk.name?.startsWith(`${vmName}_disk`)) {
-        await azureFetch(token, `/subscriptions/${subscriptionId}/resourceGroups/${resourceGroup}/providers/Microsoft.Compute/disks/${disk.name}?api-version=${COMPUTE_API}`, {
-          method: 'DELETE',
-        }).catch(() => {});
-      }
-    }
-  } catch {
-    // Best-effort disk cleanup
-  }
+  // Each assistant has its own resource group — delete the entire RG
+  // This cleans up VM, NIC, IP, disk, NSG, VNet — everything
+  await azureFetch(
+    token,
+    `/subscriptions/${subscriptionId}/resourceGroups/${resourceGroup}?api-version=${RESOURCE_API}`,
+    { method: 'DELETE' },
+  );
 }
 
 async function pollDeletion(token: string, path: string, timeoutMs = 120_000) {
