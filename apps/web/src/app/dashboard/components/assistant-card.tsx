@@ -39,18 +39,22 @@ const PROVISION_STEPS: { phase: ProvisionPhase; label: string; atSec: number }[]
   { phase: "done", label: "Online", atSec: 0 },
 ];
 
-export function AssistantCard({ assistant }: { assistant: Assistant | null }) {
+function formatTime(secs: number): string {
+  const m = Math.floor(secs / 60);
+  const s = secs % 60;
+  return `${m}:${String(s).padStart(2, "0")}`;
+}
+
+export function AssistantHero({ assistant }: { assistant: Assistant | null }) {
   const [loading, setLoading] = useState<string | null>(null);
   const [current, setCurrent] = useState(assistant);
   const [confirmDestroy, setConfirmDestroy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Destroy progress state
   const [destroying, setDestroying] = useState(false);
   const [destroyElapsed, setDestroyElapsed] = useState(0);
   const [destroySteps, setDestroySteps] = useState<string[]>([]);
 
-  // Provision progress state
   const [provisioning, setProvisioning] = useState(
     assistant?.status === "provisioning"
   );
@@ -66,8 +70,6 @@ export function AssistantCard({ assistant }: { assistant: Assistant | null }) {
     const interval = setInterval(() => {
       const elapsed = Math.floor((Date.now() - start) / 1000);
       setDestroyElapsed(elapsed);
-
-      // Add milestone messages
       for (const step of DESTROY_STEPS) {
         if (step.phase !== "done" && elapsed >= step.atSec) {
           setDestroySteps((prev) =>
@@ -86,7 +88,6 @@ export function AssistantCard({ assistant }: { assistant: Assistant | null }) {
     const interval = setInterval(() => {
       const elapsed = Math.floor((Date.now() - start) / 1000);
       setProvisionElapsed(elapsed);
-
       for (const step of PROVISION_STEPS) {
         if (step.phase !== "done" && elapsed >= step.atSec) {
           setProvisionSteps((prev) =>
@@ -102,7 +103,6 @@ export function AssistantCard({ assistant }: { assistant: Assistant | null }) {
   useEffect(() => {
     if (!destroying) return;
     let cancelled = false;
-
     const poll = async () => {
       while (!cancelled) {
         await new Promise((r) => setTimeout(r, 3000));
@@ -117,17 +117,11 @@ export function AssistantCard({ assistant }: { assistant: Assistant | null }) {
             setDestroySteps((prev) => [...prev, "Done - assistant destroyed"]);
             return;
           }
-          if (a.status === "destroying") {
-            // Still in progress
-            continue;
-          }
-          // Unexpected state
+          if (a.status === "destroying") continue;
           setCurrent(a);
           setDestroying(false);
           return;
-        } catch {
-          // Network error, keep polling
-        }
+        } catch { /* keep polling */ }
       }
     };
     poll();
@@ -138,7 +132,6 @@ export function AssistantCard({ assistant }: { assistant: Assistant | null }) {
   useEffect(() => {
     if (!provisioning) return;
     let cancelled = false;
-
     const poll = async () => {
       while (!cancelled) {
         await new Promise((r) => setTimeout(r, 5000));
@@ -160,9 +153,7 @@ export function AssistantCard({ assistant }: { assistant: Assistant | null }) {
             setError("Provisioning failed. Please try again.");
             return;
           }
-        } catch {
-          // Keep polling
-        }
+        } catch { /* keep polling */ }
       }
     };
     poll();
@@ -176,7 +167,6 @@ export function AssistantCard({ assistant }: { assistant: Assistant | null }) {
     setDestroyElapsed(0);
     setDestroySteps(["Initiating shutdown..."]);
     setConfirmDestroy(false);
-
     try {
       const res = await fetch("/api/assistant/destroy", { method: "POST" });
       if (!res.ok) {
@@ -200,7 +190,6 @@ export function AssistantCard({ assistant }: { assistant: Assistant | null }) {
     setProvisioning(true);
     setProvisionElapsed(0);
     setProvisionSteps(["Starting provisioning..."]);
-
     try {
       const res = await fetch("/api/assistant/launch", { method: "POST" });
       if (!res.ok) {
@@ -261,12 +250,6 @@ export function AssistantCard({ assistant }: { assistant: Assistant | null }) {
     }
   }
 
-  function formatTime(secs: number): string {
-    const m = Math.floor(secs / 60);
-    const s = secs % 60;
-    return `${m}:${String(s).padStart(2, "0")}`;
-  }
-
   function uptime() {
     if (!current?.created_at || status !== "active") return null;
     const ms = Date.now() - new Date(current.created_at).getTime();
@@ -275,196 +258,154 @@ export function AssistantCard({ assistant }: { assistant: Assistant | null }) {
     return `${hours}h ${mins}m`;
   }
 
-  const statusConfig: Record<string, { label: string; dot: string }> = {
-    active: { label: "Online", dot: "bg-green-500" },
-    provisioning: { label: "Provisioning", dot: "bg-yellow-400 animate-pulse" },
-    suspended: { label: "Suspended", dot: "bg-gray-500" },
-    destroying: { label: "Destroying", dot: "bg-red-400 animate-pulse" },
-    offline: { label: "No Assistant", dot: "bg-gray-600" },
+  const statusConfig: Record<string, { label: string; dot: string; border: string }> = {
+    active: { label: "Online", dot: "bg-green-500", border: "from-violet-500 to-purple-600" },
+    provisioning: { label: "Provisioning", dot: "bg-yellow-400 animate-pulse", border: "from-yellow-400 to-amber-500" },
+    suspended: { label: "Suspended", dot: "bg-gray-500", border: "from-slate-600 to-slate-700" },
+    destroying: { label: "Destroying", dot: "bg-red-400 animate-pulse", border: "from-red-500 to-rose-600" },
+    offline: { label: "No Assistant", dot: "bg-gray-600", border: "from-slate-700 to-slate-800" },
   };
 
   const effectiveStatus = destroying ? "destroying" : provisioning ? "provisioning" : status;
-  const { label, dot } = statusConfig[effectiveStatus] ?? statusConfig.offline;
+  const { label, dot, border } = statusConfig[effectiveStatus] ?? statusConfig.offline;
 
-  // Destroying state - show progress
-  if (destroying) {
-    return (
-      <div className="rounded-xl border border-slate-800 bg-slate-900 p-6">
-        <h2 className="text-lg font-semibold text-white mb-4">Your Assistant</h2>
+  // Progress steps UI (shared between provisioning and destroying)
+  const isProgress = destroying || provisioning || status === "provisioning";
+  const progressSteps = destroying ? destroySteps : provisionSteps;
+  const progressElapsed = destroying ? destroyElapsed : provisionElapsed;
+  const progressHint = destroying ? "Typically takes 30-60 seconds" : "Typically takes 2-4 minutes";
 
-        <div className="flex items-center gap-2 mb-4">
-          <span className={`h-3 w-3 rounded-full ${dot}`} />
-          <span className="text-slate-100">{label}</span>
-          <span className="text-sm text-slate-500 ml-auto">{formatTime(destroyElapsed)}</span>
-        </div>
-
-        <p className="text-xs text-slate-500 mb-3">
-          Typically takes 30-60 seconds
-        </p>
-
-        <div className="space-y-2">
-          {destroySteps.map((step, i) => {
-            const isLast = i === destroySteps.length - 1;
-            const isDone = step.startsWith("Done");
-            return (
-              <div key={i} className="flex items-center gap-2 text-sm">
-                {isDone ? (
-                  <span className="w-4 h-4 text-green-400 flex-shrink-0">&#10003;</span>
-                ) : isLast ? (
-                  <span className="w-4 h-4 border-2 border-violet-400 border-t-transparent rounded-full animate-spin flex-shrink-0" />
-                ) : (
-                  <span className="w-4 h-4 text-green-400 flex-shrink-0">&#10003;</span>
-                )}
-                <span className={isLast && !isDone ? "text-white font-medium" : "text-slate-400"}>
-                  {step}
-                </span>
-              </div>
-            );
-          })}
-        </div>
-      </div>
-    );
-  }
-
-  // Provisioning state - show progress
-  if (provisioning || status === "provisioning") {
-    return (
-      <div className="rounded-xl border border-slate-800 bg-slate-900 p-6">
-        <h2 className="text-lg font-semibold text-white mb-4">Your Assistant</h2>
-
-        <div className="flex items-center gap-2 mb-4">
-          <span className="h-3 w-3 rounded-full bg-yellow-400 animate-pulse" />
-          <span className="text-slate-100">Provisioning</span>
-          <span className="text-sm text-slate-500 ml-auto">{formatTime(provisionElapsed)}</span>
-        </div>
-
-        <p className="text-xs text-slate-500 mb-3">
-          Typically takes 2-4 minutes
-        </p>
-
-        <div className="space-y-2">
-          {provisionSteps.map((step, i) => {
-            const isLast = i === provisionSteps.length - 1;
-            const isDone = step.includes("online") || step.includes("failed");
-            return (
-              <div key={i} className="flex items-center gap-2 text-sm">
-                {isDone ? (
-                  <span className={`w-4 h-4 flex-shrink-0 ${step.includes("failed") ? "text-red-400" : "text-green-400"}`}>
-                    {step.includes("failed") ? "✕" : "&#10003;"}
-                  </span>
-                ) : isLast ? (
-                  <span className="w-4 h-4 border-2 border-violet-400 border-t-transparent rounded-full animate-spin flex-shrink-0" />
-                ) : (
-                  <span className="w-4 h-4 text-green-400 flex-shrink-0">&#10003;</span>
-                )}
-                <span className={isLast && !isDone ? "text-white font-medium" : "text-slate-400"}>
-                  {step}
-                </span>
-              </div>
-            );
-          })}
-        </div>
-
-        {error && (
-          <p className="text-sm text-red-400 mt-3">{error}</p>
-        )}
-      </div>
-    );
-  }
-
-  // Normal states
   return (
-    <div className="rounded-xl border border-slate-800 bg-slate-900 p-6">
-      <h2 className="text-lg font-semibold text-white mb-4">Your Assistant</h2>
+    <div className={`relative rounded-2xl bg-gradient-to-r ${border} p-[1px]`}>
+      <div className="rounded-2xl bg-slate-900 p-6 sm:p-8">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+          {/* Left: status info */}
+          <div className="space-y-2 min-w-0">
+            <div className="flex items-center gap-3">
+              <span className={`h-4 w-4 rounded-full ${dot} ring-4 ring-slate-900`} />
+              <h2 className="text-2xl font-bold text-white">{label}</h2>
+            </div>
 
-      <div className="flex items-center gap-2 mb-4">
-        <span className={`h-3 w-3 rounded-full ${dot}`} />
-        <span className="text-slate-100">{label}</span>
-      </div>
+            {current?.provider && (
+              <p className="text-sm text-slate-400">
+                {providerLabel(current.provider)}
+                {current.region && <span className="text-slate-500"> · {current.region}</span>}
+              </p>
+            )}
 
-      {current?.provider && (
-        <p className="text-sm text-slate-400 mb-2">
-          Running on{" "}
-          <span className="text-slate-200">
-            {providerLabel(current.provider)}
-          </span>
-        </p>
-      )}
+            <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-slate-400">
+              {current?.ip_address && status === "active" && (
+                <span>
+                  IP: <span className="font-mono text-slate-200">{current.ip_address}</span>
+                </span>
+              )}
+              {uptime() && (
+                <span>
+                  Uptime: <span className="text-slate-200">{uptime()}</span>
+                </span>
+              )}
+            </div>
+          </div>
 
-      {current?.ip_address && status === "active" && (
-        <p className="text-sm text-slate-400 mb-2">
-          Address:{" "}
-          <span className="text-slate-200 font-mono">{current.ip_address}</span>
-        </p>
-      )}
+          {/* Right: action buttons */}
+          {!isProgress && (
+            <div className="flex flex-wrap items-center gap-2 sm:flex-shrink-0">
+              {status === "active" && (
+                <button
+                  disabled={!!loading}
+                  onClick={handleSuspend}
+                  className="rounded-full bg-slate-800 px-5 py-2 text-sm font-medium text-slate-200 hover:bg-slate-700 disabled:opacity-50 transition-colors"
+                >
+                  {loading === "/api/assistant/suspend" ? "Suspending…" : "Suspend"}
+                </button>
+              )}
 
-      {uptime() && (
-        <p className="text-sm text-slate-400 mb-4">
-          Uptime: <span className="text-slate-200">{uptime()}</span>
-        </p>
-      )}
+              {status === "suspended" && (
+                <button
+                  disabled={!!loading}
+                  onClick={handleResume}
+                  className="rounded-full bg-indigo-600 px-5 py-2 text-sm font-medium text-white hover:bg-indigo-500 disabled:opacity-50 transition-colors"
+                >
+                  {loading === "/api/assistant/launch" ? "Resuming…" : "Resume"}
+                </button>
+              )}
 
-      {error && (
-        <p className="text-sm text-red-400 mb-3">{error}</p>
-      )}
+              {current && status !== "destroying" && !confirmDestroy && (
+                <button
+                  onClick={() => setConfirmDestroy(true)}
+                  className="rounded-full bg-red-900/50 px-5 py-2 text-sm font-medium text-red-300 hover:bg-red-900 transition-colors"
+                >
+                  Destroy
+                </button>
+              )}
 
-      <div className="flex flex-wrap gap-2 mt-2">
-        {status === "active" && (
-          <button
-            disabled={!!loading}
-            onClick={handleSuspend}
-            className="rounded-lg bg-slate-800 px-4 py-2 text-sm text-slate-200 hover:bg-slate-700 disabled:opacity-50"
-          >
-            {loading === "/api/assistant/suspend" ? "Suspending..." : "Suspend"}
-          </button>
-        )}
+              {confirmDestroy && (
+                <div className="flex items-center gap-2">
+                  <span className="text-sm text-red-400">Are you sure?</span>
+                  <button
+                    disabled={!!loading}
+                    onClick={handleDestroy}
+                    className="rounded-full bg-red-700 px-4 py-1.5 text-sm text-white hover:bg-red-600 disabled:opacity-50 transition-colors"
+                  >
+                    Yes, destroy
+                  </button>
+                  <button
+                    onClick={() => setConfirmDestroy(false)}
+                    className="rounded-full bg-slate-800 px-4 py-1.5 text-sm text-slate-300 hover:bg-slate-700 transition-colors"
+                  >
+                    Cancel
+                  </button>
+                </div>
+              )}
 
-        {status === "suspended" && (
-          <button
-            disabled={!!loading}
-            onClick={handleResume}
-            className="rounded-lg bg-indigo-600 px-4 py-2 text-sm text-white hover:bg-indigo-500 disabled:opacity-50"
-          >
-            {loading === "/api/assistant/launch" ? "Resuming..." : "Resume"}
-          </button>
-        )}
+              {(!current || status === "offline") && !confirmDestroy && (
+                <button
+                  disabled={!!loading}
+                  onClick={handleLaunch}
+                  className="rounded-full bg-indigo-600 px-6 py-2 text-sm font-medium text-white hover:bg-indigo-500 disabled:opacity-50 transition-colors"
+                >
+                  {loading === "/api/assistant/launch" ? "Launching…" : "Launch Assistant"}
+                </button>
+              )}
+            </div>
+          )}
+        </div>
 
-        {current && status !== "destroying" && !confirmDestroy && (
-          <button
-            onClick={() => setConfirmDestroy(true)}
-            className="rounded-lg bg-red-900/50 px-4 py-2 text-sm text-red-300 hover:bg-red-900 disabled:opacity-50"
-          >
-            Destroy
-          </button>
-        )}
-
-        {confirmDestroy && (
-          <div className="flex items-center gap-2">
-            <span className="text-sm text-red-400">Are you sure?</span>
-            <button
-              disabled={!!loading}
-              onClick={handleDestroy}
-              className="rounded-lg bg-red-700 px-3 py-1.5 text-sm text-white hover:bg-red-600 disabled:opacity-50"
-            >
-              Yes, destroy
-            </button>
-            <button
-              onClick={() => setConfirmDestroy(false)}
-              className="rounded-lg bg-slate-800 px-3 py-1.5 text-sm text-slate-300 hover:bg-slate-700"
-            >
-              Cancel
-            </button>
+        {/* Progress steps (provisioning / destroying) */}
+        {isProgress && (
+          <div className="mt-6 border-t border-slate-800 pt-4">
+            <div className="flex items-center justify-between mb-3">
+              <p className="text-xs text-slate-500">{progressHint}</p>
+              <span className="text-sm text-slate-500 font-mono">{formatTime(progressElapsed)}</span>
+            </div>
+            <div className="space-y-2">
+              {progressSteps.map((step, i) => {
+                const isLast = i === progressSteps.length - 1;
+                const isDone = step.startsWith("Done") || step.includes("online");
+                const isFailed = step.includes("failed");
+                return (
+                  <div key={i} className="flex items-center gap-2 text-sm">
+                    {isDone || isFailed ? (
+                      <span className={`w-4 h-4 flex-shrink-0 ${isFailed ? "text-red-400" : "text-green-400"}`}>
+                        {isFailed ? "✕" : "✓"}
+                      </span>
+                    ) : isLast ? (
+                      <span className="w-4 h-4 border-2 border-violet-400 border-t-transparent rounded-full animate-spin flex-shrink-0" />
+                    ) : (
+                      <span className="w-4 h-4 text-green-400 flex-shrink-0">✓</span>
+                    )}
+                    <span className={isLast && !isDone && !isFailed ? "text-white font-medium" : "text-slate-400"}>
+                      {step}
+                    </span>
+                  </div>
+                );
+              })}
+            </div>
           </div>
         )}
 
-        {(!current || status === "offline") && !confirmDestroy && (
-          <button
-            disabled={!!loading}
-            onClick={handleLaunch}
-            className="rounded-lg bg-indigo-600 px-4 py-2 text-sm text-white hover:bg-indigo-500 disabled:opacity-50"
-          >
-            {loading === "/api/assistant/launch" ? "Launching..." : "Launch Assistant"}
-          </button>
+        {error && (
+          <p className="text-sm text-red-400 mt-4">{error}</p>
         )}
       </div>
     </div>
