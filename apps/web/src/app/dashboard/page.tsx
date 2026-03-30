@@ -41,6 +41,11 @@ async function DashboardContent({
     .eq("id", session.userId)
     .single();
 
+  // Stale session (user deleted/DB wiped) - redirect to sign in
+  if (!user) {
+    redirect("/auth/signin");
+  }
+
   let plan: PlanKey = user?.plan ?? "free";
   if (!user?.plan) {
     const { data: profile } = await supabase
