@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { sidecarFetch } from "@/lib/sidecar/client";
+import { handleApiError } from "@/lib/errors";
 
 export async function GET() {
   try {
@@ -11,11 +12,7 @@ export async function GET() {
     }
 
     return NextResponse.json(data);
-  } catch (err: any) {
-    console.error("Failed to fetch skills:", err);
-    return NextResponse.json(
-      { error: "Failed to fetch skills", details: err.message },
-      { status: 500 },
-    );
+  } catch (err) {
+    return handleApiError(err, 'skills/list');
   }
 }

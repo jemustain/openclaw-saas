@@ -2,11 +2,12 @@ import { NextResponse } from 'next/server';
 import { getSession } from '@/lib/auth/session';
 import { getProviderToken, refreshProviderToken } from '@/lib/providers/token-store';
 import { listSubscriptions } from '@/lib/providers/azure';
+import { apiError, ERR, handleApiError } from '@/lib/errors';
 
 export async function GET() {
   const session = await getSession();
   if (!session) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    return apiError(ERR.UNAUTHORIZED, 401);
   }
 
   const tokenData = await getProviderToken(session.userId, 'azure');

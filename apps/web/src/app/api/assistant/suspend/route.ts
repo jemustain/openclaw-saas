@@ -2,12 +2,13 @@ import { NextResponse } from 'next/server';
 import { getSession } from '@/lib/auth/session';
 import { createClient } from '@/lib/supabase/server';
 import { suspendAssistant } from '@/lib/vm/lifecycle';
+import { apiError, handleApiError, ERR } from '@/lib/errors';
 
 export async function POST() {
   try {
     const session = await getSession();
     if (!session) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+      return apiError(ERR.UNAUTHORIZED, 401);
     }
 
     const supabase: any = createClient();
@@ -20,16 +21,12 @@ export async function POST() {
       .single();
 
     if (!existing) {
-      return NextResponse.json({ error: 'No active assistant to suspend' }, { status: 404 });
+      return apiError('No active assistant to suspend.', 404);
     }
 
     const assistant = await suspendAssistant(existing.id);
     return NextResponse.json({ assistant });
   } catch (err) {
-    console.error('Suspend failed:', err);
-    return NextResponse.json(
-      { error: err instanceof Error ? err.message : 'Internal server error' },
-      { status: 500 },
-    );
+    return handleApiError(err, 'assistant/suspend');
   }
 }

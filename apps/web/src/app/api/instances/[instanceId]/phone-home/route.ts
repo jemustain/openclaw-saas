@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import type { Assistant } from '@/lib/supabase/types';
 import { onAssistantReady } from '@/lib/email/triggers';
+import { apiError, ERR, handleApiError } from '@/lib/errors';
 
 export async function POST(
   request: NextRequest,
@@ -12,7 +13,7 @@ export async function POST(
   // Extract Bearer token
   const authHeader = request.headers.get('authorization');
   if (!authHeader?.startsWith('Bearer ')) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    return apiError(ERR.UNAUTHORIZED, 401);
   }
   const sidecarToken = authHeader.slice(7);
 
@@ -32,7 +33,7 @@ export async function POST(
   const record = assistant as Assistant;
 
   if (record.sidecar_token !== sidecarToken) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    return apiError(ERR.UNAUTHORIZED, 401);
   }
 
   // Derive caller IP from the request (Vercel sets x-forwarded-for)

@@ -3,16 +3,13 @@ import { stripe } from "@/lib/stripe/client";
 import { PLANS, PlanKey } from "@/lib/stripe/config";
 import { getSession } from "@/lib/auth/session";
 import { env } from "@/lib/env";
+import { apiError, handleApiError, ERR } from "@/lib/errors";
 
-/**
- * POST /api/stripe/checkout
- * Creates a Stripe Checkout session for upgrading to a paid plan.
- */
 export async function POST(req: NextRequest) {
   try {
     const session = await getSession();
     if (!session) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+      return apiError(ERR.UNAUTHORIZED, 401);
     }
 
     const body = await req.json().catch(() => ({}));
@@ -21,7 +18,7 @@ export async function POST(req: NextRequest) {
 
     const planConfig = PLANS[plan];
     if (!planConfig || !planConfig.stripePriceId) {
-      return NextResponse.json({ error: "Invalid plan" }, { status: 400 });
+      return apiError("Invalid plan selected.", 400);
     }
 
     const appUrl = env("NEXT_PUBLIC_APP_URL") || "http://localhost:3000";
@@ -41,12 +38,7 @@ export async function POST(req: NextRequest) {
     });
 
     return NextResponse.json({ url: checkoutSession.url });
-  } catch (error: any) {
-    console.error("Stripe checkout error:", error);
-    const detail = error?.message ?? String(error);
-    return NextResponse.json(
-      { error: "Failed to create checkout session", detail },
-      { status: 500 },
-    );
+  } catch (err) {
+    return handleApiError(err, 'stripe/checkout');
   }
 }

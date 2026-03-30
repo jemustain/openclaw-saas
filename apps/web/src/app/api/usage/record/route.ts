@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { enforceFreeTierLimits } from "@/lib/billing/plan-enforcement";
+import { apiError, ERR, handleApiError } from "@/lib/errors";
 
 /**
  * POST /api/usage/record
@@ -16,7 +17,7 @@ export async function POST(req: NextRequest) {
   const token = authHeader?.replace("Bearer ", "");
 
   if (!token) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    return apiError(ERR.UNAUTHORIZED, 401);
   }
 
   const body = await req.json();
@@ -48,7 +49,7 @@ export async function POST(req: NextRequest) {
     token === process.env.SIDECAR_API_TOKEN;
 
   if (!validToken) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    return apiError(ERR.UNAUTHORIZED, 401);
   }
 
   const today = new Date().toISOString().slice(0, 10);

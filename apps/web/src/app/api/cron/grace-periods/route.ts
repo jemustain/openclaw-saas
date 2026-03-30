@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { processExpiredGracePeriods } from "@/lib/billing/cancellation";
+import { apiError, ERR, handleApiError } from "@/lib/errors";
 
 /**
  * GET /api/cron/grace-periods
@@ -12,7 +13,7 @@ export async function GET(req: Request) {
   const token = authHeader?.replace("Bearer ", "");
 
   if (!token || token !== process.env.CRON_SECRET) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    return apiError(ERR.UNAUTHORIZED, 401);
   }
 
   const result = await processExpiredGracePeriods();

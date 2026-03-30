@@ -2,12 +2,13 @@ import { NextResponse } from 'next/server';
 import { getSession } from '@/lib/auth/session';
 import { createClient } from '@/lib/supabase/server';
 import { env } from '@/lib/env';
+import { apiError, ERR, handleApiError } from '@/lib/errors';
 
 export async function POST() {
   try {
     const session = await getSession();
     if (!session) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+      return apiError(ERR.UNAUTHORIZED, 401);
     }
 
     const botUsername = env('TELEGRAM_BOT_USERNAME');

@@ -2,12 +2,13 @@ import { NextResponse } from 'next/server';
 import { getSession } from '@/lib/auth/session';
 import { createClient } from '@/lib/supabase/server';
 import { advanceProvisioning } from '@/lib/vm/provisioning-steps';
+import { apiError, handleApiError, ERR } from '@/lib/errors';
 
 export async function GET() {
   try {
     const session = await getSession();
     if (!session) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+      return apiError(ERR.UNAUTHORIZED, 401);
     }
 
     const supabase: any = createClient();
@@ -24,10 +25,6 @@ export async function GET() {
       return NextResponse.json({ assistant: null });
     }
 
-    // If the assistant is mid-provisioning on Azure, advance one step.
-    // Each step is a single API call that fits within the 10s timeout.
-    // Also advance if status is 'active' but provisioning_step isn't done yet
-    // (race condition: phone-home set status before wait_vm fetched the IP).
     const needsProvisioning =
       assistant.provider === 'azure' &&
       assistant.provisioning_step &&
@@ -39,12 +36,11 @@ export async function GET() {
         const updated = await advanceProvisioning(assistant);
         return NextResponse.json({ assistant: updated });
       } catch (err) {
-        const errMsg = err instanceof Error ? err.message : String(err);
-        console.error('Provisioning step failed:', errMsg);
-        // Store error in provisioning_data for debugging
+        console.error('[assistant/status] Provisioning step failed:', err);
         try {
           const supabaseUpdate: any = createClient();
           const existingData = assistant.provisioning_data || {};
+          const errMsg = err instanceof Error ? err.message : String(err);
           await supabaseUpdate
             .from('assistants')
             .update({
@@ -52,19 +48,14 @@ export async function GET() {
             })
             .eq('id', assistant.id);
         } catch { /* best effort */ }
-        // Return current state with error info
         return NextResponse.json({
-          assistant: { ...assistant, _provisioningError: errMsg },
+          assistant: { ...assistant, _provisioningError: 'Provisioning step failed. Retrying automatically.' },
         });
       }
     }
 
     return NextResponse.json({ assistant });
   } catch (err) {
-    console.error('Status check failed:', err);
-    return NextResponse.json(
-      { error: 'Internal server error' },
-      { status: 500 },
-    );
+    return handleApiError(err, 'assistant/status');
   }
 }

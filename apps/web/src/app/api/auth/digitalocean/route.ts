@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { apiError, ERR, handleApiError } from '@/lib/errors';
 
 export async function GET() {
   const clientId = process.env.DO_CLIENT_ID?.trim();

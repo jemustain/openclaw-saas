@@ -6,14 +6,15 @@ import {
   setupWhatsAppForAssistant,
 } from '@/lib/messaging/setup';
 import { NextResponse } from 'next/server';
+import { apiError, handleApiError, ERR } from '@/lib/errors';
 
-export const maxDuration = 60; // BotFather automation can take 15-30s
+export const maxDuration = 60;
 
 export async function POST(request: Request) {
   try {
     const session = await getSession();
     if (!session) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+      return apiError(ERR.UNAUTHORIZED, 401);
     }
 
     const body = await request.json();
@@ -25,13 +26,9 @@ export async function POST(request: Request) {
     };
 
     if (!platform) {
-      return NextResponse.json(
-        { error: 'platform is required' },
-        { status: 400 },
-      );
+      return apiError('Platform is required.', 400);
     }
 
-    // Find the assistant — use provided ID or get the user's active one
     const supabase: any = createClient();
     let targetAssistantId = assistantId;
     if (!targetAssistantId) {
@@ -45,10 +42,7 @@ export async function POST(request: Request) {
         .single();
 
       if (!assistant) {
-        return NextResponse.json(
-          { error: 'No active assistant found' },
-          { status: 404 },
-        );
+        return apiError(ERR.NO_ACTIVE_ASSISTANT, 404);
       }
       targetAssistantId = assistant.id;
     }
@@ -57,33 +51,20 @@ export async function POST(request: Request) {
     switch (platform) {
       case 'telegram':
         if (botToken) {
-          // Manual token submission - configure sidecar directly
-          result = await setupTelegramWithToken(
-            targetAssistantId!,
-            botToken,
-          );
+          result = await setupTelegramWithToken(targetAssistantId!, botToken);
         } else {
-          result = await setupTelegramForAssistant(
-            targetAssistantId!,
-            session.userId,
-            displayName,
-          );
+          result = await setupTelegramForAssistant(targetAssistantId!, session.userId, displayName);
         }
         break;
       case 'whatsapp':
         result = await setupWhatsAppForAssistant(targetAssistantId!);
         break;
       default:
-        return NextResponse.json(
-          { error: `Unsupported platform: ${platform}` },
-          { status: 400 },
-        );
+        return apiError(`Unsupported platform: ${platform}`, 400);
     }
 
     return NextResponse.json(result);
-  } catch (err: unknown) {
-    console.error('Messaging setup error:', err);
-    const message = err instanceof Error ? err.message : String(err);
-    return NextResponse.json({ error: message }, { status: 500 });
+  } catch (err) {
+    return handleApiError(err, 'messaging/setup');
   }
 }

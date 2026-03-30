@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { apiError, ERR, handleApiError } from '@/lib/errors';
 
 /**
  * GitHub OAuth initiation for Copilot API access.
