@@ -83,7 +83,7 @@ async function DashboardContent({
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           {/* Col 1: Connections */}
           <div>
-            <ConnectionsCard messengers={messengers} disabled={disableActions} />
+            <ConnectionsCard messengers={messengers} disabled={disableActions} plan={plan} />
           </div>
 
           {/* Col 2: AI Model + Usage stacked */}
