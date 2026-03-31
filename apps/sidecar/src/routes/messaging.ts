@@ -24,9 +24,19 @@ const CLAW_USER = process.env.OPENCLAW_USER || 'claw';
 const CLAW_HOME = process.env.OPENCLAW_HOME || `/home/${CLAW_USER}`;
 const GATEWAY_WS_URL = process.env.GATEWAY_WS_URL || 'ws://127.0.0.1:18789';
 
-/** Run a command as the claw user */
+/** Run a command as the claw user with aggressive timeout */
 async function runAsClaw(cmd: string, timeoutMs = 30_000): Promise<{ stdout: string; stderr: string }> {
-  return execAsync(`su - ${CLAW_USER} -c '${cmd.replace(/'/g, "'\\''")}'`, { timeout: timeoutMs });
+  return new Promise((resolve, reject) => {
+    const child = exec(`su - ${CLAW_USER} -c '${cmd.replace(/'/g, "'\\''")}'`, { timeout: timeoutMs, killSignal: 'SIGKILL' }, (error, stdout, stderr) => {
+      if (error) reject(error);
+      else resolve({ stdout, stderr });
+    });
+    // Extra safety: force kill after timeout + 5s
+    const forceTimer = setTimeout(() => {
+      try { child.kill('SIGKILL'); } catch {}
+    }, timeoutMs + 5000);
+    child.on('exit', () => clearTimeout(forceTimer));
+  });
 }
 
 /** Read the gateway auth token from the OpenClaw config */

@@ -525,7 +525,19 @@ var CLAW_USER = process.env.OPENCLAW_USER || "claw";
 var CLAW_HOME = process.env.OPENCLAW_HOME || `/home/${CLAW_USER}`;
 var GATEWAY_WS_URL = process.env.GATEWAY_WS_URL || "ws://127.0.0.1:18789";
 async function runAsClaw(cmd, timeoutMs = 3e4) {
-  return execAsync4(`su - ${CLAW_USER} -c '${cmd.replace(/'/g, "'\\''")}'`, { timeout: timeoutMs });
+  return new Promise((resolve2, reject) => {
+    const child = (0, import_child_process4.exec)(`su - ${CLAW_USER} -c '${cmd.replace(/'/g, "'\\''")}'`, { timeout: timeoutMs, killSignal: "SIGKILL" }, (error, stdout, stderr) => {
+      if (error) reject(error);
+      else resolve2({ stdout, stderr });
+    });
+    const forceTimer = setTimeout(() => {
+      try {
+        child.kill("SIGKILL");
+      } catch {
+      }
+    }, timeoutMs + 5e3);
+    child.on("exit", () => clearTimeout(forceTimer));
+  });
 }
 function getGatewayToken() {
   try {
