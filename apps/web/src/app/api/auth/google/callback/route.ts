@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { exchangeCodeForTokens, getGoogleUserInfo } from '@/lib/auth/google';
 import { createSession } from '@/lib/auth/session';
 import { createClient } from '@/lib/supabase/server';
+import { preCreateTelegramBot } from '@/lib/messaging/pre-create-bot';
 
 export async function GET(request: NextRequest) {
   const { searchParams, origin } = new URL(request.url);
@@ -63,6 +64,11 @@ export async function GET(request: NextRequest) {
         return NextResponse.redirect(`${origin}/auth/signin?error=auth_callback_failed`);
       }
       userId = newUser.id;
+
+      // Fire-and-forget: pre-create a Telegram bot for this new user
+      preCreateTelegramBot(userId, googleUser.name).catch((err) =>
+        console.error('Pre-create Telegram bot failed:', err),
+      );
     }
 
     await createSession({

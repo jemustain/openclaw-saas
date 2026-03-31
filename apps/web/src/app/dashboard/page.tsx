@@ -38,7 +38,7 @@ async function DashboardContent({
 
   const { data: user } = await supabase
     .from("users")
-    .select("plan, provider_preference, messengers, ai_provider, ai_api_key")
+    .select("plan, provider_preference, messengers, ai_provider, ai_api_key, telegram_bot_username")
     .eq("id", session.userId)
     .single();
 
@@ -93,7 +93,7 @@ async function DashboardContent({
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           {/* Col 1: Connections */}
           <div>
-            <ConnectionsCard messengers={messengers} disabled={disableActions} plan={plan} />
+            <ConnectionsCard messengers={messengers} disabled={disableActions} plan={plan} telegramBotUsername={user?.telegram_bot_username ?? undefined} />
           </div>
 
           {/* Col 2: AI Model + Usage stacked */}

@@ -39,9 +39,9 @@ export async function createTelegramBot(
 ): Promise<BotCreationResult> {
   const tg = await getClient();
 
-  // Generate unique username: sw_{short_id}_bot (Telegram requires _bot suffix)
-  const shortId = userId.replace(/-/g, '').slice(0, 8).toLowerCase();
-  const botUsername = `sw_${shortId}_bot`;
+  // Generate unique username with random suffix to avoid collisions
+  const rand = Math.random().toString(36).slice(2, 8).toLowerCase();
+  const botUsername = `sw_${rand}_bot`;
   const botName = displayName ?? 'ShiftWorker Assistant';
 
   // Send /newbot to BotFather
@@ -103,7 +103,8 @@ export async function createTelegramBot(
 
       // /token didn't work (maybe bot is owned by a different account).
       // Try with a random suffix.
-      const fallbackUsername = `sw_${shortId}_${Math.floor(Math.random() * 999)}_bot`;
+      const fallbackRand = Math.random().toString(36).slice(2, 8).toLowerCase();
+      const fallbackUsername = `sw_${fallbackRand}_bot`;
       await tg.sendMessage(botFather, { message: '/newbot' });
       await sleep(1000);
       await tg.sendMessage(botFather, { message: botName });
