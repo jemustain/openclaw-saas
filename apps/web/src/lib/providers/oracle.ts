@@ -210,7 +210,7 @@ export class OracleProvider implements CloudProvider {
       metadata: options.cloudInit
         ? { user_data: Buffer.from(options.cloudInit).toString("base64") }
         : undefined,
-      freeformTags: options.labels ?? { managed_by: "claw4all" },
+      freeformTags: options.labels ?? { managed_by: "openclaw-saas" },
     };
 
     const data = await ociFetch<unknown>(
