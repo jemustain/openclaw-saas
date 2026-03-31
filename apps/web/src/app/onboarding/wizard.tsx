@@ -183,12 +183,12 @@ export default function OnboardingWizard() {
     if (githubConnected === 'connected') {
       setAiProvider('github-copilot');
       setAiKeyVerified(true);
-      // If we have a step param (e.g. step=7 from Setup & Connect), go there
+      // If returnTo was a step beyond the AI Provider (e.g. step=7 from Setup & Connect), go there
       if (stepParam) {
         const s = parseInt(stepParam, 10);
-        if (s >= 0 && s < STEPS.length) { setStep(s); return; }
+        if (s > 3 && s >= 0 && s < STEPS.length) { setStep(s); return; }
       }
-      // Otherwise advance past AI Provider to Plan step
+      // Otherwise always advance past AI Provider to Plan step
       setStep(4);
       return;
     }
