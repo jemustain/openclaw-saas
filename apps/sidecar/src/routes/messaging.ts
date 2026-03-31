@@ -98,10 +98,8 @@ async function setupTelegram(config: { botToken: string }): Promise<{ status: st
     throw new Error('Missing botToken for Telegram setup');
   }
 
-  await runAsClaw(`openclaw channels add --channel telegram --token ${config.botToken}`);
-
-  // Set dmPolicy to "open" so the bot owner doesn't need pairing approval.
-  // ShiftWorker bots are personal — the person who set it up is the only user.
+  // Pre-configure dmPolicy and allowFrom BEFORE channels add,
+  // because OpenClaw validates that dmPolicy=open requires allowFrom=["*"]
   try {
     const configPath = `${CLAW_HOME}/.openclaw/openclaw.json`;
     const fs = require('fs');
@@ -111,14 +109,15 @@ async function setupTelegram(config: { botToken: string }): Promise<{ status: st
     const channels = config_data.channels = config_data.channels || {};
     const tg = channels.telegram = channels.telegram || {};
     tg.dmPolicy = 'open';
+    tg.allowFrom = ['*'];
     fs.writeFileSync(configPath, JSON.stringify(config_data, null, 2));
-    // Fix ownership
     const { execSync } = require('child_process');
     execSync(`chown ${CLAW_USER}:${CLAW_USER} ${configPath}`);
   } catch (err: any) {
-    console.error('Failed to set dmPolicy:', err.message);
-    // Non-fatal — bot still works, just requires manual pairing
+    console.error('Failed to pre-configure Telegram:', err.message);
   }
+
+  await runAsClaw(`openclaw channels add --channel telegram --token ${config.botToken}`);
 
   try {
     await execAsync('systemctl restart openclaw-sidecar', { timeout: 15_000 });
