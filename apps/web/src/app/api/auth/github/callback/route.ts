@@ -32,8 +32,8 @@ export async function GET(req: NextRequest) {
   const code = url.searchParams.get('code');
   const stateParam = url.searchParams.get('state');
   const errorParam = url.searchParams.get('error');
-  const clientId = process.env.GITHUB_CLIENT_ID;
-  const clientSecret = process.env.GITHUB_CLIENT_SECRET;
+  const clientId = process.env.GITHUB_CLIENT_ID?.trim();
+  const clientSecret = process.env.GITHUB_CLIENT_SECRET?.trim();
   const defaultReturn = '/onboarding?step=7';
 
   if (errorParam) {
@@ -77,7 +77,7 @@ export async function GET(req: NextRequest) {
     }
     const tokenData = await tokenRes.json();
     if (tokenData.error || !tokenData.access_token) {
-      console.error('GitHub token exchange error:', tokenData.error, tokenData.error_description);
+      console.error('GitHub token exchange error:', tokenData.error, tokenData.error_description, 'client_id_len:', clientId?.length, 'secret_len:', clientSecret?.length);
       return redirectWithError(url.origin, returnTo, 'token_exchange');
     }
     accessToken = tokenData.access_token;
