@@ -94,6 +94,43 @@ export async function setupTelegramForAssistant(
   }
 
   try {
+    // Check if user already has a pre-created bot in users table
+    const { data: userRow } = await (supabase as any)
+      .from('users')
+      .select('telegram_bot_username, telegram_bot_token')
+      .eq('id', userId)
+      .single();
+
+    if (userRow?.telegram_bot_token) {
+      // Use the pre-created bot — configure sidecar and copy to assistant
+      try {
+        await callSidecar(
+          assistant.ip_address,
+          assistant.sidecar_token,
+          'telegram',
+          { botToken: userRow.telegram_bot_token },
+        );
+      } catch {
+        // Best-effort sidecar config
+      }
+
+      await (supabase as any)
+        .from('assistants')
+        .update({
+          telegram_bot_username: userRow.telegram_bot_username,
+          telegram_bot_token: userRow.telegram_bot_token,
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', assistantId);
+
+      return {
+        platform: 'telegram',
+        status: 'configured',
+        botUsername: userRow.telegram_bot_username,
+        botLink: `https://t.me/${userRow.telegram_bot_username}`,
+      };
+    }
+
     // Check if BotFather automation is configured
     const { env } = await import('../env');
     const hasBotFactory = !!(env('TELEGRAM_API_ID') && env('TELEGRAM_API_HASH') && env('TELEGRAM_SESSION_STRING'));
@@ -119,6 +156,15 @@ export async function setupTelegramForAssistant(
           updated_at: new Date().toISOString(),
         })
         .eq('id', assistantId);
+
+      // Also save to users table for future reuse
+      await (supabase as any)
+        .from('users')
+        .update({
+          telegram_bot_username: bot.botUsername,
+          telegram_bot_token: bot.botToken,
+        })
+        .eq('id', userId);
 
       return {
         platform: 'telegram',

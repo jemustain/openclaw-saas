@@ -49,12 +49,14 @@ interface ConnectionsCardProps {
   messengers?: string[];
   disabled?: boolean;
   plan?: string;
+  telegramBotUsername?: string;
 }
 
 export function ConnectionsCard({
   messengers = [],
   disabled = false,
   plan = "free",
+  telegramBotUsername,
 }: ConnectionsCardProps) {
   const [messengerStatuses, setMessengerStatuses] = useState<
     MessengerStatus[]
@@ -203,6 +205,9 @@ export function ConnectionsCard({
             } else if (configured) {
               statusColor = "text-amber-400";
               statusLabel = "Configured";
+            } else if (m === "telegram" && telegramBotUsername) {
+              statusColor = "text-cyan-400";
+              statusLabel = "Bot ready";
             }
 
             return (
