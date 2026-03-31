@@ -1138,6 +1138,17 @@ export default function OnboardingWizard() {
                 </div>
               </Card>
 
+              <Card selected={aiProvider === 'github-copilot'} onClick={() => setAiProvider('github-copilot')}>
+                <div className="flex items-start gap-3">
+                  <Code className="w-8 h-8 text-violet-400 flex-shrink-0" />
+                  <div className="flex-1">
+                    <div className="font-semibold">GitHub Copilot</div>
+                    <p className="text-sm text-slate-400 mt-1">Use your GitHub Copilot subscription for AI models</p>
+                    <p className="text-xs text-slate-500 mt-1">Models: GPT-4o, Claude Sonnet 4, Gemini 2.5 Pro</p>
+                  </div>
+                </div>
+              </Card>
+
               <div className="opacity-50 cursor-not-allowed">
                 <Card selected={false} disabled>
                   <div className="flex items-start gap-3">
@@ -1169,17 +1180,6 @@ export default function OnboardingWizard() {
                   </div>
                 </Card>
               </div>
-
-              <Card selected={aiProvider === 'github-copilot'} onClick={() => setAiProvider('github-copilot')}>
-                <div className="flex items-start gap-3">
-                  <Code className="w-8 h-8 text-violet-400 flex-shrink-0" />
-                  <div className="flex-1">
-                    <div className="font-semibold">GitHub Copilot</div>
-                    <p className="text-sm text-slate-400 mt-1">Use your GitHub Copilot subscription for AI models</p>
-                    <p className="text-xs text-slate-500 mt-1">Models: GPT-4o, Claude Sonnet 4, Gemini 2.5 Pro</p>
-                  </div>
-                </div>
-              </Card>
             </div>
 
             <div className="flex justify-between items-center">

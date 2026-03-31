@@ -2,6 +2,7 @@ import { Suspense } from "react";
 import { redirect } from "next/navigation";
 import { getSession } from "@/lib/auth/session";
 import { createClient } from "@/lib/supabase/server";
+import { getProviderToken } from "@/lib/providers/token-store";
 import { AssistantHero } from "./components/assistant-card";
 import { QuickActions } from "./components/quick-actions";
 import { UsageCard } from "./components/usage-card";
@@ -57,8 +58,17 @@ async function DashboardContent({
   }
 
   const messengers: string[] = user?.messengers ?? [];
-  const aiProvider: string | null = user?.ai_provider ?? null;
-  const aiApiKey: string | null = user?.ai_api_key ?? null;
+  let aiProvider: string | null = user?.ai_provider ?? user?.provider_preference ?? null;
+  let aiApiKey: string | null = user?.ai_api_key ?? null;
+
+  // For GitHub Copilot, the token is in provider_tokens (OAuth flow), not users.ai_api_key
+  if (!aiApiKey && (aiProvider === 'github-copilot' || user?.provider_preference === 'github-copilot')) {
+    aiProvider = 'github-copilot';
+    const ghToken = await getProviderToken(session.userId, 'github-copilot');
+    if (ghToken?.accessToken) {
+      aiApiKey = ghToken.accessToken;
+    }
+  }
 
   const isActive = assistant?.status === "active";
   const isProvisioning = assistant?.status === "provisioning" || assistant?.status === "destroying";
