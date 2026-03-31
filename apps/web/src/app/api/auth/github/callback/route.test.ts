@@ -3,9 +3,12 @@ import crypto from 'crypto';
 
 const mockGetSession = vi.fn();
 const mockSaveProviderToken = vi.fn();
+const mockSupabaseUpdate = vi.fn().mockReturnValue({ eq: vi.fn().mockResolvedValue({ error: null }) });
+const mockSupabaseFrom = vi.fn().mockReturnValue({ update: mockSupabaseUpdate });
 
 vi.mock('@/lib/auth/session', () => ({ getSession: (...a: any[]) => mockGetSession(...a) }));
 vi.mock('@/lib/providers/token-store', () => ({ saveProviderToken: (...a: any[]) => mockSaveProviderToken(...a) }));
+vi.mock('@/lib/supabase/server', () => ({ createClient: () => ({ from: mockSupabaseFrom }) }));
 
 const SECRET = 'test-client-secret';
 const CLIENT_ID = 'test-client-id';

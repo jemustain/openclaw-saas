@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import crypto from 'crypto';
 import { getSession } from '@/lib/auth/session';
 import { saveProviderToken } from '@/lib/providers/token-store';
+import { createClient } from '@/lib/supabase/server';
 
 const MAX_STATE_AGE_MS = 10 * 60 * 1000;
 
@@ -106,6 +107,12 @@ export async function GET(req: NextRequest) {
 
   try {
     await saveProviderToken(session.userId, 'github-copilot', accessToken, null, null);
+    // Also update the user's ai_provider so the dashboard shows connected status
+    const supabase: any = await createClient();
+    await supabase
+      .from('users')
+      .update({ provider_preference: 'github-copilot' })
+      .eq('id', session.userId);
   } catch (err) {
     console.error('Failed to save GitHub token:', err);
     return redirectWithError(url.origin, returnTo, 'save_failed');
