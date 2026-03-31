@@ -1,5 +1,5 @@
 {
-  "name": "@handsoff/sidecar",
+  "name": "@shiftworker/sidecar",
   "version": "0.1.0",
   "private": true,
   "description": "Lightweight sidecar agent for OpenClaw user VMs",
