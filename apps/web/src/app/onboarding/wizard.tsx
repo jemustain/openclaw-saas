@@ -156,9 +156,25 @@ export default function OnboardingWizard() {
         missing_code: 'Sign-in was incomplete. Please try again.',
         invalid_state: 'Sign-in verification failed. Please try again.',
         no_tenant: 'Could not determine your Azure tenant. Please try again.',
+        access_denied: 'Access was denied. Please try again.',
+        github_error: 'GitHub sign-in failed. Please try again.',
+        oauth_not_configured: 'GitHub OAuth is not configured.',
+        save_failed: 'Failed to save your credentials. Please try again.',
       };
       setOnboardingError(errorMessages[errorParam] ?? 'Something went wrong. Please try again.');
-      setStep(1); // Go back to hosting step
+
+      // Route back to the correct step based on where the error came from
+      const githubErrors = ['token_exchange', 'missing_code', 'invalid_state', 'access_denied', 'github_error', 'oauth_not_configured', 'save_failed'];
+      if (githubErrors.includes(errorParam) && stepParam) {
+        // If we have a step param from returnTo, use it
+        const s = parseInt(stepParam, 10);
+        if (s >= 0 && s < STEPS.length) { setStep(s); return; }
+      }
+      if (githubErrors.includes(errorParam)) {
+        setStep(3); // AI Provider step
+      } else {
+        setStep(1); // Hosting step for Azure errors
+      }
       return;
     }
 

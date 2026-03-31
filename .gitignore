@@ -4,3 +4,5 @@ node_modules/
 .vercel
 .env.production
 tsconfig.tsbuildinfo
+.env.prod
+.env.vercel
