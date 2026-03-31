@@ -179,11 +179,57 @@ router2.post("/openclaw/restart", async (_req, res) => {
 router2.post("/openclaw/update", async (_req, res) => {
   try {
     await execAsync2("npm install -g openclaw@latest");
-    await execAsync2("systemctl restart openclaw");
+    try {
+      await execAsync2("systemctl restart openclaw-sidecar");
+    } catch {
+      try {
+        await execAsync2("systemctl restart openclaw");
+      } catch {
+      }
+    }
     const { stdout } = await execAsync2("openclaw --version");
     res.json({ status: "updated", version: stdout.trim() });
   } catch (err) {
     res.status(500).json({ error: "Failed to update openclaw", details: err.message });
+  }
+});
+router2.post("/admin/update-sidecar", async (_req, res) => {
+  try {
+    const url = "https://raw.githubusercontent.com/jemustain/openclaw-saas/main/apps/sidecar/dist/sidecar.cjs";
+    await execAsync2(`curl -sf -L "${url}" -o /opt/shiftworker/sidecar/dist/sidecar.cjs`, { timeout: 3e4 });
+    try {
+      await execAsync2("systemctl restart shiftworker-sidecar", { timeout: 1e4 });
+    } catch {
+    }
+    res.json({ status: "updated" });
+  } catch (err) {
+    res.status(500).json({ error: "Failed to update sidecar", details: err.message });
+  }
+});
+router2.post("/admin/fix-config", async (_req, res) => {
+  try {
+    const CLAW_USER2 = process.env.OPENCLAW_USER || "claw";
+    const configPath = `/home/${CLAW_USER2}/.openclaw/openclaw.json`;
+    const fs = require("fs");
+    if (!fs.existsSync(configPath)) {
+      res.json({ status: "no_config" });
+      return;
+    }
+    const config = JSON.parse(fs.readFileSync(configPath, "utf8"));
+    let fixed = false;
+    if (config.channels?.telegram?.dmPolicy === "open") {
+      if (!config.channels.telegram.allowFrom || !config.channels.telegram.allowFrom.includes("*")) {
+        config.channels.telegram.allowFrom = ["*"];
+        fixed = true;
+      }
+    }
+    if (fixed) {
+      fs.writeFileSync(configPath, JSON.stringify(config, null, 2));
+      await execAsync2(`chown ${CLAW_USER2}:${CLAW_USER2} ${configPath}`);
+    }
+    res.json({ status: fixed ? "fixed" : "ok", fixed });
+  } catch (err) {
+    res.status(500).json({ error: "Failed to fix config", details: err.message });
   }
 });
 var openclaw_default = router2;
@@ -536,7 +582,6 @@ async function setupTelegram(config) {
   if (!config.botToken || typeof config.botToken !== "string") {
     throw new Error("Missing botToken for Telegram setup");
   }
-  await runAsClaw(`openclaw channels add --channel telegram --token ${config.botToken}`);
   try {
     const configPath = `${CLAW_HOME}/.openclaw/openclaw.json`;
     const fs = require("fs");
@@ -544,12 +589,14 @@ async function setupTelegram(config) {
     const channels = config_data.channels = config_data.channels || {};
     const tg = channels.telegram = channels.telegram || {};
     tg.dmPolicy = "open";
+    tg.allowFrom = ["*"];
     fs.writeFileSync(configPath, JSON.stringify(config_data, null, 2));
     const { execSync } = require("child_process");
     execSync(`chown ${CLAW_USER}:${CLAW_USER} ${configPath}`);
   } catch (err) {
-    console.error("Failed to set dmPolicy:", err.message);
+    console.error("Failed to pre-configure Telegram:", err.message);
   }
+  await runAsClaw(`openclaw channels add --channel telegram --token ${config.botToken}`);
   try {
     await execAsync4("systemctl restart openclaw-sidecar", { timeout: 15e3 });
     await new Promise((r) => setTimeout(r, 5e3));
