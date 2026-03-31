@@ -178,6 +178,21 @@ export default function OnboardingWizard() {
       return;
     }
 
+    // Handle GitHub Copilot OAuth success: mark as connected and advance
+    const githubConnected = searchParams.get('github');
+    if (githubConnected === 'connected') {
+      setAiProvider('github-copilot');
+      setAiKeyVerified(true);
+      // If we have a step param (e.g. step=7 from Setup & Connect), go there
+      if (stepParam) {
+        const s = parseInt(stepParam, 10);
+        if (s >= 0 && s < STEPS.length) { setStep(s); return; }
+      }
+      // Otherwise advance past AI Provider to Plan step
+      setStep(4);
+      return;
+    }
+
     if (stepParam) {
       const s = parseInt(stepParam, 10);
       if (s >= 0 && s < STEPS.length) setStep(s);
