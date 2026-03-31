@@ -61,7 +61,7 @@ export function MessengerSetupModal({
   onConnected,
 }: MessengerSetupModalProps) {
   const info = MESSENGER_INFO[messenger];
-  const isTelegram = messenger === "telegram";
+  const isTelegram = false; // Use the standard setup flow for all platforms now
 
   // Non-Telegram state
   const [status, setStatus] = useState<
