@@ -51,6 +51,7 @@ export function AssistantHero({ assistant }: { assistant: Assistant | null }) {
   const [loading, setLoading] = useState<string | null>(null);
   const [current, setCurrent] = useState(assistant);
   const [confirmDestroy, setConfirmDestroy] = useState(false);
+  const [showMenu, setShowMenu] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const [destroying, setDestroying] = useState(false);
@@ -335,12 +336,25 @@ export function AssistantHero({ assistant }: { assistant: Assistant | null }) {
               )}
 
               {current && status !== "destroying" && !confirmDestroy && (
-                <button
-                  onClick={() => setConfirmDestroy(true)}
-                  className="rounded-full bg-red-900/50 px-5 py-2 text-sm font-medium text-red-300 hover:bg-red-900 transition-colors"
-                >
-                  Destroy
-                </button>
+                <div className="relative">
+                  <button
+                    onClick={() => setShowMenu(!showMenu)}
+                    className="rounded-full bg-slate-800 p-2 text-slate-400 hover:text-white hover:bg-slate-700 transition-colors"
+                    title="More options"
+                  >
+                    <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20"><circle cx="4" cy="10" r="1.5"/><circle cx="10" cy="10" r="1.5"/><circle cx="16" cy="10" r="1.5"/></svg>
+                  </button>
+                  {showMenu && (
+                    <div className="absolute right-0 top-full mt-1 w-44 rounded-lg bg-slate-800 border border-slate-700 shadow-lg z-10">
+                      <button
+                        onClick={() => { setShowMenu(false); setConfirmDestroy(true); }}
+                        className="w-full text-left px-4 py-2.5 text-sm text-red-400 hover:bg-slate-700 rounded-lg transition-colors"
+                      >
+                        Destroy server
+                      </button>
+                    </div>
+                  )}
+                </div>
               )}
 
               {confirmDestroy && (

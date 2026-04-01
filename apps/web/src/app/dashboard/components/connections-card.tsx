@@ -203,12 +203,23 @@ export function ConnectionsCard({
               statusColor = "text-green-500";
               statusLabel = "Connected";
             } else if (configured) {
-              statusColor = "text-amber-400";
-              statusLabel = "Configured";
+              statusColor = "text-green-400";
+              statusLabel = "Connected";
             } else if (m === "telegram" && telegramBotUsername) {
               statusColor = "text-cyan-400";
               statusLabel = "Bot ready";
             }
+
+            // For free plan, only show the connected/configured messenger
+            // Hide other messengers entirely, show "Change messenger" link instead
+            if (isFree && !connected && !configured && !(m === "telegram" && telegramBotUsername)) {
+              return null;
+            }
+
+            // Determine the bot link for Telegram
+            const telegramLink = m === "telegram" && telegramBotUsername
+              ? `https://t.me/${telegramBotUsername}`
+              : botLink;
 
             return (
               <div key={m}>
@@ -223,40 +234,28 @@ export function ConnectionsCard({
                     </span>
                   </div>
 
-                  {/* Connected: show Open + Disconnect */}
-                  {connected && (
-                    <div className="flex items-center gap-2">
-                      {botLink && (
-                        <a
-                          href={botLink}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="rounded-md bg-slate-800 px-3 py-1 text-xs text-slate-300 hover:bg-slate-700"
-                        >
-                          Open
-                        </a>
-                      )}
-                      <button
-                        type="button"
-                        disabled={disconnecting === m || disabled}
-                        onClick={() => handleDisconnect(m)}
-                        className="rounded-md bg-red-900/50 px-3 py-1 text-xs text-red-400 hover:bg-red-900/80 disabled:opacity-50"
-                      >
-                        {disconnecting === m ? "Disconnecting…" : "Disconnect"}
-                      </button>
-                    </div>
+                  {/* Connected or configured: show Open in Telegram link */}
+                  {(connected || configured) && telegramLink && (
+                    <a
+                      href={telegramLink}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="rounded-md bg-indigo-600 px-3 py-1 text-xs text-white hover:bg-indigo-500"
+                    >
+                      Open in {config.name}
+                    </a>
                   )}
 
-                  {/* Configured but not connected: Reconnect */}
-                  {!connected && configured && !locked && (
-                    <button
-                      type="button"
-                      disabled={disabled}
-                      onClick={() => handleConnectClick(m)}
-                      className="rounded-md bg-amber-600 px-3 py-1 text-xs text-white hover:bg-amber-500 disabled:opacity-50 disabled:cursor-not-allowed"
+                  {/* Connected or configured but no link: show Open button */}
+                  {(connected || configured) && !telegramLink && botLink && (
+                    <a
+                      href={botLink}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="rounded-md bg-indigo-600 px-3 py-1 text-xs text-white hover:bg-indigo-500"
                     >
-                      Reconnect
-                    </button>
+                      Open in {config.name}
+                    </a>
                   )}
 
                   {/* Not connected, not configured, not locked: Connect */}
@@ -333,6 +332,21 @@ export function ConnectionsCard({
               </div>
             );
           })}
+
+          {/* Free plan: show change messenger option */}
+          {isFree && hasConnection && (
+            <div className="pt-2 border-t border-slate-800">
+              <button
+                type="button"
+                onClick={() => setSwitchConfirm(
+                  connectedMessenger?.messenger === "telegram" ? "whatsapp" : "telegram"
+                )}
+                className="text-xs text-slate-500 hover:text-violet-400 transition-colors"
+              >
+                Change messenger...
+              </button>
+            </div>
+          )}
         </div>
       </div>
 
