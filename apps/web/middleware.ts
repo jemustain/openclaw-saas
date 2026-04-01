@@ -7,10 +7,20 @@ const protectedPrefixes = ['/dashboard', '/onboarding', '/api/launch', '/api/ass
 const onboardingSkipPrefixes = ['/onboarding', '/api/', '/_next/', '/auth/'];
 
 export async function middleware(request: NextRequest) {
+  const { hostname, pathname } = request.nextUrl;
+
+  // Redirect non-canonical hostnames to shiftworker.ai
+  const canonicalHost = 'shiftworker.ai';
+  if (hostname !== canonicalHost && hostname !== 'localhost' && !hostname.startsWith('192.168.') && !hostname.startsWith('127.')) {
+    const url = new URL(request.url);
+    url.hostname = canonicalHost;
+    url.port = '';
+    url.protocol = 'https:';
+    return NextResponse.redirect(url, 301);
+  }
+
   const token = request.cookies.get('session')?.value;
   const session = token ? await verifySessionToken(token) : null;
-
-  const { pathname } = request.nextUrl;
 
   // Public paths — always accessible
   if (publicPaths.some((p) => pathname === p)) {

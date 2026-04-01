@@ -76,6 +76,8 @@ write_files:
       ExecStart=/usr/bin/node dist/sidecar.cjs
       Restart=always
       RestartSec=5
+      WatchdogSec=120
+      WatchdogSignal=SIGKILL
       [Install]
       WantedBy=multi-user.target
   - path: /opt/shiftworker/patch-config.py
@@ -132,6 +134,21 @@ write_files:
       systemctl daemon-reload
       systemctl enable --now openclaw-sidecar
       systemctl enable --now shiftworker-sidecar
+      # Health check: verify sidecar is responding
+      HEALTH_OK=0
+      for i in 1 2 3 4 5; do
+        if curl -sf http://localhost:8788/health > /dev/null 2>&1; then
+          HEALTH_OK=1
+          break
+        fi
+        echo "Health check attempt $i failed, retrying in 5s..."
+        sleep 5
+      done
+      if [ "$HEALTH_OK" -eq 0 ]; then
+        echo "WARNING: Sidecar health check failed after 5 attempts"
+        systemctl restart shiftworker-sidecar
+        sleep 10
+      fi
       source /etc/shiftworker/sidecar.env
       curl -sf -X POST "$PORTAL_URL/api/instances/$INSTANCE_ID/phone-home" \\
         -H "Authorization: Bearer $SIDECAR_TOKEN" \\
