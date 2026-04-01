@@ -120,7 +120,7 @@ export async function launchAssistant(userId: string): Promise<Assistant> {
   // Read user record to get VM size and subscription preferences
   const { data: user, error: userError } = await supabase
     .from('users')
-    .select('vm_size, azure_subscription_id')
+    .select('vm_size, azure_subscription_id, telegram_bot_token')
     .eq('id', userId)
     .single();
 
@@ -135,6 +135,7 @@ export async function launchAssistant(userId: string): Promise<Assistant> {
     sidecarToken,
     portalUrl: PORTAL_URL,
     instanceId: assistantId,
+    telegramBotToken: user?.telegram_bot_token ?? undefined,
   });
 
   // Insert assistant record as provisioning
