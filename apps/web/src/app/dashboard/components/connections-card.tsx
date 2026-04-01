@@ -9,11 +9,11 @@ const MESSENGER_CONFIG: Record<
   string,
   { name: string; icon: string; color: string }
 > = {
-  telegram: { name: "Telegram", icon: "", color: "text-blue-400" },
-  whatsapp: { name: "WhatsApp", icon: "", color: "text-green-400" },
-  discord: { name: "Discord", icon: "", color: "text-indigo-400" },
-  slack: { name: "Slack", icon: "", color: "text-purple-400" },
-  signal: { name: "Signal", icon: "", color: "text-blue-300" },
+  telegram: { name: "Telegram", icon: "✈️", color: "text-blue-400" },
+  whatsapp: { name: "WhatsApp", icon: "💬", color: "text-green-400" },
+  discord: { name: "Discord", icon: "🎮", color: "text-indigo-400" },
+  slack: { name: "Slack", icon: "#️⃣", color: "text-purple-400" },
+  signal: { name: "Signal", icon: "🔒", color: "text-blue-300" },
 };
 
 interface MessengerStatus {
@@ -159,6 +159,14 @@ export function ConnectionsCard({
     setSetupModal(key);
   };
 
+  // Build the ordered list of messengers to display:
+  // 1. User's selected messengers first (from DB)
+  // 2. Then remaining available messengers
+  const displayMessengers: string[] = [
+    ...messengers.filter((m) => ALL_MESSENGERS.includes(m as any)),
+    ...ALL_MESSENGERS.filter((m) => !messengers.includes(m)),
+  ];
+
   if (fetchLoading) return <ConnectionsCardSkeleton />;
 
   if (fetchError && messengerStatuses.length === 0) {
@@ -187,7 +195,7 @@ export function ConnectionsCard({
         </div>
 
         <div className="space-y-3">
-          {ALL_MESSENGERS.map((m) => {
+          {displayMessengers.map((m) => {
             const config = MESSENGER_CONFIG[m];
             if (!config) return null;
 
@@ -196,6 +204,7 @@ export function ConnectionsCard({
             const configured = status?.configured ?? false;
             const botLink = status?.botLink;
             const locked = isLockedForFree(m);
+            const isUserSelected = messengers.includes(m);
 
             let statusColor = "text-slate-600";
             let statusLabel = "Not set up";
@@ -203,11 +212,14 @@ export function ConnectionsCard({
               statusColor = "text-green-500";
               statusLabel = "Connected";
             } else if (configured) {
-              statusColor = "text-green-400";
-              statusLabel = "Connected";
+              statusColor = "text-amber-400";
+              statusLabel = "Configured";
             } else if (m === "telegram" && telegramBotUsername) {
               statusColor = "text-cyan-400";
               statusLabel = "Bot ready";
+            } else if (isUserSelected) {
+              statusColor = "text-amber-400";
+              statusLabel = "Needs setup";
             }
 
             // For free plan, only show the connected/configured messenger
@@ -224,47 +236,71 @@ export function ConnectionsCard({
             return (
               <div key={m}>
                 <div
-                  className={`flex items-center justify-between ${locked ? "opacity-60" : ""}`}
+                  className={`flex items-center justify-between py-2 ${locked ? "opacity-60" : ""}`}
                 >
-                  <div className="flex items-center gap-2">
-                    <span>{config.icon}</span>
-                    <span className="text-slate-300">{config.name}</span>
+                  <div className="flex items-center gap-2.5">
+                    <span className="text-lg leading-none">{config.icon}</span>
+                    <span className={`font-medium ${isUserSelected || connected ? "text-white" : "text-slate-400"}`}>{config.name}</span>
                     <span className={`text-xs ${statusColor}`}>
                       ● {statusLabel}
                     </span>
                   </div>
 
-                  {/* Connected or configured: show Open in Telegram link */}
-                  {(connected || configured) && telegramLink && (
-                    <a
-                      href={telegramLink}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="rounded-md bg-indigo-600 px-3 py-1 text-xs text-white hover:bg-indigo-500"
-                    >
-                      Open in {config.name}
-                    </a>
+                  {/* Connected: show Open + Disconnect */}
+                  {connected && (
+                    <div className="flex items-center gap-2">
+                      {(telegramLink || botLink) && (
+                        <a
+                          href={telegramLink || botLink!}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="rounded-md bg-slate-800 px-3 py-1.5 text-xs text-slate-300 hover:bg-slate-700"
+                        >
+                          Open in {config.name}
+                        </a>
+                      )}
+                      <button
+                        type="button"
+                        disabled={disconnecting === m || disabled}
+                        onClick={() => handleDisconnect(m)}
+                        className="rounded-md bg-red-900/50 px-3 py-1.5 text-xs text-red-400 hover:bg-red-900/80 disabled:opacity-50"
+                      >
+                        {disconnecting === m ? "Disconnecting…" : "Disconnect"}
+                      </button>
+                    </div>
                   )}
 
-                  {/* Connected or configured but no link: show Open button */}
-                  {(connected || configured) && !telegramLink && botLink && (
-                    <a
-                      href={botLink}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="rounded-md bg-indigo-600 px-3 py-1 text-xs text-white hover:bg-indigo-500"
-                    >
-                      Open in {config.name}
-                    </a>
-                  )}
-
-                  {/* Not connected, not configured, not locked: Connect */}
-                  {!connected && !configured && !locked && (
+                  {/* User selected but not connected and not configured: Setup */}
+                  {!connected && !configured && isUserSelected && !locked && (
                     <button
                       type="button"
                       disabled={disabled}
                       onClick={() => handleConnectClick(m)}
-                      className="rounded-md bg-slate-800 px-3 py-1 text-xs text-slate-400 hover:bg-slate-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                      className="rounded-md bg-violet-600 px-3 py-1.5 text-xs text-white hover:bg-violet-500 disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      Set Up
+                    </button>
+                  )}
+
+                  {/* Configured but not connected: Reconnect */}
+                  {!connected && configured && !locked && (
+                    <button
+                      type="button"
+                      disabled={disabled}
+                      onClick={() => handleConnectClick(m)}
+                      className="rounded-md bg-amber-600 px-3 py-1.5 text-xs text-white hover:bg-amber-500 disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      Reconnect
+                    </button>
+                  )}
+
+                  {/* Not selected, not connected, not configured, not locked: Connect */}
+                  {!connected && !configured && !isUserSelected && !locked && (
+                    <button
+                      type="button"
+                      disabled={disabled}
+                      onClick={() => handleConnectClick(m)}
+                      className="rounded-md bg-slate-800 px-3 py-1.5 text-xs text-slate-400 hover:bg-slate-700 disabled:opacity-50 disabled:cursor-not-allowed"
                     >
                       Connect
                     </button>
@@ -277,7 +313,7 @@ export function ConnectionsCard({
                         type="button"
                         disabled={disabled}
                         onClick={() => handleConnectClick(m)}
-                        className="rounded-md bg-slate-800 px-3 py-1 text-xs text-slate-500 hover:bg-slate-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                        className="rounded-md bg-slate-800 px-3 py-1.5 text-xs text-slate-500 hover:bg-slate-700 disabled:opacity-50 disabled:cursor-not-allowed"
                         title="Switch to this messenger (disconnects current)"
                       >
                         Switch
@@ -306,7 +342,7 @@ export function ConnectionsCard({
                         href="/dashboard/billing"
                         className="flex items-center justify-center gap-1.5 rounded-md bg-gradient-to-r from-violet-600 to-indigo-600 px-4 py-2 text-xs font-semibold text-white hover:from-violet-500 hover:to-indigo-500 transition-all"
                       >
-                        ✨ Keep both — Upgrade to Pro
+                        ✨ Keep both - Upgrade to Pro
                       </a>
                       <div className="flex items-center gap-2">
                         <button
