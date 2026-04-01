@@ -186,15 +186,19 @@ export function MessengerSetupModal({
       if (!res.ok) {
         setError(res.status === 500
           ? "Your server is still starting up. Try again in a minute."
-          : `Setup failed (HTTP ${res.status})`);
+          : "Setup is taking longer than expected. Please try again.");
         setStatus("failed");
         return;
       }
       const data = await res.json();
 
-      if (data.error) {
+      if (data.status === "failed" && data.error) {
         setError(data.error);
         setStatus("failed");
+      } else if (data.status === "pending" && data.error) {
+        // VM not ready or manual setup required - retry later
+        setError(null);
+        setStatus("setting-up");
       } else if (data.botLink) {
         setBotLink(data.botLink);
         setStatus("ready");

@@ -617,15 +617,19 @@ export default function OnboardingWizard() {
           body: JSON.stringify({ platform: messengerId }),
         });
         if (!res.ok) {
-          setError(`Setup failed (HTTP ${res.status})`);
+          setError('Setup is taking longer than expected. Please try again.');
           setStatus('failed');
           return;
         }
         const data = await res.json();
 
-        if (data.error) {
+        if (data.status === 'failed' && data.error) {
           setError(data.error);
           setStatus('failed');
+        } else if (data.status === 'pending' && data.error) {
+          // VM not ready or manual setup required - show as waiting, not failed
+          setError(null);
+          setStatus('waiting');
         } else if (data.botLink) {
           setBotLink(data.botLink);
           setStatus('ready');
@@ -660,7 +664,7 @@ export default function OnboardingWizard() {
             }
           }
         } catch { /* ignore */ }
-        setError('Setup timed out — please try again');
+        setError('Connection timed out. Please try again.');
         setStatus('failed');
       }
     }, [messengerId, onReady]);
