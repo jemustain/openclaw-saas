@@ -184,7 +184,9 @@ export function MessengerSetupModal({
         body: JSON.stringify({ platform: messenger }),
       });
       if (!res.ok) {
-        setError(`Setup failed (HTTP ${res.status})`);
+        setError(res.status === 500
+          ? "Your server is still starting up. Try again in a minute."
+          : `Setup failed (HTTP ${res.status})`);
         setStatus("failed");
         return;
       }
@@ -212,8 +214,10 @@ export function MessengerSetupModal({
         setStatus("ready");
       }
     } catch {
-      setError("Failed to set up - please try again");
+      setError("Setup is taking longer than expected. Retrying...");
       setStatus("failed");
+      // Auto-retry once after 10s
+      setTimeout(() => triggerSetup(), 10000);
     }
   }, [messenger, onConnected]);
 

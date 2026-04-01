@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
+import { useRouter } from "next/navigation";
 
 interface Assistant {
   id: string;
@@ -46,6 +47,7 @@ function formatTime(secs: number): string {
 }
 
 export function AssistantHero({ assistant }: { assistant: Assistant | null }) {
+  const router = useRouter();
   const [loading, setLoading] = useState<string | null>(null);
   const [current, setCurrent] = useState(assistant);
   const [confirmDestroy, setConfirmDestroy] = useState(false);
@@ -144,6 +146,8 @@ export function AssistantHero({ assistant }: { assistant: Assistant | null }) {
             setCurrent(a);
             setProvisioning(false);
             setProvisionSteps((prev) => [...prev, "Your assistant is online!"]);
+            // Refresh server components so the whole dashboard reflects the new status
+            router.refresh();
             return;
           }
           if (a?.status === "destroyed" || a?.status === "destroying") {

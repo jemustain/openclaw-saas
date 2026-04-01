@@ -396,15 +396,8 @@ export async function disconnectMessenger(
   const errors: string[] = [];
 
   if (platform === 'telegram') {
-    // Delete bot via BotFather (best-effort)
-    if (assistant.telegram_bot_username) {
-      try {
-        await deleteTelegramBot(assistant.telegram_bot_username);
-      } catch (err: unknown) {
-        const msg = err instanceof Error ? err.message : String(err);
-        errors.push(`BotFather delete failed: ${msg}`);
-      }
-    }
+    // Keep the bot alive for reuse - don't delete via BotFather
+    // The bot is stored on the user record and can be re-attached to a new VM
 
     // Teardown sidecar channel (best-effort)
     if (assistant.ip_address && assistant.sidecar_token) {
