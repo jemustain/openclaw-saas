@@ -136,6 +136,23 @@ async function setupTelegram(config: { botToken: string }): Promise<{ status: st
     try { await runAsClaw('openclaw gateway restart'); } catch {}
   }
 
+  // Verify the channel was actually added
+  try {
+    const { stdout } = await runAsClaw('openclaw channels list --json 2>/dev/null', 10_000);
+    const data = JSON.parse(stdout.trim());
+    const channels = Array.isArray(data) ? data : data.channels || [];
+    const hasTelegram = channels.some((ch: any) => (ch.channel || ch.name || '').toLowerCase() === 'telegram');
+    if (!hasTelegram) {
+      // Retry: add again and restart
+      console.warn('Telegram channel not found after setup, retrying...');
+      await runAsClaw(`openclaw channels add --channel telegram --token ${config.botToken}`);
+      try { await execAsync('systemctl restart openclaw-sidecar', { timeout: 15_000 }); } catch {}
+      await new Promise(r => setTimeout(r, 5000));
+    }
+  } catch {
+    // Non-fatal - channel may still work even if list fails
+  }
+
   // Auto-approve the first Telegram pairing request within the next 10 minutes.
   // This lets the bot owner pair seamlessly while keeping strangers blocked.
   autoApproveFirstPairing('telegram', 10 * 60_000);

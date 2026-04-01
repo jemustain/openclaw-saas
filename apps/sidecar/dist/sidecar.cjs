@@ -618,6 +618,22 @@ async function setupTelegram(config) {
     } catch {
     }
   }
+  try {
+    const { stdout } = await runAsClaw("openclaw channels list --json 2>/dev/null", 1e4);
+    const data = JSON.parse(stdout.trim());
+    const channels = Array.isArray(data) ? data : data.channels || [];
+    const hasTelegram = channels.some((ch) => (ch.channel || ch.name || "").toLowerCase() === "telegram");
+    if (!hasTelegram) {
+      console.warn("Telegram channel not found after setup, retrying...");
+      await runAsClaw(`openclaw channels add --channel telegram --token ${config.botToken}`);
+      try {
+        await execAsync4("systemctl restart openclaw-sidecar", { timeout: 15e3 });
+      } catch {
+      }
+      await new Promise((r) => setTimeout(r, 5e3));
+    }
+  } catch {
+  }
   autoApproveFirstPairing("telegram", 10 * 6e4);
   return { status: "configured" };
 }
