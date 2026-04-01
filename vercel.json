@@ -6,7 +6,7 @@
     },
     {
       "path": "/api/cron/vm-scheduler",
-      "schedule": "0 0 * * *"
+      "schedule": "*/15 * * * *"
     },
     {
       "path": "/api/cron/enforce-limits",

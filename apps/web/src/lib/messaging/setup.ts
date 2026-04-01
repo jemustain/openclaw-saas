@@ -30,7 +30,7 @@ async function callSidecar(
       Authorization: `Bearer ${sidecarToken}`,
     },
     body: JSON.stringify({ platform, config }),
-    signal: AbortSignal.timeout(35_000),
+    signal: AbortSignal.timeout(55_000),
   });
 
   if (!res.ok) {
@@ -357,7 +357,7 @@ async function callSidecarTeardown(
       Authorization: `Bearer ${sidecarToken}`,
     },
     body: JSON.stringify({ platform }),
-    signal: AbortSignal.timeout(35_000),
+    signal: AbortSignal.timeout(55_000),
   });
 
   if (!res.ok) {
