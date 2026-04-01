@@ -9,6 +9,9 @@ export interface CloudInitOptions {
   username?: string;
   openclawVersion?: string;
   nodeVersion?: number;
+  telegramBotToken?: string;
+  aiProvider?: string;
+  aiApiKey?: string;
 }
 
 export function generateCloudInit(opts: CloudInitOptions): string {
@@ -149,7 +152,32 @@ write_files:
         systemctl restart shiftworker-sidecar
         sleep 10
       fi
-      source /etc/shiftworker/sidecar.env
+${opts.telegramBotToken ? `
+      # Configure Telegram bot
+      echo "Configuring Telegram bot..."
+      TELEGRAM_TOKEN="${opts.telegramBotToken.replace(/"/g, '\\"')}"
+      # Pre-configure dmPolicy and allowFrom
+      python3 -c "
+import json, os, pwd
+user = '${user}'
+config_path = os.path.join('/home', user, '.openclaw', 'openclaw.json')
+config = {}
+if os.path.exists(config_path):
+    with open(config_path) as f:
+        config = json.load(f)
+channels = config.setdefault('channels', {})
+tg = channels.setdefault('telegram', {})
+tg['dmPolicy'] = 'open'
+tg['allowFrom'] = ['*']
+with open(config_path, 'w') as f:
+    json.dump(config, f, indent=2)
+pw = pwd.getpwnam(user)
+os.chown(config_path, pw.pw_uid, pw.pw_gid)
+"
+      su - ${user} -c "openclaw channels add --channel telegram --token $TELEGRAM_TOKEN" || true
+      systemctl restart openclaw-sidecar
+      sleep 5
+` : ''}      source /etc/shiftworker/sidecar.env
       curl -sf -X POST "$PORTAL_URL/api/instances/$INSTANCE_ID/phone-home" \\
         -H "Authorization: Bearer $SIDECAR_TOKEN" \\
         -H "Content-Type: application/json" \\
