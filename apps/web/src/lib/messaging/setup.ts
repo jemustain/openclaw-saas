@@ -181,9 +181,30 @@ export async function setupTelegramForAssistant(
       };
     }
   } catch (err: unknown) {
-    const message = err instanceof Error ? err.message : String(err);
-    return { platform: 'telegram', status: 'failed', error: message };
+    const rawMessage = err instanceof Error ? err.message : String(err);
+    console.error('Telegram setup error:', rawMessage);
+    const userMessage = sanitizeTelegramError(rawMessage);
+    return { platform: 'telegram', status: 'failed', error: userMessage };
   }
+}
+
+/**
+ * Convert internal Telegram errors into user-friendly messages.
+ */
+function sanitizeTelegramError(raw: string): string {
+  if (raw.includes('telegram_bot_creation_failed')) {
+    return 'Telegram bot setup took longer than expected. Please try again - it usually works on the second attempt.';
+  }
+  if (raw.includes('BotFather') || raw.includes('token')) {
+    return 'Telegram bot setup encountered a temporary issue. Please try again.';
+  }
+  if (raw.includes('connect') || raw.includes('ECONNREFUSED') || raw.includes('timeout')) {
+    return 'Could not reach the Telegram servers. Please check your connection and try again.';
+  }
+  if (raw.includes('Sidecar') || raw.includes('sidecar')) {
+    return 'Your server is still starting up. Please wait a moment and try again.';
+  }
+  return 'Telegram setup failed. Please try again.';
 }
 
 /**
@@ -236,8 +257,9 @@ export async function setupTelegramWithToken(
       ...(botUsername ? { botUsername, botLink: `https://t.me/${botUsername}` } : {}),
     };
   } catch (err: unknown) {
-    const message = err instanceof Error ? err.message : String(err);
-    return { platform: 'telegram', status: 'failed', error: message };
+    const rawMessage = err instanceof Error ? err.message : String(err);
+    console.error('Telegram token setup error:', rawMessage);
+    return { platform: 'telegram', status: 'failed', error: 'Failed to configure Telegram bot. Please check your token and try again.' };
   }
 }
 
@@ -304,8 +326,9 @@ export async function setupWhatsAppForAssistant(
       controlUiUrl,
     };
   } catch (err: unknown) {
-    const message = err instanceof Error ? err.message : String(err);
-    return { platform: 'whatsapp', status: 'failed', error: message };
+    const rawMessage = err instanceof Error ? err.message : String(err);
+    console.error('WhatsApp setup error:', rawMessage);
+    return { platform: 'whatsapp', status: 'failed', error: 'WhatsApp setup failed. Please try again.' };
   }
 }
 
@@ -336,8 +359,9 @@ export async function requestWhatsAppPairingCode(
     if (result.pairingCode) return { pairingCode: result.pairingCode as string };
     return { error: (result.error as string) || 'Failed to generate pairing code' };
   } catch (err: unknown) {
-    const message = err instanceof Error ? err.message : String(err);
-    return { error: message };
+    const rawMessage = err instanceof Error ? err.message : String(err);
+    console.error('WhatsApp pairing code error:', rawMessage);
+    return { error: 'Failed to generate pairing code. Please try again.' };
   }
 }
 
