@@ -237,7 +237,7 @@ async function requestWhatsAppPairingCode(phoneNumber: string): Promise<{ pairin
         try { sock.end(undefined); } catch {}
         resolve({ error: 'Timed out waiting for pairing code' });
       }
-    }, 30_000);
+    }, 60_000);
 
     sock.ev.on('connection.update', async (update: any) => {
       const { connection, qr } = update;
@@ -332,7 +332,7 @@ async function captureWhatsAppQr(): Promise<string | null> {
   return new Promise((resolve) => {
     const child = exec(
       `su - ${CLAW_USER} -c 'openclaw channels login --channel whatsapp 2>&1'`,
-      { timeout: 25_000 },
+      { timeout: 45_000 },
     );
 
     let output = '';
