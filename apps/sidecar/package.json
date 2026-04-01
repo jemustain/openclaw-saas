@@ -5,7 +5,7 @@
   "description": "Lightweight sidecar agent for OpenClaw user VMs",
   "main": "dist/index.js",
   "scripts": {
-    "build": "tsc",
+    "build": "tsc && npx esbuild src/index.ts --bundle --platform=node --outfile=dist/sidecar.cjs --format=cjs --external:@whiskeysockets/baileys --external:pino --external:ws --external:express",
     "start": "node dist/index.js",
     "dev": "tsx src/index.ts"
   },

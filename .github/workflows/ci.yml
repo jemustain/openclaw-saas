@@ -54,3 +54,15 @@ jobs:
       - name: Build
         working-directory: apps/web
         run: npm run build
+
+      - name: Verify sidecar bundle is up to date
+        working-directory: apps/sidecar
+        run: |
+          npm ci
+          HASH_BEFORE=$(sha256sum dist/sidecar.cjs | cut -d' ' -f1)
+          npm run build
+          HASH_AFTER=$(sha256sum dist/sidecar.cjs | cut -d' ' -f1)
+          if [ "$HASH_BEFORE" != "$HASH_AFTER" ]; then
+            echo "::error::sidecar.cjs is stale! Run 'cd apps/sidecar && npm run build' and commit the result."
+            exit 1
+          fi
