@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useRef } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import {
   Sparkles, Cloud, Server, CreditCard, MessageSquare,
@@ -604,6 +604,7 @@ export default function OnboardingWizard() {
     const [pairingCode, setPairingCode] = useState<string | null>(null);
     const [phoneLoading, setPhoneLoading] = useState(false);
     const [phoneError, setPhoneError] = useState<string | null>(null);
+    const setupAttempted = useRef(false);
 
     // Trigger setup via sidecar (all messengers including Telegram)
     const triggerSetup = useCallback(async () => {
@@ -627,9 +628,9 @@ export default function OnboardingWizard() {
           setError(data.error);
           setStatus('failed');
         } else if (data.status === 'pending' && data.error) {
-          // VM not ready or manual setup required - show as waiting, not failed
+          // VM not ready - retry after delay instead of going back to 'waiting' (avoids infinite loop)
           setError(null);
-          setStatus('waiting');
+          setTimeout(() => triggerSetup(), 10000);
         } else if (data.botLink) {
           setBotLink(data.botLink);
           setStatus('ready');
@@ -707,6 +708,8 @@ export default function OnboardingWizard() {
     // Auto-trigger setup when server comes online (all messengers)
     useEffect(() => {
       if (!isServerActive || status !== 'waiting') return;
+      if (setupAttempted.current) return;
+      setupAttempted.current = true;
       triggerSetup();
     }, [isServerActive, status, triggerSetup]);
 
