@@ -1,19 +1,20 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
+import { Send, MessageCircle, Hash, Slack, Shield } from "lucide-react";
 import { MessengerSetupModal } from "./messenger-setup-modal";
 
 const ALL_MESSENGERS = ["telegram", "whatsapp"] as const;
 
 const MESSENGER_CONFIG: Record<
   string,
-  { name: string; icon: string; color: string }
+  { name: string; icon: typeof Send; color: string }
 > = {
-  telegram: { name: "Telegram", icon: "✈️", color: "text-blue-400" },
-  whatsapp: { name: "WhatsApp", icon: "💬", color: "text-green-400" },
-  discord: { name: "Discord", icon: "🎮", color: "text-indigo-400" },
-  slack: { name: "Slack", icon: "#️⃣", color: "text-purple-400" },
-  signal: { name: "Signal", icon: "🔒", color: "text-blue-300" },
+  telegram: { name: "Telegram", icon: Send, color: "text-blue-400" },
+  whatsapp: { name: "WhatsApp", icon: MessageCircle, color: "text-green-400" },
+  discord: { name: "Discord", icon: Hash, color: "text-indigo-400" },
+  slack: { name: "Slack", icon: Slack, color: "text-purple-400" },
+  signal: { name: "Signal", icon: Shield, color: "text-blue-300" },
 };
 
 interface MessengerStatus {
@@ -239,7 +240,7 @@ export function ConnectionsCard({
                   className={`flex items-center justify-between py-2 ${locked ? "opacity-60" : ""}`}
                 >
                   <div className="flex items-center gap-2.5">
-                    <span className="text-lg leading-none">{config.icon}</span>
+                    {(() => { const Icon = config.icon; return <Icon className={`w-5 h-5 ${config.color}`} />; })()}
                     <span className={`font-medium ${isUserSelected || connected ? "text-white" : "text-slate-400"}`}>{config.name}</span>
                     <span className={`text-xs ${statusColor}`}>
                       ● {statusLabel}

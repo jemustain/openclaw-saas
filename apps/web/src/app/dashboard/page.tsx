@@ -29,7 +29,7 @@ async function DashboardContent({
 
   const { data: assistant } = await supabase
     .from("assistants")
-    .select("id, status, ip_address, provider, region, created_at")
+    .select("id, status, ip_address, provider, region, created_at, provisioning_step, provisioning_data")
     .eq("user_id", session.userId)
     .neq("status", "destroyed")
     .order("created_at", { ascending: false })
