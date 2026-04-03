@@ -247,6 +247,10 @@ export default function OnboardingWizard() {
             }
             return currentStep;
           });
+        } else if (assistant.status === 'suspended') {
+          // VM exists but is suspended - send to dashboard where they can resume
+          window.location.href = '/dashboard';
+          return;
         }
       } catch {
         // Ignore errors - user might not have started yet
