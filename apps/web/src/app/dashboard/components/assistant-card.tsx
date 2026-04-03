@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 
 interface Assistant {
@@ -10,6 +10,9 @@ interface Assistant {
   provider?: string;
   region?: string;
   created_at: string;
+  provisioning_step?: string | null;
+  provisioning_data?: Record<string, unknown> | null;
+  _provisioningError?: string | null;
 }
 
 function providerLabel(provider: string): string {
@@ -30,20 +33,54 @@ const DESTROY_STEPS: { phase: DestroyPhase; label: string; atSec: number }[] = [
   { phase: "done", label: "Destroyed", atSec: 0 },
 ];
 
-type ProvisionPhase = "creating" | "installing" | "configuring" | "starting" | "done";
+/**
+ * Map backend provisioning_step values to user-friendly labels.
+ * Steps complete in order; we show all steps up to and including the current one.
+ */
+const PROVISION_STEP_LABELS: Record<string, string> = {
+  validate: "Validating Azure account...",
+  create_rg: "Creating resource group...",
+  create_nsg: "Configuring network security...",
+  create_vnet: "Setting up virtual network...",
+  create_ip: "Allocating public IP address...",
+  create_nic: "Creating network interface...",
+  create_vm: "Creating virtual machine...",
+  wait_vm: "Waiting for VM to start...",
+  done: "Server provisioned - waiting for services...",
+};
 
-const PROVISION_STEPS: { phase: ProvisionPhase; label: string; atSec: number }[] = [
-  { phase: "creating", label: "Creating server...", atSec: 0 },
-  { phase: "installing", label: "Installing OpenClaw and dependencies...", atSec: 20 },
-  { phase: "configuring", label: "Configuring your assistant...", atSec: 60 },
-  { phase: "starting", label: "Starting services...", atSec: 120 },
-  { phase: "done", label: "Online", atSec: 0 },
+const PROVISION_STEP_ORDER = [
+  "validate",
+  "create_rg",
+  "create_nsg",
+  "create_vnet",
+  "create_ip",
+  "create_nic",
+  "create_vm",
+  "wait_vm",
+  "done",
 ];
 
 function formatTime(secs: number): string {
   const m = Math.floor(secs / 60);
   const s = secs % 60;
   return `${m}:${String(s).padStart(2, "0")}`;
+}
+
+/**
+ * Build the list of completed + current steps based on the backend provisioning_step.
+ */
+function buildProvisionSteps(currentStep: string | null | undefined): string[] {
+  if (!currentStep) return ["Starting provisioning..."];
+  const idx = PROVISION_STEP_ORDER.indexOf(currentStep);
+  if (idx === -1) return ["Provisioning..."];
+
+  const steps: string[] = [];
+  for (let i = 0; i <= idx; i++) {
+    const label = PROVISION_STEP_LABELS[PROVISION_STEP_ORDER[i]];
+    if (label) steps.push(label);
+  }
+  return steps;
 }
 
 export function AssistantHero({ assistant }: { assistant: Assistant | null }) {
@@ -62,7 +99,11 @@ export function AssistantHero({ assistant }: { assistant: Assistant | null }) {
     assistant?.status === "provisioning"
   );
   const [provisionElapsed, setProvisionElapsed] = useState(0);
-  const [provisionSteps, setProvisionSteps] = useState<string[]>([]);
+  const [provisionSteps, setProvisionSteps] = useState<string[]>(
+    assistant?.status === "provisioning"
+      ? buildProvisionSteps(assistant?.provisioning_step)
+      : []
+  );
 
   const status = current?.status ?? "offline";
 
@@ -84,20 +125,12 @@ export function AssistantHero({ assistant }: { assistant: Assistant | null }) {
     return () => clearInterval(interval);
   }, [destroying]);
 
-  // Timer for provisioning
+  // Elapsed timer for provisioning
   useEffect(() => {
     if (!provisioning) return;
     const start = Date.now();
     const interval = setInterval(() => {
-      const elapsed = Math.floor((Date.now() - start) / 1000);
-      setProvisionElapsed(elapsed);
-      for (const step of PROVISION_STEPS) {
-        if (step.phase !== "done" && elapsed >= step.atSec) {
-          setProvisionSteps((prev) =>
-            prev.includes(step.label) ? prev : [...prev, step.label]
-          );
-        }
-      }
+      setProvisionElapsed(Math.floor((Date.now() - start) / 1000));
     }, 1000);
     return () => clearInterval(interval);
   }, [provisioning]);
@@ -131,7 +164,7 @@ export function AssistantHero({ assistant }: { assistant: Assistant | null }) {
     return () => { cancelled = true; };
   }, [destroying]);
 
-  // Poll during provisioning
+  // Poll during provisioning - uses real step data from backend
   useEffect(() => {
     if (!provisioning) return;
     let cancelled = false;
@@ -146,8 +179,18 @@ export function AssistantHero({ assistant }: { assistant: Assistant | null }) {
           if (a?.status === "active") {
             setCurrent(a);
             setProvisioning(false);
-            setProvisionSteps((prev) => [...prev, "Your assistant is online!"]);
-            // Refresh server components so the whole dashboard reflects the new status
+            setProvisionSteps((prev) => {
+              const updated = buildProvisionSteps("done");
+              // Deduplicate: only add steps not already shown
+              const merged = [...prev];
+              for (const s of updated) {
+                if (!merged.includes(s)) merged.push(s);
+              }
+              if (!merged.includes("Your assistant is online!")) {
+                merged.push("Your assistant is online!");
+              }
+              return merged;
+            });
             router.refresh();
             return;
           }
@@ -158,12 +201,20 @@ export function AssistantHero({ assistant }: { assistant: Assistant | null }) {
             setError("Provisioning failed. Please try again.");
             return;
           }
+          // Update steps based on real provisioning_step
+          if (a?.provisioning_step) {
+            setProvisionSteps(buildProvisionSteps(a.provisioning_step));
+          }
+          // Surface provisioning errors
+          if (a?._provisioningError) {
+            setError(a._provisioningError);
+          }
         } catch { /* keep polling */ }
       }
     };
     poll();
     return () => { cancelled = true; };
-  }, [provisioning]);
+  }, [provisioning, router]);
 
   async function handleDestroy() {
     setLoading("/api/assistant/destroy");
@@ -205,6 +256,10 @@ export function AssistantHero({ assistant }: { assistant: Assistant | null }) {
       } else {
         const data = await res.json();
         setCurrent(data.assistant ?? current);
+        // Update steps from the initial response
+        if (data.assistant?.provisioning_step) {
+          setProvisionSteps(buildProvisionSteps(data.assistant.provisioning_step));
+        }
       }
     } catch {
       setError("Network error - please try again");
@@ -279,6 +334,14 @@ export function AssistantHero({ assistant }: { assistant: Assistant | null }) {
   const progressSteps = destroying ? destroySteps : provisionSteps;
   const progressElapsed = destroying ? destroyElapsed : provisionElapsed;
   const progressHint = destroying ? "Typically takes 30-60 seconds" : "Typically takes 2-4 minutes";
+
+  // Calculate progress percentage for provisioning
+  const currentStepIdx = current?.provisioning_step
+    ? PROVISION_STEP_ORDER.indexOf(current.provisioning_step)
+    : -1;
+  const progressPct = provisioning && currentStepIdx >= 0
+    ? Math.round(((currentStepIdx + 1) / PROVISION_STEP_ORDER.length) * 100)
+    : 0;
 
   return (
     <div className={`relative rounded-2xl bg-gradient-to-r ${border} p-[1px]`}>
@@ -393,9 +456,25 @@ export function AssistantHero({ assistant }: { assistant: Assistant | null }) {
         {isProgress && (
           <div className="mt-6 border-t border-slate-800 pt-4">
             <div className="flex items-center justify-between mb-3">
-              <p className="text-xs text-slate-500">{progressHint}</p>
+              <div className="flex items-center gap-3">
+                <p className="text-xs text-slate-500">{progressHint}</p>
+                {provisioning && progressPct > 0 && (
+                  <span className="text-xs font-medium text-violet-400">{progressPct}%</span>
+                )}
+              </div>
               <span className="text-sm text-slate-500 font-mono">{formatTime(progressElapsed)}</span>
             </div>
+
+            {/* Progress bar for provisioning */}
+            {provisioning && progressPct > 0 && (
+              <div className="w-full h-1.5 bg-slate-800 rounded-full mb-3 overflow-hidden">
+                <div
+                  className="h-full bg-gradient-to-r from-violet-500 to-purple-500 rounded-full transition-all duration-500"
+                  style={{ width: `${progressPct}%` }}
+                />
+              </div>
+            )}
+
             <div className="space-y-2">
               {progressSteps.map((step, i) => {
                 const isLast = i === progressSteps.length - 1;
