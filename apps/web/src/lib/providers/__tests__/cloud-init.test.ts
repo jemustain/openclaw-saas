@@ -215,7 +215,7 @@ describe('cloud-init', () => {
       'gemini': 'GEMINI_API_KEY',
       'openai': 'OPENAI_API_KEY',
       'anthropic': 'ANTHROPIC_API_KEY',
-      'github-copilot': 'GITHUB_TOKEN',
+      'github-copilot': 'OPENAI_API_KEY',
     };
 
     for (const [provider, envVar] of Object.entries(providerEnvMap)) {
