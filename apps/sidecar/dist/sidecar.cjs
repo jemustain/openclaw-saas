@@ -250,29 +250,34 @@ router2.post("/openclaw/configure-model", async (req, res) => {
       "gemini": "gemini/gemini-2.5-flash",
       "openai": "openai/gpt-4o",
       "anthropic": "anthropic/claude-sonnet-4",
-      "github-copilot": "github-copilot/claude-sonnet-4"
+      "github-copilot": "openai/gpt-4o"
     };
     const modelId = MODEL_MAP[provider];
     if (!modelId) {
       res.status(400).json({ error: `Unknown provider: ${provider}` });
       return;
     }
-    config.defaultModel = modelId;
-    if (apiKey && provider !== "github-copilot") {
-      const envMap = {
-        "gemini": "GEMINI_API_KEY",
-        "openai": "OPENAI_API_KEY",
-        "anthropic": "ANTHROPIC_API_KEY"
-      };
-      const envKey = envMap[provider];
+    const agents = config.agents = config.agents ?? {};
+    const defaults = agents.defaults = agents.defaults ?? {};
+    defaults.model = { primary: modelId };
+    delete config.defaultModel;
+    const ENV_MAP = {
+      "gemini": "GEMINI_API_KEY",
+      "openai": "OPENAI_API_KEY",
+      "anthropic": "ANTHROPIC_API_KEY",
+      "github-copilot": "OPENAI_API_KEY"
+    };
+    if (apiKey) {
+      const envKey = ENV_MAP[provider];
       if (envKey) {
         config.env = config.env ?? {};
         config.env[envKey] = apiKey;
       }
     }
-    if (provider === "github-copilot" && apiKey) {
+    if (provider === "github-copilot") {
       config.env = config.env ?? {};
-      config.env.GITHUB_TOKEN = apiKey;
+      config.env["OPENAI_BASE_URL"] = "https://models.inference.ai.azure.com";
+      delete config.env["GITHUB_TOKEN"];
     }
     fs.writeFileSync(configPath, JSON.stringify(config, null, 2));
     await execAsync2(`chown ${CLAW_USER2}:${CLAW_USER2} ${configPath}`);

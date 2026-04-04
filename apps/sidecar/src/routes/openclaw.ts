@@ -130,11 +130,13 @@ router.post('/openclaw/configure-model', async (req: Request, res: Response) => 
     }
 
     // Map provider names to OpenClaw model IDs
+    // GitHub Copilot OAuth tokens (gho_*) work with GitHub Models API,
+    // not the copilot_internal token exchange, so route through openai provider.
     const MODEL_MAP: Record<string, string> = {
       'gemini': 'gemini/gemini-2.5-flash',
       'openai': 'openai/gpt-4o',
       'anthropic': 'anthropic/claude-sonnet-4',
-      'github-copilot': 'github-copilot/claude-sonnet-4',
+      'github-copilot': 'openai/gpt-4o',
     };
 
     const modelId = MODEL_MAP[provider];
@@ -143,27 +145,35 @@ router.post('/openclaw/configure-model', async (req: Request, res: Response) => 
       return;
     }
 
-    // Set the default model
-    config.defaultModel = modelId;
+    // Set the default model using agents.defaults.model (not legacy defaultModel)
+    const agents = config.agents = config.agents ?? {};
+    const defaults = agents.defaults = agents.defaults ?? {};
+    defaults.model = { primary: modelId };
+    // Clean up legacy defaultModel if present
+    delete config.defaultModel;
 
-    // For providers that need API keys, set env vars
-    if (apiKey && provider !== 'github-copilot') {
-      const envMap: Record<string, string> = {
-        'gemini': 'GEMINI_API_KEY',
-        'openai': 'OPENAI_API_KEY',
-        'anthropic': 'ANTHROPIC_API_KEY',
-      };
-      const envKey = envMap[provider];
+    // Map providers to their environment variable for API keys
+    const ENV_MAP: Record<string, string> = {
+      'gemini': 'GEMINI_API_KEY',
+      'openai': 'OPENAI_API_KEY',
+      'anthropic': 'ANTHROPIC_API_KEY',
+      'github-copilot': 'OPENAI_API_KEY',
+    };
+
+    if (apiKey) {
+      const envKey = ENV_MAP[provider];
       if (envKey) {
         config.env = config.env ?? {};
         config.env[envKey] = apiKey;
       }
     }
 
-    // For GitHub Copilot, set up the OAuth token if provided
-    if (provider === 'github-copilot' && apiKey) {
+    // GitHub Copilot OAuth tokens use GitHub Models API endpoint
+    if (provider === 'github-copilot') {
       config.env = config.env ?? {};
-      config.env.GITHUB_TOKEN = apiKey;
+      config.env['OPENAI_BASE_URL'] = 'https://models.inference.ai.azure.com';
+      // Clean up stale GITHUB_TOKEN if present (from older sidecar versions)
+      delete config.env['GITHUB_TOKEN'];
     }
 
     fs.writeFileSync(configPath, JSON.stringify(config, null, 2));
