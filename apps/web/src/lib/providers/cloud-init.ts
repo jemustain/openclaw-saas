@@ -49,7 +49,9 @@ export function generateCloudInit(opts: CloudInitOptions): string {
       provider = '${opts.aiProvider}'
       model_id = MODEL_MAP.get(provider, '')
       if model_id:
-          config['defaultModel'] = model_id
+          agents = config.setdefault('agents', {})
+          defaults = agents.setdefault('defaults', {})
+          defaults['model'] = model_id
       ENV_MAP = {
           'gemini': 'GEMINI_API_KEY',
           'openai': 'OPENAI_API_KEY',
