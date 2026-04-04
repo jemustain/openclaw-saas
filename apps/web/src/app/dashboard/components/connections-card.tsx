@@ -289,7 +289,7 @@ export function ConnectionsCard({
                       type="button"
                       disabled={disabled}
                       onClick={() => handleConnectClick(m)}
-                      className="rounded-md bg-amber-600 px-3 py-1.5 text-xs text-white hover:bg-amber-500 disabled:opacity-50 disabled:cursor-not-allowed"
+                      className="rounded-md bg-slate-700 px-3 py-1.5 text-xs text-white hover:bg-slate-600 border border-slate-600 disabled:opacity-50 disabled:cursor-not-allowed"
                     >
                       Reconnect
                     </button>

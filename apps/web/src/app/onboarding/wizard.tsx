@@ -1213,7 +1213,7 @@ export default function OnboardingWizard() {
                   href={botLinks.telegram}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="block w-full text-center rounded-full bg-blue-500 hover:bg-blue-400 py-3 font-medium transition"
+                  className="block w-full text-center rounded-full bg-violet-600 hover:bg-violet-500 py-3 font-medium transition"
                 >
                   Open in Telegram →
                 </a>
