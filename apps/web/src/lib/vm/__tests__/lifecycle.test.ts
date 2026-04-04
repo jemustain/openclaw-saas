@@ -42,7 +42,6 @@ describe('launchAssistant', () => {
   beforeEach(() => {
     vi.clearAllMocks();
 
-    // Default mock: oracle provider, user with AI config
     const mockSupabase = {
       from: vi.fn().mockReturnThis(),
       select: vi.fn().mockReturnThis(),
@@ -55,33 +54,21 @@ describe('launchAssistant', () => {
       limit: vi.fn().mockReturnThis(),
     };
 
-    // Track calls to distinguish between different .from() chains
-    let fromCallCount = 0;
-    mockSupabase.from.mockImplementation((table: string) => {
-      fromCallCount++;
-      return mockSupabase;
-    });
-
     let singleCallCount = 0;
     mockSupabase.single.mockImplementation(() => {
       singleCallCount++;
       if (singleCallCount === 1) {
-        // getProviderForUser query
         return { data: { provider_preference: 'oracle', hosting: null, vm_size: null }, error: null };
       } else if (singleCallCount === 2) {
-        // user record query in launchAssistant
         return {
           data: {
             vm_size: null,
             azure_subscription_id: null,
             telegram_bot_token: 'tg-token',
-            ai_provider: 'gemini',
-            ai_api_key: 'gemini-key-123',
           },
           error: null,
         };
       } else {
-        // insert assistant
         return {
           data: { id: 'test-assistant', user_id: 'test-user', status: 'provisioning' },
           error: null,
@@ -92,80 +79,34 @@ describe('launchAssistant', () => {
     mockCreateClient.mockReturnValue(mockSupabase);
   });
 
-  it('passes aiProvider and aiApiKey to generateCloudInit for non-copilot providers', async () => {
+  it('does NOT pass aiProvider or aiApiKey to generateCloudInit (AI config happens post-provisioning)', async () => {
     const { launchAssistant } = await import('../lifecycle');
-    
+
     try {
       await launchAssistant('test-user');
     } catch {
       // May fail on oracle provider mock, that's fine
     }
 
-    // Check that generateCloudInit was called with AI config
     if (mockGenerateCloudInit.mock.calls.length > 0) {
       const opts = mockGenerateCloudInit.mock.calls[0][0];
-      expect(opts.aiProvider).toBe('gemini');
-      expect(opts.aiApiKey).toBe('gemini-key-123');
+      expect(opts).not.toHaveProperty('aiProvider');
+      expect(opts).not.toHaveProperty('aiApiKey');
     }
   });
 
-  it('fetches github-copilot token from provider_tokens for copilot users', async () => {
-    let singleCallCount = 0;
-    const mockSupabase = mockCreateClient();
-    mockSupabase.single.mockImplementation(() => {
-      singleCallCount++;
-      if (singleCallCount === 1) {
-        return { data: { provider_preference: 'oracle' }, error: null };
-      } else if (singleCallCount === 2) {
-        return {
-          data: {
-            vm_size: null,
-            azure_subscription_id: null,
-            telegram_bot_token: null,
-            ai_provider: 'github-copilot',
-            ai_api_key: null,
-          },
-          error: null,
-        };
-      } else {
-        return { data: { id: 'test-assistant', user_id: 'test-user', status: 'provisioning' }, error: null };
-      }
-    });
-
-    mockGetProviderToken.mockResolvedValue({ accessToken: 'gho_copilot_token' });
-
-    // Need to re-import to get fresh module
-    vi.resetModules();
-    vi.doMock('../../supabase/server', () => ({ createClient: () => mockSupabase }));
-    vi.doMock('../../providers/token-store', () => ({
-      getProviderToken: (...args: any[]) => mockGetProviderToken(...args),
-      refreshProviderToken: vi.fn(),
-    }));
-    vi.doMock('../../providers/cloud-init', () => ({
-      generateCloudInit: (...args: any[]) => mockGenerateCloudInit(...args),
-    }));
-    vi.doMock('../../providers/digitalocean', () => ({
-      createDroplet: vi.fn(), destroyDroplet: vi.fn(), powerOn: vi.fn(), powerOff: vi.fn(), validateAccount: vi.fn(),
-    }));
-    vi.doMock('../../providers/azure', () => ({
-      createVM: vi.fn(), destroyVM: vi.fn(), powerOnVM: vi.fn(), powerOffVM: vi.fn(),
-      validateAccount: vi.fn(), ensureResourceGroup: vi.fn(), ensureNetworking: vi.fn(),
-    }));
-    vi.doMock('../../providers/oracle', () => ({
-      OracleProvider: vi.fn().mockImplementation(() => ({
-        createServer: vi.fn().mockResolvedValue({ id: 'oci-123', publicIpv4: '1.2.3.4', region: 'us-phoenix-1' }),
-      })),
-    }));
-    vi.doMock('../../messaging/telegram-bot-factory', () => ({ deleteTelegramBot: vi.fn() }));
-
+  it('passes telegramBotToken to generateCloudInit', async () => {
     const { launchAssistant } = await import('../lifecycle');
 
     try {
       await launchAssistant('test-user');
     } catch {
-      // May fail, that's fine
+      // May fail on oracle provider mock, that's fine
     }
 
-    expect(mockGetProviderToken).toHaveBeenCalledWith('test-user', 'github-copilot');
+    if (mockGenerateCloudInit.mock.calls.length > 0) {
+      const opts = mockGenerateCloudInit.mock.calls[0][0];
+      expect(opts.telegramBotToken).toBe('tg-token');
+    }
   });
 });

@@ -54,6 +54,64 @@ const PRO_SKILLS = SKILLS.filter((s) => s.pro);
 
 
 
+/** Device flow polling component */
+function DeviceFlowPoll({ userCode, verificationUri, onAuthorized, onExpired, onError }: {
+  userCode: string;
+  verificationUri: string;
+  onAuthorized: () => void;
+  onExpired: () => void;
+  onError: (msg: string) => void;
+}) {
+  useEffect(() => {
+    let cancelled = false;
+    const poll = async () => {
+      while (!cancelled) {
+        await new Promise(r => setTimeout(r, 4000));
+        if (cancelled) return;
+        try {
+          const res = await fetch('/api/assistant/copilot-device-status');
+          const data = await res.json();
+          if (cancelled) return;
+          if (data.status === 'authorized') { onAuthorized(); return; }
+          if (data.status === 'expired') { onExpired(); return; }
+          if (data.status === 'error') { onError(data.error || 'Unknown error'); return; }
+          // pending — continue polling
+        } catch {
+          // network error, keep polling
+        }
+      }
+    };
+    poll();
+    return () => { cancelled = true; };
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  return (
+    <div className="space-y-3">
+      <p className="text-sm text-slate-300">
+        Go to <span className="font-mono text-violet-400">{verificationUri}</span> and enter this code:
+      </p>
+      <div className="text-center">
+        <span className="text-2xl font-mono font-bold tracking-widest text-white bg-slate-800 px-4 py-2 rounded-lg">
+          {userCode}
+        </span>
+      </div>
+      <a
+        href={verificationUri}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-violet-600 hover:bg-violet-500 text-sm font-medium text-white transition-colors"
+      >
+        Open GitHub <ExternalLink className="w-3 h-3" />
+      </a>
+      <div className="flex items-center gap-2 text-xs text-slate-400">
+        <Loader2 className="w-3 h-3 animate-spin" />
+        Waiting for authorization...
+      </div>
+    </div>
+  );
+}
+
+
 export default function OnboardingWizard() {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -105,6 +163,13 @@ export default function OnboardingWizard() {
   const [aiKeyVerifying, setAiKeyVerifying] = useState(false);
   const [aiKeyError, setAiKeyError] = useState<string | null>(null);
 
+  // Device flow state
+  const [deviceFlowCode, setDeviceFlowCode] = useState<string | null>(null);
+  const [deviceFlowUri, setDeviceFlowUri] = useState<string | null>(null);
+  const [deviceFlowLoading, setDeviceFlowLoading] = useState(false);
+  const [deviceFlowError, setDeviceFlowError] = useState<string | null>(null);
+  const [deviceFlowPolling, setDeviceFlowPolling] = useState(false);
+
   // Azure subscription picker state
   type AzureSub = { id: string; displayName: string; state: string };
   const [azureSubs, setAzureSubs] = useState<AzureSub[]>([]);
@@ -151,19 +216,7 @@ export default function OnboardingWizard() {
     }
 
     // Handle GitHub Copilot OAuth success: mark as connected and advance
-    const githubConnected = searchParams.get('github');
-    if (githubConnected === 'connected') {
-      setAiProvider('github-copilot');
-      setAiKeyVerified(true);
-      // If returnTo was a step beyond the AI Provider (e.g. step=7 from Setup & Connect), go there
-      if (stepParam) {
-        const s = parseInt(stepParam, 10);
-        if (s > 3 && s >= 0 && s < STEPS.length) { setStep(s); return; }
-      }
-      // Otherwise always advance past AI Provider to Plan step
-      setStep(4);
-      return;
-    }
+
 
     if (stepParam) {
       const s = parseInt(stepParam, 10);
@@ -815,18 +868,8 @@ export default function OnboardingWizard() {
 
             <div className="flex justify-between items-center">
               <BackBtn />
-              <PrimaryBtn onClick={() => {
-                if (aiProvider === 'github-copilot') {
-                  if (process.env.NEXT_PUBLIC_GITHUB_CLIENT_ID) {
-                    window.location.href = `/api/auth/github?returnTo=${encodeURIComponent('/onboarding?step=3')}`;
-                  } else {
-                    next();
-                  }
-                } else {
-                  next();
-                }
-              }} disabled={!aiProvider}>
-                {aiProvider === 'github-copilot' && process.env.NEXT_PUBLIC_GITHUB_CLIENT_ID ? 'Connect with GitHub' : 'Next'} <ArrowRight className="w-4 h-4" />
+              <PrimaryBtn onClick={next} disabled={!aiProvider}>
+                Next <ArrowRight className="w-4 h-4" />
               </PrimaryBtn>
             </div>
           </div>
@@ -1049,16 +1092,62 @@ export default function OnboardingWizard() {
                   </div>
                   {serverActive && !aiKeyVerified && (
                     <div className="space-y-3">
-                      {aiProvider === 'github-copilot' && process.env.NEXT_PUBLIC_GITHUB_CLIENT_ID ? (
+                      {aiProvider === 'github-copilot' ? (
                         <>
-                          <p className="text-xs text-slate-400">Sign in with GitHub to connect your Copilot subscription.</p>
-                          <a
-                            href={`/api/auth/github?returnTo=${encodeURIComponent('/onboarding?step=7')}`}
-                            className="inline-flex items-center gap-2 px-4 py-2.5 rounded-lg bg-slate-800 hover:bg-slate-700 border border-slate-600 text-sm font-medium text-white transition-colors"
-                          >
-                            <Code className="w-4 h-4" />
-                            Sign in with GitHub
-                          </a>
+                          {!deviceFlowCode && !deviceFlowPolling && (
+                            <>
+                              <p className="text-xs text-slate-400">Sign in with GitHub to connect your Copilot subscription.</p>
+                              <button
+                                type="button"
+                                disabled={deviceFlowLoading}
+                                onClick={async () => {
+                                  setDeviceFlowLoading(true);
+                                  setDeviceFlowError(null);
+                                  try {
+                                    const res = await fetch('/api/assistant/copilot-device-start', { method: 'POST' });
+                                    const data = await res.json();
+                                    if (data.userCode && data.verificationUri) {
+                                      setDeviceFlowCode(data.userCode);
+                                      setDeviceFlowUri(data.verificationUri);
+                                      setDeviceFlowPolling(true);
+                                    } else {
+                                      setDeviceFlowError(data.error || 'Failed to start device flow');
+                                    }
+                                  } catch {
+                                    setDeviceFlowError('Failed to start device flow');
+                                  }
+                                  setDeviceFlowLoading(false);
+                                }}
+                                className="inline-flex items-center gap-2 px-4 py-2.5 rounded-lg bg-slate-800 hover:bg-slate-700 border border-slate-600 text-sm font-medium text-white transition-colors"
+                              >
+                                {deviceFlowLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Code className="w-4 h-4" />}
+                                Connect GitHub Copilot
+                              </button>
+                              {deviceFlowError && <p className="text-xs text-red-400">{deviceFlowError}</p>}
+                            </>
+                          )}
+                          {deviceFlowCode && deviceFlowPolling && (
+                            <DeviceFlowPoll
+                              userCode={deviceFlowCode}
+                              verificationUri={deviceFlowUri!}
+                              onAuthorized={() => {
+                                setAiKeyVerified(true);
+                                setDeviceFlowPolling(false);
+                              }}
+                              onExpired={() => {
+                                setDeviceFlowCode(null);
+                                setDeviceFlowUri(null);
+                                setDeviceFlowPolling(false);
+                                setDeviceFlowError('Code expired. Try again.');
+                              }}
+                              onError={(msg) => {
+                                setDeviceFlowCode(null);
+                                setDeviceFlowUri(null);
+                                setDeviceFlowPolling(false);
+                                setDeviceFlowError(msg);
+                              }}
+                            />
+                          )}
                         </>
                       ) : (
                         <>
@@ -1117,7 +1206,7 @@ export default function OnboardingWizard() {
                       </div>
                       {aiKeyError && <p className="text-xs text-red-400">{aiKeyError}</p>}
                       <a
-                        href={aiProvider === 'gemini' ? 'https://aistudio.google.com/apikey' : aiProvider === 'openai' ? 'https://platform.openai.com/api-keys' : aiProvider === 'anthropic' ? 'https://console.anthropic.com/settings/keys' : 'https://github.com/settings/tokens'}
+                        href={aiProvider === 'gemini' ? 'https://aistudio.google.com/apikey' : aiProvider === 'openai' ? 'https://platform.openai.com/api-keys' : 'https://console.anthropic.com/settings/keys'}
                         target="_blank"
                         rel="noopener noreferrer"
                         className="inline-flex items-center gap-1 text-xs text-violet-400 hover:text-violet-300"
