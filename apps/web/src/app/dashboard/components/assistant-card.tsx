@@ -92,6 +92,7 @@ export function AssistantHero({ assistant }: { assistant: Assistant | null }) {
   const [error, setError] = useState<string | null>(null);
 
   const [destroying, setDestroying] = useState(false);
+  const [resuming, setResuming] = useState(false);
   const [destroyElapsed, setDestroyElapsed] = useState(0);
   const [destroySteps, setDestroySteps] = useState<string[]>([]);
 
@@ -271,20 +272,39 @@ export function AssistantHero({ assistant }: { assistant: Assistant | null }) {
   }
 
   async function handleResume() {
-    setLoading("/api/assistant/launch");
+    setLoading("/api/assistant/resume");
     setError(null);
+    setResuming(true);
     try {
-      const res = await fetch("/api/assistant/launch", { method: "POST" });
+      const res = await fetch("/api/assistant/resume", { method: "POST" });
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));
         setError(data.error ?? "Resume failed");
+        setResuming(false);
         return;
       }
-      const refreshed = await fetch("/api/assistant/status");
-      const data = await refreshed.json();
-      setCurrent(data.assistant ?? null);
+      // Poll for active status — az vm start is async
+      const maxWait = 60_000;
+      const interval = 3_000;
+      const start = Date.now();
+      while (Date.now() - start < maxWait) {
+        await new Promise((r) => setTimeout(r, interval));
+        const poll = await fetch("/api/assistant/status");
+        const pollData = await poll.json();
+        if (pollData.assistant?.status === "active") {
+          setCurrent(pollData.assistant);
+          setResuming(false);
+          return;
+        }
+      }
+      // Timed out — show whatever we have
+      const final = await fetch("/api/assistant/status");
+      const finalData = await final.json();
+      setCurrent(finalData.assistant ?? null);
+      setResuming(false);
     } catch {
       setError("Network error - please try again");
+      setResuming(false);
     } finally {
       setLoading(null);
     }
@@ -390,11 +410,16 @@ export function AssistantHero({ assistant }: { assistant: Assistant | null }) {
 
               {status === "suspended" && (
                 <button
-                  disabled={!!loading}
+                  disabled={!!loading || resuming}
                   onClick={handleResume}
                   className="rounded-full bg-indigo-600 px-5 py-2 text-sm font-medium text-white hover:bg-indigo-500 disabled:opacity-50 transition-colors"
                 >
-                  {loading === "/api/assistant/launch" ? "Resuming…" : "Resume"}
+                  {resuming ? (
+                    <span className="flex items-center gap-2">
+                      <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" /><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" /></svg>
+                      Resuming…
+                    </span>
+                  ) : "Resume"}
                 </button>
               )}
 

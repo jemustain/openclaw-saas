@@ -85,7 +85,10 @@ export default function OnboardingWizard() {
     return '';
   };
   const [plan, setPlan] = useState<'free' | 'pro'>('free');
-  const [windowStart, setWindowStart] = useState(9);
+  const [windowStart, setWindowStart] = useState(() => {
+    const now = new Date();
+    return (now.getHours() - 1 + 24) % 24;
+  });
   const [messengers, setMessengers] = useState<string[]>([]);
   const [skills, setSkills] = useState<string[]>([]);
   const [setupStatus, setSetupStatus] = useState<string[]>([]);
