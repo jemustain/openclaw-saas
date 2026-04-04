@@ -1157,7 +1157,7 @@ export default function OnboardingWizard() {
                           type="password"
                           value={aiApiKey}
                           onChange={(e) => { setAiApiKey(e.target.value); setAiKeyVerified(false); setAiKeyError(null); }}
-                          placeholder={aiProvider === 'gemini' ? 'AIza...' : aiProvider === 'openai' ? 'sk-...' : aiProvider === 'github-copilot' ? 'ghp_... or github_pat_...' : 'sk-ant-...'}
+                          placeholder={aiProvider === 'gemini' ? 'AIza...' : aiProvider === 'openai' ? 'sk-...' : 'sk-ant-...'}
                           className="flex-1 rounded-lg border border-slate-700 bg-slate-800 px-3 py-2 text-sm text-white placeholder-slate-500 focus:border-violet-500 focus:outline-none"
                         />
                         <button
