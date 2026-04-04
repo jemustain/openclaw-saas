@@ -22,6 +22,90 @@ export function generateCloudInit(opts: CloudInitOptions): string {
   const sidecarToken = opts.sidecarToken.replace(/\s+/g, '');
   const instanceId = opts.instanceId.replace(/\s+/g, '');
 
+  // Escape single quotes in API key for safe embedding in Python string
+  const escapedApiKey = (opts.aiApiKey ?? '').replace(/'/g, "\\'");
+
+  // Build optional write_files entries
+  const extraWriteFiles: string[] = [];
+
+  if (opts.aiProvider) {
+    extraWriteFiles.push(`  - path: /opt/shiftworker/configure-ai.py
+    permissions: "0755"
+    content: |
+      #!/usr/bin/env python3
+      import json, os, pwd
+      user = '${user}'
+      config_path = os.path.join('/home', user, '.openclaw', 'openclaw.json')
+      config = {}
+      if os.path.exists(config_path):
+          with open(config_path) as f:
+              config = json.load(f)
+      MODEL_MAP = {
+          'gemini': 'gemini/gemini-2.5-flash',
+          'openai': 'openai/gpt-4o',
+          'anthropic': 'anthropic/claude-sonnet-4',
+          'github-copilot': 'github-copilot/claude-sonnet-4',
+      }
+      provider = '${opts.aiProvider}'
+      model_id = MODEL_MAP.get(provider, '')
+      if model_id:
+          config['defaultModel'] = model_id
+      ENV_MAP = {
+          'gemini': 'GEMINI_API_KEY',
+          'openai': 'OPENAI_API_KEY',
+          'anthropic': 'ANTHROPIC_API_KEY',
+          'github-copilot': 'GITHUB_TOKEN',
+      }
+      env_key = ENV_MAP.get(provider, '')
+      api_key = '${escapedApiKey}'
+      if env_key and api_key:
+          config.setdefault('env', {})[env_key] = api_key
+      with open(config_path, 'w') as f:
+          json.dump(config, f, indent=2)
+      pw = pwd.getpwnam(user)
+      os.chown(config_path, pw.pw_uid, pw.pw_gid)
+      print(f'Configured model: {model_id}')`);
+  }
+
+  if (opts.telegramBotToken) {
+    extraWriteFiles.push(`  - path: /opt/shiftworker/configure-telegram.py
+    permissions: "0755"
+    content: |
+      #!/usr/bin/env python3
+      import json, os, pwd
+      user = '${user}'
+      config_path = os.path.join('/home', user, '.openclaw', 'openclaw.json')
+      config = {}
+      if os.path.exists(config_path):
+          with open(config_path) as f:
+              config = json.load(f)
+      channels = config.setdefault('channels', {})
+      tg = channels.setdefault('telegram', {})
+      tg['dmPolicy'] = 'open'
+      tg['allowFrom'] = ['*']
+      tg['groupPolicy'] = 'open'
+      tg['groups'] = {'*': {'requireMention': True}}
+      with open(config_path, 'w') as f:
+          json.dump(config, f, indent=2)
+      pw = pwd.getpwnam(user)
+      os.chown(config_path, pw.pw_uid, pw.pw_gid)`);
+  }
+
+  // Build the setup.sh content with proper indentation
+  const aiSetupBlock = opts.aiProvider ? `
+      # Configure AI model
+      echo "Configuring AI model..."
+      python3 /opt/shiftworker/configure-ai.py` : '';
+
+  const telegramSetupBlock = opts.telegramBotToken ? `
+      # Configure Telegram bot
+      echo "Configuring Telegram bot..."
+      TELEGRAM_TOKEN="${opts.telegramBotToken.replace(/"/g, '\\"')}"
+      python3 /opt/shiftworker/configure-telegram.py
+      su - ${user} -c "openclaw channels add --channel telegram --token $TELEGRAM_TOKEN" || true
+      systemctl restart openclaw-sidecar
+      sleep 5` : '';
+
   return `#cloud-config
 users:
   - name: ${user}
@@ -102,7 +186,7 @@ write_files:
           json.dump(config, f, indent=2)
       pw = pwd.getpwnam(user)
       os.chown(config_path, pw.pw_uid, pw.pw_gid)
-  - path: /opt/shiftworker/setup.sh
+${extraWriteFiles.length > 0 ? extraWriteFiles.join('\n') + '\n' : ''}  - path: /opt/shiftworker/setup.sh
     permissions: "0755"
     content: |
       #!/bin/bash
@@ -151,78 +235,9 @@ write_files:
         echo "WARNING: Sidecar health check failed after 5 attempts"
         systemctl restart shiftworker-sidecar
         sleep 10
-      fi
-${opts.aiProvider ? `
-      # Configure AI model
-      echo "Configuring AI model..."
-      python3 -c "
-import json, os, pwd
-user = '${user}'
-config_path = os.path.join('/home', user, '.openclaw', 'openclaw.json')
-config = {}
-if os.path.exists(config_path):
-    with open(config_path) as f:
-        config = json.load(f)
-
-MODEL_MAP = {
-    'gemini': 'gemini/gemini-2.5-flash',
-    'openai': 'openai/gpt-4o',
-    'anthropic': 'anthropic/claude-sonnet-4',
-    'github-copilot': 'github-copilot/claude-sonnet-4',
-}
-
-provider = '${opts.aiProvider}'
-model_id = MODEL_MAP.get(provider, '')
-if model_id:
-    config['defaultModel'] = model_id
-
-ENV_MAP = {
-    'gemini': 'GEMINI_API_KEY',
-    'openai': 'OPENAI_API_KEY',
-    'anthropic': 'ANTHROPIC_API_KEY',
-    'github-copilot': 'GITHUB_TOKEN',
-}
-
-env_key = ENV_MAP.get(provider, '')
-api_key = '''${(opts.aiApiKey ?? '').replace(/'/g, "\\'")}'''
-if env_key and api_key:
-    config.setdefault('env', {})[env_key] = api_key
-
-with open(config_path, 'w') as f:
-    json.dump(config, f, indent=2)
-pw = pwd.getpwnam(user)
-os.chown(config_path, pw.pw_uid, pw.pw_gid)
-print(f'Configured model: {model_id}')
-"
-` : ''}
-${opts.telegramBotToken ? `
-      # Configure Telegram bot
-      echo "Configuring Telegram bot..."
-      TELEGRAM_TOKEN="${opts.telegramBotToken.replace(/"/g, '\\"')}"
-      # Pre-configure dmPolicy and allowFrom
-      python3 -c "
-import json, os, pwd
-user = '${user}'
-config_path = os.path.join('/home', user, '.openclaw', 'openclaw.json')
-config = {}
-if os.path.exists(config_path):
-    with open(config_path) as f:
-        config = json.load(f)
-channels = config.setdefault('channels', {})
-tg = channels.setdefault('telegram', {})
-tg['dmPolicy'] = 'open'
-tg['allowFrom'] = ['*']
-tg['groupPolicy'] = 'open'
-tg['groups'] = {'*': {'requireMention': True}}
-with open(config_path, 'w') as f:
-    json.dump(config, f, indent=2)
-pw = pwd.getpwnam(user)
-os.chown(config_path, pw.pw_uid, pw.pw_gid)
-"
-      su - ${user} -c "openclaw channels add --channel telegram --token $TELEGRAM_TOKEN" || true
-      systemctl restart openclaw-sidecar
-      sleep 5
-` : ''}      source /etc/shiftworker/sidecar.env
+      fi${aiSetupBlock}${telegramSetupBlock}
+      # Phone home to portal
+      source /etc/shiftworker/sidecar.env
       curl -sf -X POST "$PORTAL_URL/api/instances/$INSTANCE_ID/phone-home" \\
         -H "Authorization: Bearer $SIDECAR_TOKEN" \\
         -H "Content-Type: application/json" \\

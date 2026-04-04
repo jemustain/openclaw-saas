@@ -105,4 +105,33 @@ describe('cloud-init', () => {
     expect(result).toContain('Configuring AI model');
     expect(result).toContain('Configuring Telegram bot');
   });
+
+  it('generates valid YAML (no unindented Python code)', () => {
+    const result = generateCloudInit({
+      ...baseOpts,
+      aiProvider: 'github-copilot',
+      aiApiKey: 'gho_test',
+      telegramBotToken: '123:ABC',
+    });
+
+    // Every line after #cloud-config should either be empty or properly structured
+    // The Python scripts should be in separate write_files entries, not inline
+    expect(result).toContain('configure-ai.py');
+    expect(result).toContain('configure-telegram.py');
+    // Python code should NOT appear inside setup.sh content block
+    expect(result).not.toContain('python3 -c "');
+  });
+
+  it('always ends with phone-home curl and runcmd', () => {
+    const result = generateCloudInit({
+      ...baseOpts,
+      aiProvider: 'gemini',
+      aiApiKey: 'key',
+      telegramBotToken: 'tok',
+    });
+
+    expect(result).toContain('phone-home');
+    expect(result).toContain('runcmd:');
+    expect(result).toContain('[bash, /opt/shiftworker/setup.sh]');
+  });
 });
