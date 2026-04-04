@@ -196,6 +196,20 @@ describe('cloud-init', () => {
     expect(aiScript).toContain('gemini/gemini-2.5-flash');
   });
 
+  it('configure-ai.py sets model under agents.defaults.model (not defaultModel)', () => {
+    const doc = parseCloudInit(generateCloudInit({
+      ...baseOpts,
+      aiProvider: 'github-copilot',
+      aiApiKey: 'gho_test',
+    }));
+    const aiScript = getWriteFileContent(doc, '/opt/shiftworker/configure-ai.py');
+    expect(aiScript).toBeDefined();
+    // Must use agents.defaults.model path, not root-level defaultModel
+    expect(aiScript).toContain("agents");
+    expect(aiScript).toContain("defaults");
+    expect(aiScript).not.toContain("config['defaultModel']");
+  });
+
   it('configure-ai.py maps each provider to correct env var', () => {
     const providerEnvMap: Record<string, string> = {
       'gemini': 'GEMINI_API_KEY',
