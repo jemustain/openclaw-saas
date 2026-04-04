@@ -152,6 +152,49 @@ write_files:
         systemctl restart shiftworker-sidecar
         sleep 10
       fi
+${opts.aiProvider ? `
+      # Configure AI model
+      echo "Configuring AI model..."
+      python3 -c "
+import json, os, pwd
+user = '${user}'
+config_path = os.path.join('/home', user, '.openclaw', 'openclaw.json')
+config = {}
+if os.path.exists(config_path):
+    with open(config_path) as f:
+        config = json.load(f)
+
+MODEL_MAP = {
+    'gemini': 'gemini/gemini-2.5-flash',
+    'openai': 'openai/gpt-4o',
+    'anthropic': 'anthropic/claude-sonnet-4',
+    'github-copilot': 'github-copilot/claude-sonnet-4',
+}
+
+provider = '${opts.aiProvider}'
+model_id = MODEL_MAP.get(provider, '')
+if model_id:
+    config['defaultModel'] = model_id
+
+ENV_MAP = {
+    'gemini': 'GEMINI_API_KEY',
+    'openai': 'OPENAI_API_KEY',
+    'anthropic': 'ANTHROPIC_API_KEY',
+    'github-copilot': 'GITHUB_TOKEN',
+}
+
+env_key = ENV_MAP.get(provider, '')
+api_key = '''${(opts.aiApiKey ?? '').replace(/'/g, "\\'")}'''
+if env_key and api_key:
+    config.setdefault('env', {})[env_key] = api_key
+
+with open(config_path, 'w') as f:
+    json.dump(config, f, indent=2)
+pw = pwd.getpwnam(user)
+os.chown(config_path, pw.pw_uid, pw.pw_gid)
+print(f'Configured model: {model_id}')
+"
+` : ''}
 ${opts.telegramBotToken ? `
       # Configure Telegram bot
       echo "Configuring Telegram bot..."
