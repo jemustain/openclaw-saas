@@ -169,6 +169,8 @@ channels = config.setdefault('channels', {})
 tg = channels.setdefault('telegram', {})
 tg['dmPolicy'] = 'open'
 tg['allowFrom'] = ['*']
+tg['groupPolicy'] = 'open'
+tg['groups'] = {'*': {'requireMention': True}}
 with open(config_path, 'w') as f:
     json.dump(config, f, indent=2)
 pw = pwd.getpwnam(user)
