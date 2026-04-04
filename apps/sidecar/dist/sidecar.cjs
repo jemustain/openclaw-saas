@@ -232,6 +232,63 @@ router2.post("/admin/fix-config", async (_req, res) => {
     res.status(500).json({ error: "Failed to fix config", details: err.message });
   }
 });
+router2.post("/openclaw/configure-model", async (req, res) => {
+  try {
+    const { provider, apiKey } = req.body ?? {};
+    if (!provider) {
+      res.status(400).json({ error: "Missing provider" });
+      return;
+    }
+    const CLAW_USER2 = process.env.OPENCLAW_USER || "claw";
+    const configPath = `/home/${CLAW_USER2}/.openclaw/openclaw.json`;
+    const fs = require("fs");
+    let config = {};
+    if (fs.existsSync(configPath)) {
+      config = JSON.parse(fs.readFileSync(configPath, "utf8"));
+    }
+    const MODEL_MAP = {
+      "gemini": "gemini/gemini-2.5-flash",
+      "openai": "openai/gpt-4o",
+      "anthropic": "anthropic/claude-sonnet-4",
+      "github-copilot": "github-copilot/claude-sonnet-4"
+    };
+    const modelId = MODEL_MAP[provider];
+    if (!modelId) {
+      res.status(400).json({ error: `Unknown provider: ${provider}` });
+      return;
+    }
+    config.defaultModel = modelId;
+    if (apiKey && provider !== "github-copilot") {
+      const envMap = {
+        "gemini": "GEMINI_API_KEY",
+        "openai": "OPENAI_API_KEY",
+        "anthropic": "ANTHROPIC_API_KEY"
+      };
+      const envKey = envMap[provider];
+      if (envKey) {
+        config.env = config.env ?? {};
+        config.env[envKey] = apiKey;
+      }
+    }
+    if (provider === "github-copilot" && apiKey) {
+      config.env = config.env ?? {};
+      config.env.GITHUB_TOKEN = apiKey;
+    }
+    fs.writeFileSync(configPath, JSON.stringify(config, null, 2));
+    await execAsync2(`chown ${CLAW_USER2}:${CLAW_USER2} ${configPath}`);
+    try {
+      await execAsync2("systemctl restart openclaw-sidecar");
+    } catch {
+      try {
+        await execAsync2(`su - ${CLAW_USER2} -c "openclaw gateway restart"`);
+      } catch {
+      }
+    }
+    res.json({ status: "configured", model: modelId });
+  } catch (err) {
+    res.status(500).json({ error: "Failed to configure model", details: err.message });
+  }
+});
 var openclaw_default = router2;
 
 // src/routes/heartbeat.ts

@@ -111,4 +111,73 @@ router.post('/admin/fix-config', async (_req: Request, res: Response) => {
   }
 });
 
+/** Configure the AI model on this OpenClaw instance */
+router.post('/openclaw/configure-model', async (req: Request, res: Response) => {
+  try {
+    const { provider, apiKey } = req.body ?? {};
+    if (!provider) {
+      res.status(400).json({ error: 'Missing provider' });
+      return;
+    }
+
+    const CLAW_USER = process.env.OPENCLAW_USER || 'claw';
+    const configPath = `/home/${CLAW_USER}/.openclaw/openclaw.json`;
+    const fs = require('fs');
+
+    let config: any = {};
+    if (fs.existsSync(configPath)) {
+      config = JSON.parse(fs.readFileSync(configPath, 'utf8'));
+    }
+
+    // Map provider names to OpenClaw model IDs
+    const MODEL_MAP: Record<string, string> = {
+      'gemini': 'gemini/gemini-2.5-flash',
+      'openai': 'openai/gpt-4o',
+      'anthropic': 'anthropic/claude-sonnet-4',
+      'github-copilot': 'github-copilot/claude-sonnet-4',
+    };
+
+    const modelId = MODEL_MAP[provider];
+    if (!modelId) {
+      res.status(400).json({ error: `Unknown provider: ${provider}` });
+      return;
+    }
+
+    // Set the default model
+    config.defaultModel = modelId;
+
+    // For providers that need API keys, set env vars
+    if (apiKey && provider !== 'github-copilot') {
+      const envMap: Record<string, string> = {
+        'gemini': 'GEMINI_API_KEY',
+        'openai': 'OPENAI_API_KEY',
+        'anthropic': 'ANTHROPIC_API_KEY',
+      };
+      const envKey = envMap[provider];
+      if (envKey) {
+        config.env = config.env ?? {};
+        config.env[envKey] = apiKey;
+      }
+    }
+
+    // For GitHub Copilot, set up the OAuth token if provided
+    if (provider === 'github-copilot' && apiKey) {
+      config.env = config.env ?? {};
+      config.env.GITHUB_TOKEN = apiKey;
+    }
+
+    fs.writeFileSync(configPath, JSON.stringify(config, null, 2));
+    await execAsync(`chown ${CLAW_USER}:${CLAW_USER} ${configPath}`);
+
+    // Restart the OpenClaw gateway to pick up new config
+    try { await execAsync('systemctl restart openclaw-sidecar'); } catch {
+      try { await execAsync(`su - ${CLAW_USER} -c "openclaw gateway restart"`); } catch {}
+    }
+
+    res.json({ status: 'configured', model: modelId });
+  } catch (err: any) {
+    res.status(500).json({ error: 'Failed to configure model', details: err.message });
+  }
+});
+
 export default router;
