@@ -68,6 +68,10 @@ function Inner() {
             Coming Soon
           </span>
         </div>
+        <div className="mt-8 flex justify-center gap-4 text-xs text-gray-500">
+          <a href="/terms" className="hover:text-white transition-colors">Terms</a>
+          <a href="/privacy" className="hover:text-white transition-colors">Privacy</a>
+        </div>
       </div>
     </main>
   );
