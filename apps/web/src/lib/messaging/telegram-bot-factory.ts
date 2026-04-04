@@ -156,7 +156,7 @@ export async function createTelegramBot(
 }
 
 /**
- * Configure bot description and privacy settings (best-effort).
+ * Configure bot description, privacy, and group settings (best-effort).
  */
 async function configureBotSettings(
   tg: TelegramClient,
@@ -164,25 +164,42 @@ async function configureBotSettings(
   username: string,
 ): Promise<void> {
   try {
+    // Set bot description
     await tg.sendMessage(botFather, { message: '/setdescription' });
-    await sleep(1500);
+    await sleep(2000);
     await tg.sendMessage(botFather, { message: `@${username}` });
-    await sleep(1500);
+    await sleep(2000);
     await tg.sendMessage(botFather, {
       message:
         'Your personal AI assistant powered by ShiftWorker. I can manage your email, calendar, browse the web, and much more.',
     });
-    await sleep(1500);
+    await sleep(2000);
 
-    // Disable group privacy so bot can see all messages, not just @mentions
+    // Disable group privacy so bot can see all messages, not just /commands
     await tg.sendMessage(botFather, { message: '/setprivacy' });
-    await sleep(1500);
+    await sleep(2000);
     await tg.sendMessage(botFather, { message: `@${username}` });
-    await sleep(1500);
+    await sleep(2000);
     await tg.sendMessage(botFather, { message: 'Disable' });
-    await sleep(1000);
+    await sleep(2000);
+
+    // Enable group joining so users can add the bot to group chats
+    await tg.sendMessage(botFather, { message: '/setjoingroups' });
+    await sleep(2000);
+    await tg.sendMessage(botFather, { message: `@${username}` });
+    await sleep(2000);
+    await tg.sendMessage(botFather, { message: 'Enable' });
+    await sleep(2000);
+
+    // Verify settings were applied by reading BotFather's responses
+    const msgs = await tg.getMessages(botFather, { limit: 3 });
+    const lastMsg = msgs[0]?.text ?? '';
+    if (lastMsg.includes('ENABLED')) {
+      console.log(`Bot @${username}: group joining enabled`);
+    }
   } catch {
-    // Non-critical - bot works without description/privacy changes
+    // Non-critical - bot works without these settings but groups may not work
+    console.warn(`Failed to configure BotFather settings for @${username}`);
   }
 }
 
