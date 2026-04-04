@@ -44,7 +44,7 @@ export function generateCloudInit(opts: CloudInitOptions): string {
           'gemini': 'gemini/gemini-2.5-flash',
           'openai': 'openai/gpt-4o',
           'anthropic': 'anthropic/claude-sonnet-4',
-          'github-copilot': 'github-copilot/claude-sonnet-4',
+          'github-copilot': 'openai/gpt-4o',
       }
       provider = '${opts.aiProvider}'
       model_id = MODEL_MAP.get(provider, '')
@@ -56,12 +56,14 @@ export function generateCloudInit(opts: CloudInitOptions): string {
           'gemini': 'GEMINI_API_KEY',
           'openai': 'OPENAI_API_KEY',
           'anthropic': 'ANTHROPIC_API_KEY',
-          'github-copilot': 'GITHUB_TOKEN',
+          'github-copilot': 'OPENAI_API_KEY',
       }
       env_key = ENV_MAP.get(provider, '')
       api_key = '${escapedApiKey}'
       if env_key and api_key:
           config.setdefault('env', {})[env_key] = api_key
+      if provider == 'github-copilot':
+          config.setdefault('env', {})['OPENAI_BASE_URL'] = 'https://models.inference.ai.azure.com'
       with open(config_path, 'w') as f:
           json.dump(config, f, indent=2)
       pw = pwd.getpwnam(user)
