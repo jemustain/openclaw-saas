@@ -333,6 +333,8 @@ export default function Home() {
             <span className="font-bold">ShiftWorker</span>
           </div>
           <div className="flex gap-6 text-sm text-slate-400">
+            <a href="/terms" className="hover:text-white transition-colors">Terms</a>
+            <a href="/privacy" className="hover:text-white transition-colors">Privacy</a>
           </div>
           <p className="text-sm text-slate-500">
             © {new Date().getFullYear()} ShiftWorker
