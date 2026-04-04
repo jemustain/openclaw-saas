@@ -1208,16 +1208,6 @@ export default function OnboardingWizard() {
 
             {/* Messenger quick links */}
             <div className="flex flex-col gap-3 max-w-md mx-auto w-full">
-              {messengers.includes('telegram') && botLinks.telegram && (
-                <a
-                  href={botLinks.telegram}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="block w-full text-center rounded-full bg-violet-600 hover:bg-violet-500 py-3 font-medium transition"
-                >
-                  Open in Telegram →
-                </a>
-              )}
               {messengers.includes('whatsapp') && botLinks.whatsapp && (
                 <a
                   href={botLinks.whatsapp}
