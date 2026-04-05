@@ -12,17 +12,24 @@ export async function GET() {
     }
 
     const supabase: any = createClient();
-    const { data: assistant, error } = await supabase
-      .from('assistants')
-      .select()
-      .eq('user_id', session.userId)
-      .neq('status', 'destroyed')
-      .order('created_at', { ascending: false })
-      .limit(1)
-      .single();
+    const [{ data: assistant, error }, { data: userProfile }] = await Promise.all([
+      supabase
+        .from('assistants')
+        .select()
+        .eq('user_id', session.userId)
+        .neq('status', 'destroyed')
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .single(),
+      supabase
+        .from('users')
+        .select('ai_provider, provider_preference')
+        .eq('id', session.userId)
+        .single(),
+    ]);
 
     if (error || !assistant) {
-      return NextResponse.json({ assistant: null });
+      return NextResponse.json({ assistant: null, aiProvider: userProfile?.ai_provider ?? userProfile?.provider_preference ?? null });
     }
 
     const needsProvisioning =
@@ -50,11 +57,12 @@ export async function GET() {
         } catch { /* best effort */ }
         return NextResponse.json({
           assistant: { ...assistant, _provisioningError: 'Provisioning step failed. Retrying automatically.' },
+          aiProvider: userProfile?.ai_provider ?? userProfile?.provider_preference ?? null,
         });
       }
     }
 
-    return NextResponse.json({ assistant });
+    return NextResponse.json({ assistant, aiProvider: userProfile?.ai_provider ?? userProfile?.provider_preference ?? null });
   } catch (err) {
     return handleApiError(err, 'assistant/status');
   }

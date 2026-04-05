@@ -257,12 +257,19 @@ export default function OnboardingWizard() {
           setServerActive(true);
           setSetupDone(true);
           setSetupStatus((prev) => [...prev, 'Server is online']);
+          // Restore AI provider from user profile
+          if (data.aiProvider) {
+            setAiProvider(data.aiProvider as typeof aiProvider);
+          }
           setStep((currentStep) => {
             if (currentStep < 7) return 7;
             return currentStep; // Don't jump backward
           });
         } else if (assistant.status === 'provisioning') {
           // VM is provisioning - jump to Setup & Connect and start polling
+          if (data.aiProvider) {
+            setAiProvider(data.aiProvider as typeof aiProvider);
+          }
           setStep((currentStep) => {
             if (currentStep < 7) {
               setServerActive(false);
