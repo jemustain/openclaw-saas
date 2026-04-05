@@ -1271,9 +1271,17 @@ export default function OnboardingWizard() {
                             <DeviceFlowPoll
                               userCode={deviceFlowCode}
                               verificationUri={deviceFlowUri!}
-                              onAuthorized={() => {
+                              onAuthorized={async () => {
                                 setAiKeyVerified(true);
                                 setDeviceFlowPolling(false);
+                                // Persist AI provider choice to the DB
+                                try {
+                                  await fetch('/api/onboarding', {
+                                    method: 'PATCH',
+                                    headers: { 'Content-Type': 'application/json' },
+                                    body: JSON.stringify({ aiProvider: 'github-copilot' }),
+                                  });
+                                } catch { /* ignore */ }
                               }}
                               onExpired={() => {
                                 setDeviceFlowCode(null);
@@ -1376,12 +1384,22 @@ export default function OnboardingWizard() {
                 </p>
                 <PrimaryBtn
                   onClick={async () => {
-                    // Mark onboarding complete
+                    // Persist all onboarding state and mark complete
                     try {
                       await fetch('/api/onboarding', {
                         method: 'PATCH',
                         headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ onboardingComplete: true }),
+                        body: JSON.stringify({
+                          onboardingComplete: true,
+                          timezone,
+                          plan,
+                          windowStart,
+                          messengers,
+                          skills,
+                          aiProvider,
+                          vmSize,
+                          ...(selectedSubId ? { azureSubscriptionId: selectedSubId } : {}),
+                        }),
                       });
                     } catch { /* ignore */ }
                     goTo(9);
