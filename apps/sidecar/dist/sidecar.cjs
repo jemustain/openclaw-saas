@@ -344,7 +344,7 @@ router2.get("/openclaw/github-copilot-device-status", async (_req, res) => {
       }
       const agents = config.agents = config.agents ?? {};
       const defaults = agents.defaults = agents.defaults ?? {};
-      defaults.model = { primary: "github-copilot/gpt-4o", authProfile: "github-copilot:github" };
+      defaults.model = { primary: "github-copilot/gpt-4o" };
       delete config.defaultModel;
       if (config.env) {
         delete config.env["OPENAI_API_KEY"];

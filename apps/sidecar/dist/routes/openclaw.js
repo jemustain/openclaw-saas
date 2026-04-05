@@ -264,7 +264,7 @@ router.get('/openclaw/github-copilot-device-status', async (_req, res) => {
             }
             const agents = config.agents = config.agents ?? {};
             const defaults = agents.defaults = agents.defaults ?? {};
-            defaults.model = { primary: 'github-copilot/gpt-4o', authProfile: 'github-copilot:github' };
+            defaults.model = { primary: 'github-copilot/gpt-4o' };
             delete config.defaultModel;
             // Remove stale env vars since we're using auth profiles
             if (config.env) {
