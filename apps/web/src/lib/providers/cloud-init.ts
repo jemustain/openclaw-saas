@@ -115,8 +115,6 @@ write_files:
       ExecStart=/usr/bin/node dist/sidecar.cjs
       Restart=always
       RestartSec=5
-      WatchdogSec=120
-      WatchdogSignal=SIGKILL
       [Install]
       WantedBy=multi-user.target
   - path: /opt/shiftworker/patch-config.py
