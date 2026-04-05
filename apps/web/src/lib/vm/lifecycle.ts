@@ -120,7 +120,7 @@ export async function launchAssistant(userId: string): Promise<Assistant> {
   // Read user record to get VM size and subscription preferences
   const { data: user, error: userError } = await supabase
     .from('users')
-    .select('vm_size, azure_subscription_id, telegram_bot_token, ai_provider, ai_api_key')
+    .select('vm_size, azure_subscription_id, telegram_bot_token')
     .eq('id', userId)
     .single();
 
@@ -131,22 +131,11 @@ export async function launchAssistant(userId: string): Promise<Assistant> {
   const assistantId = randomUUID();
   const sidecarToken = randomUUID();
 
-  // Get AI credentials for the VM
-  let aiApiKeyForVM: string | undefined;
-  if (user?.ai_provider === 'github-copilot') {
-    const ghToken = await getProviderToken(userId, 'github-copilot');
-    aiApiKeyForVM = ghToken?.accessToken;
-  } else {
-    aiApiKeyForVM = user?.ai_api_key ?? undefined;
-  }
-
   const cloudInit = generateCloudInit({
     sidecarToken,
     portalUrl: PORTAL_URL,
     instanceId: assistantId,
     telegramBotToken: user?.telegram_bot_token ?? undefined,
-    aiProvider: user?.ai_provider ?? undefined,
-    aiApiKey: aiApiKeyForVM,
   });
 
   // Insert assistant record as provisioning

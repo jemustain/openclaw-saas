@@ -1,9 +1,14 @@
 import { Router, Request, Response } from 'express';
 import { exec } from 'child_process';
 import { promisify } from 'util';
+import * as fs from 'fs';
+import * as path from 'path';
 
 const execAsync = promisify(exec);
 const router = Router();
+
+// In-memory store for device flow state
+const deviceFlowStore: Record<string, { deviceCode: string; expiresAt: number; interval: number }> = {};
 
 async function getOpenclawStatus(): Promise<{ running: boolean; version: string; uptime: string }> {
   let running = false;
@@ -108,6 +113,170 @@ router.post('/admin/fix-config', async (_req: Request, res: Response) => {
     res.json({ status: fixed ? 'fixed' : 'ok', fixed });
   } catch (err: any) {
     res.status(500).json({ error: 'Failed to fix config', details: err.message });
+  }
+});
+
+const COPILOT_CLIENT_ID = 'Iv1.b507a08c87ecfe98';
+
+/** Start GitHub Copilot device flow authentication */
+router.post('/openclaw/github-copilot-device-start', async (_req: Request, res: Response) => {
+  try {
+    const ghRes = await fetch('https://github.com/login/device/code', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+      body: JSON.stringify({ client_id: COPILOT_CLIENT_ID, scope: 'read:user' }),
+    });
+    if (!ghRes.ok) {
+      const text = await ghRes.text();
+      res.status(502).json({ error: 'GitHub device code request failed', details: text });
+      return;
+    }
+    const data: any = await ghRes.json();
+    const { device_code, user_code, verification_uri, expires_in, interval } = data;
+
+    deviceFlowStore['copilot-device'] = {
+      deviceCode: device_code,
+      expiresAt: Date.now() + (expires_in ?? 900) * 1000,
+      interval: interval ?? 5,
+    };
+
+    res.json({
+      userCode: user_code,
+      verificationUri: verification_uri,
+      deviceCode: device_code,
+      expiresIn: expires_in,
+      interval: interval ?? 5,
+    });
+  } catch (err: any) {
+    res.status(500).json({ error: 'Failed to start device flow', details: err.message });
+  }
+});
+
+/** Poll GitHub Copilot device flow status */
+router.get('/openclaw/github-copilot-device-status', async (_req: Request, res: Response) => {
+  try {
+    const stored = deviceFlowStore['copilot-device'];
+    if (!stored) {
+      res.json({ status: 'error', error: 'No device flow in progress. Call device-start first.' });
+      return;
+    }
+
+    if (Date.now() > stored.expiresAt) {
+      delete deviceFlowStore['copilot-device'];
+      res.json({ status: 'expired' });
+      return;
+    }
+
+    const ghRes = await fetch('https://github.com/login/oauth/access_token', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+      body: JSON.stringify({
+        client_id: COPILOT_CLIENT_ID,
+        device_code: stored.deviceCode,
+        grant_type: 'urn:ietf:params:oauth:grant-type:device_code',
+      }),
+    });
+
+    const data: any = await ghRes.json();
+
+    if (data.error === 'authorization_pending') {
+      res.json({ status: 'pending' });
+      return;
+    }
+
+    if (data.error === 'slow_down') {
+      stored.interval = (stored.interval ?? 5) + 5;
+      res.json({ status: 'pending' });
+      return;
+    }
+
+    if (data.error === 'expired_token') {
+      delete deviceFlowStore['copilot-device'];
+      res.json({ status: 'expired' });
+      return;
+    }
+
+    if (data.error) {
+      delete deviceFlowStore['copilot-device'];
+      res.json({ status: 'error', error: data.error_description || data.error });
+      return;
+    }
+
+    if (data.access_token) {
+      delete deviceFlowStore['copilot-device'];
+      const token = data.access_token;
+
+      // Store token in OpenClaw auth profile store
+      const CLAW_USER = process.env.OPENCLAW_USER || 'claw';
+      const stateDir = path.join('/home', CLAW_USER, '.openclaw', 'state');
+      const authProfilesPath = path.join(stateDir, 'auth-profiles.json');
+
+      if (!fs.existsSync(stateDir)) {
+        fs.mkdirSync(stateDir, { recursive: true });
+      }
+
+      let profiles: any = { profiles: {} };
+      if (fs.existsSync(authProfilesPath)) {
+        try { profiles = JSON.parse(fs.readFileSync(authProfilesPath, 'utf8')); } catch {}
+      }
+      profiles.profiles = profiles.profiles ?? {};
+      profiles.profiles['github-copilot:github'] = {
+        type: 'token',
+        provider: 'github-copilot',
+        token: token,
+      };
+      fs.writeFileSync(authProfilesPath, JSON.stringify(profiles, null, 2));
+      try { await execAsync(`chown -R ${CLAW_USER}:${CLAW_USER} ${stateDir}`); } catch {}
+
+      // Update openclaw.json config
+      const configPath = path.join('/home', CLAW_USER, '.openclaw', 'openclaw.json');
+      let config: any = {};
+      if (fs.existsSync(configPath)) {
+        try { config = JSON.parse(fs.readFileSync(configPath, 'utf8')); } catch {}
+      }
+
+      const agents = config.agents = config.agents ?? {};
+      const defaults = agents.defaults = agents.defaults ?? {};
+      defaults.model = { primary: 'github-copilot/gpt-4o', authProfile: 'github-copilot:github' };
+      delete config.defaultModel;
+
+      // Remove stale env vars since we're using auth profiles
+      if (config.env) {
+        delete config.env['OPENAI_API_KEY'];
+        delete config.env['OPENAI_BASE_URL'];
+        delete config.env['GITHUB_TOKEN'];
+        if (Object.keys(config.env).length === 0) delete config.env;
+      }
+
+      fs.writeFileSync(configPath, JSON.stringify(config, null, 2));
+      try { await execAsync(`chown ${CLAW_USER}:${CLAW_USER} ${configPath}`); } catch {}
+
+      // Remove stale keys from config.env file if it exists
+      const configEnvPath = path.join('/home', CLAW_USER, '.openclaw', 'config.env');
+      if (fs.existsSync(configEnvPath)) {
+        try {
+          let envContent = fs.readFileSync(configEnvPath, 'utf8');
+          envContent = envContent
+            .split('\n')
+            .filter(line => !line.startsWith('OPENAI_API_KEY=') && !line.startsWith('OPENAI_BASE_URL=') && !line.startsWith('GITHUB_TOKEN='))
+            .join('\n');
+          fs.writeFileSync(configEnvPath, envContent);
+          try { await execAsync(`chown ${CLAW_USER}:${CLAW_USER} ${configEnvPath}`); } catch {}
+        } catch {}
+      }
+
+      // Restart OpenClaw gateway
+      try { await execAsync('systemctl restart openclaw-sidecar'); } catch {
+        try { await execAsync(`su - ${CLAW_USER} -c "openclaw gateway restart"`); } catch {}
+      }
+
+      res.json({ status: 'authorized', model: 'github-copilot/gpt-4o' });
+      return;
+    }
+
+    res.json({ status: 'error', error: 'Unexpected response from GitHub' });
+  } catch (err: any) {
+    res.status(500).json({ error: 'Failed to check device flow status', details: err.message });
   }
 });
 
