@@ -14,7 +14,23 @@ import {
 import ProgressIndicator from './progress-indicator';
 import { MessengerSetupCard } from './messenger-setup-card';
 
-const STEPS = ['Welcome', 'Hosting', 'Subscription', 'AI Provider', 'Plan', 'Messengers', 'Skills', 'Setup & Connect', 'Ready'];
+const STEPS = ['Welcome', 'Hosting', 'Subscription', 'VM Size', 'AI Provider', 'Plan', 'Messengers', 'Skills', 'Setup & Connect', 'Ready'];
+
+type VmSizeInfo = {
+  name: string;
+  vCPUs: number;
+  memoryGB: number;
+  pricePerHour: number | null;
+  pricePerMonth: number | null;
+  available: boolean;
+  family: string;
+};
+
+const TIER_DEFS = [
+  { id: 'starter', label: 'Starter', tagline: 'Perfect for getting started', features: ['Calendar management', 'Email', 'Basic automation'], vCPUs: 2, memoryGB: 4 },
+  { id: 'standard', label: 'Standard', tagline: 'Great for everyday use', features: ['Everything in Starter', 'Web browsing', 'Code execution', 'File management'], vCPUs: 2, memoryGB: 8, recommended: true },
+  { id: 'power', label: 'Power', tagline: 'For heavy workloads', features: ['Everything in Standard', 'Local image generation', 'Large file processing', 'Multiple concurrent tasks'], vCPUs: 4, memoryGB: 16 },
+];
 
 const MESSENGERS = [
   { id: 'whatsapp', label: 'WhatsApp', icon: MessageCircle },
@@ -122,6 +138,9 @@ export default function OnboardingWizard() {
   const [timezone, setTimezone] = useState('');
   const [hosting, setHosting] = useState('azure');
   const [vmSize, setVmSize] = useState('');
+  const [vmSizes, setVmSizes] = useState<VmSizeInfo[]>([]);
+  const [vmSizesLoading, setVmSizesLoading] = useState(false);
+  const [vmSizeAdvanced, setVmSizeAdvanced] = useState(false);
 
   const AZURE_SIZES = [
     { id: 'Standard_B1s', label: 'Basic', cpu: '1 vCPU', ram: '1 GB', price: '~$4/mo', recommended: true },
@@ -208,7 +227,7 @@ export default function OnboardingWizard() {
         if (s >= 0 && s < STEPS.length) { setStep(s); return; }
       }
       if (githubErrors.includes(errorParam)) {
-        setStep(3); // AI Provider step
+        setStep(4); // AI Provider step
       } else {
         setStep(1); // Hosting step for Azure errors
       }
@@ -230,12 +249,12 @@ export default function OnboardingWizard() {
         setStep(2);
       } else {
         // Skip subscription step for non-Azure providers
-        setStep(4);
+        setStep(5);
       }
     }
     if (upgraded === 'true' && !stepParam) {
       setPlan('pro');
-      setStep(5);
+      setStep(6);
       setMessengers(MESSENGERS.map((m) => m.id));
       setSkills(SKILLS.filter((s) => !s.pro).map((s) => s.id));
     }
@@ -337,6 +356,26 @@ export default function OnboardingWizard() {
     return () => { cancelled = true; };
   }, [step, hosting, azureSubs.length, selectedSubId]);
 
+  // Fetch VM sizes when entering VM Size step
+  useEffect(() => {
+    if (step !== 3 || hosting !== 'azure' || !selectedSubId) return;
+    let cancelled = false;
+    setVmSizesLoading(true);
+    fetch(`/api/azure/vm-sizes?subscriptionId=${encodeURIComponent(selectedSubId)}&region=southcentralus`)
+      .then((r) => r.json())
+      .then((data) => {
+        if (cancelled) return;
+        setVmSizes(data.sizes ?? []);
+        setVmSizesLoading(false);
+      })
+      .catch(() => {
+        if (cancelled) return;
+        setVmSizes([]);
+        setVmSizesLoading(false);
+      });
+    return () => { cancelled = true; };
+  }, [step, hosting, selectedSubId]);
+
   const next = () => goTo(step + 1);
   const back = () => goTo(step - 1);
 
@@ -403,7 +442,7 @@ export default function OnboardingWizard() {
   }, [step, setupDone]);
 
   const saveAndLaunch = async () => {
-    goTo(7);
+    goTo(8);
     setServerActive(false);
     // Reset launch timer
     sessionStorage.setItem('sw_launch_ts', String(Date.now()));
@@ -419,7 +458,7 @@ export default function OnboardingWizard() {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          timezone, plan, windowStart, messengers, skills, aiProvider,
+          timezone, plan, windowStart, messengers, skills, aiProvider, vmSize,
           onboardingComplete: false,
           ...(selectedSubId ? { azureSubscriptionId: selectedSubId } : {}),
         }),
@@ -444,7 +483,7 @@ export default function OnboardingWizard() {
 
     if (launchFailed) {
       setSetupDone(true);
-      setTimeout(() => goTo(8), 2000);
+      setTimeout(() => goTo(9), 2000);
       return;
     }
     let attempts = 0;
@@ -489,14 +528,14 @@ export default function OnboardingWizard() {
         if (data.assistant?.status === 'destroyed' || data.assistant?.status === 'destroying') {
           addStatus('Server provisioning failed - please try again from your dashboard');
           setSetupDone(true);
-          setTimeout(() => goTo(8), 2000);
+          setTimeout(() => goTo(9), 2000);
           return;
         }
         // No assistant found at all after many attempts = likely failed
         if (!data.assistant && attempts > 30) {
           addStatus('Something went wrong - please try launching from your dashboard');
           setSetupDone(true);
-          setTimeout(() => goTo(8), 2000);
+          setTimeout(() => goTo(9), 2000);
           return;
         }
       } catch { /* ignore */ }
@@ -805,8 +844,103 @@ export default function OnboardingWizard() {
           </div>
         )}
 
-        {/* Step 3: AI Provider */}
-        {step === 3 && (
+        {/* Step 3: VM Size */}
+        {step === 3 && hosting === 'azure' && (
+          <div className="space-y-6">
+            <h2 className="text-2xl font-bold text-center">Choose Your VM Size</h2>
+            <p className="text-sm text-slate-400 text-center">You&apos;re only charged for actual usage. Costs are estimated based on Azure pay-as-you-go pricing.</p>
+
+            {vmSizesLoading ? (
+              <div className="flex justify-center py-8"><Loader2 className="w-8 h-8 animate-spin text-violet-400" /></div>
+            ) : !vmSizeAdvanced ? (
+              <div className="space-y-4">
+                <div className="grid gap-4">
+                  {TIER_DEFS.map((tier) => {
+                    const match = vmSizes.find((s) => s.available && s.vCPUs === tier.vCPUs && s.memoryGB === tier.memoryGB && s.family.toLowerCase().includes('bs'));
+                    const fallback = vmSizes.find((s) => s.available && s.vCPUs === tier.vCPUs && s.memoryGB === tier.memoryGB);
+                    const vm = match || fallback;
+                    const unavailable = !vm;
+                    const selected = vm && vmSize === vm.name;
+                    return (
+                      <div
+                        key={tier.id}
+                        onClick={() => vm && setVmSize(vm.name)}
+                        className={`relative rounded-xl border p-4 cursor-pointer transition-all ${
+                          unavailable ? 'opacity-50 cursor-not-allowed border-slate-800 bg-slate-900/50' :
+                          selected ? 'border-violet-500 bg-violet-500/10' : 'border-slate-800 bg-slate-900 hover:border-slate-600'
+                        }`}
+                      >
+                        {'recommended' in tier && tier.recommended && (
+                          <span className="absolute -top-2 right-3 bg-violet-600 text-xs px-2 py-0.5 rounded-full font-medium">RECOMMENDED</span>
+                        )}
+                        <div className="flex items-start justify-between">
+                          <div>
+                            <div className="font-semibold text-lg">{tier.label}</div>
+                            <div className="text-sm text-slate-400">{tier.tagline}</div>
+                            <div className="text-xs text-slate-500 mt-1">{tier.vCPUs} vCPU · {tier.memoryGB} GB RAM</div>
+                            <ul className="text-xs text-slate-400 mt-2 space-y-0.5">
+                              {tier.features.map((f) => <li key={f} className="flex items-center gap-1"><Check className="w-3 h-3 text-green-400" />{f}</li>)}
+                            </ul>
+                          </div>
+                          {vm && vm.pricePerMonth !== null && (
+                            <div className="text-right text-sm">
+                              <div className="font-semibold">${vm.pricePerMonth.toFixed(0)}<span className="text-xs text-slate-400">/mo 24/7</span></div>
+                              <div className="text-slate-400">${(vm.pricePerMonth / 3).toFixed(0)}<span className="text-xs">/mo 8hrs/day</span></div>
+                            </div>
+                          )}
+                        </div>
+                        {unavailable && <div className="text-xs text-amber-400 mt-2">Not available on your subscription</div>}
+                      </div>
+                    );
+                  })}
+                </div>
+                <button
+                  onClick={() => setVmSizeAdvanced(true)}
+                  className="text-sm text-violet-400 hover:text-violet-300 underline"
+                >Show all available sizes</button>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                <button
+                  onClick={() => setVmSizeAdvanced(false)}
+                  className="text-sm text-violet-400 hover:text-violet-300 underline"
+                >← Back to simple view</button>
+                <div className="max-h-64 overflow-y-auto border border-slate-800 rounded-lg">
+                  <table className="w-full text-sm">
+                    <thead className="bg-slate-800 sticky top-0">
+                      <tr><th className="px-3 py-2 text-left">VM Size</th><th className="px-3 py-2">vCPUs</th><th className="px-3 py-2">RAM</th><th className="px-3 py-2">$/hr</th><th className="px-3 py-2">$/mo</th></tr>
+                    </thead>
+                    <tbody>
+                      {vmSizes.filter((s) => s.available).map((s) => (
+                        <tr
+                          key={s.name}
+                          onClick={() => setVmSize(s.name)}
+                          className={`cursor-pointer border-t border-slate-800 hover:bg-slate-800/50 ${vmSize === s.name ? 'bg-violet-500/10' : ''}`}
+                        >
+                          <td className="px-3 py-2 font-mono text-xs">{s.name}</td>
+                          <td className="px-3 py-2 text-center">{s.vCPUs}</td>
+                          <td className="px-3 py-2 text-center">{s.memoryGB} GB</td>
+                          <td className="px-3 py-2 text-center">{s.pricePerHour !== null ? `$${s.pricePerHour.toFixed(4)}` : '—'}</td>
+                          <td className="px-3 py-2 text-center">{s.pricePerMonth !== null ? `$${s.pricePerMonth.toFixed(0)}` : '—'}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )}
+
+            <div className="flex justify-between items-center">
+              <BackBtn />
+              <PrimaryBtn onClick={next} disabled={!vmSize || vmSizesLoading}>
+                Next <ArrowRight className="w-4 h-4" />
+              </PrimaryBtn>
+            </div>
+          </div>
+        )}
+
+        {/* Step 4: AI Provider */}
+        {step === 4 && (
           <div className="space-y-6">
             <div className="text-center">
               <Key className="w-12 h-12 text-violet-500 mx-auto mb-4" />
@@ -883,7 +1017,7 @@ export default function OnboardingWizard() {
         )}
 
         {/* Step 4: Plan */}
-        {step === 4 && (
+        {step === 5 && (
           <div className="space-y-6">
             <h2 className="text-2xl font-bold text-center">Choose Your Plan</h2>
             <div className="grid sm:grid-cols-2 gap-4">
@@ -933,7 +1067,7 @@ export default function OnboardingWizard() {
                   const res = await fetch('/api/stripe/checkout', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ plan: 'pro', returnUrl: '/onboarding?step=5&upgraded=true' }),
+                    body: JSON.stringify({ plan: 'pro', returnUrl: '/onboarding?step=6&upgraded=true' }),
                   });
                   const data = await res.json();
                   if (data.url) {
@@ -950,7 +1084,7 @@ export default function OnboardingWizard() {
         )}
 
         {/* Step 5: Messengers */}
-        {step === 5 && (
+        {step === 6 && (
           <div className="space-y-6">
             <h2 className="text-2xl font-bold text-center">Choose Your Messenger{plan === 'free' ? '' : 's'}</h2>
             <p className="text-slate-400 text-center">
@@ -979,7 +1113,7 @@ export default function OnboardingWizard() {
         )}
 
         {/* Step 6: Skills */}
-        {step === 6 && (
+        {step === 7 && (
           <div className="space-y-6">
             <h2 className="text-2xl font-bold text-center">Choose Your Skills</h2>
             <p className="text-slate-400 text-center">
@@ -1020,7 +1154,7 @@ export default function OnboardingWizard() {
         )}
 
         {/* Step 7: Setup & Connect (provisioning + messenger setup) */}
-        {step === 7 && (
+        {step === 8 && (
           <div className="space-y-6">
             <h2 className="text-2xl font-bold text-center">
               {setupDone && serverActive ? 'Connect Your Messengers' : 'Setting Up Your Assistant'}
@@ -1250,7 +1384,7 @@ export default function OnboardingWizard() {
                         body: JSON.stringify({ onboardingComplete: true }),
                       });
                     } catch { /* ignore */ }
-                    goTo(8);
+                    goTo(9);
                   }}
                 >
                   Continue to Dashboard <ArrowRight className="w-4 h-4" />
@@ -1261,7 +1395,7 @@ export default function OnboardingWizard() {
             {/* Error state: show go to dashboard */}
             {setupDone && !serverActive && (
               <div className="flex justify-center pt-2">
-                <PrimaryBtn onClick={() => goTo(8)}>
+                <PrimaryBtn onClick={() => goTo(9)}>
                   Continue <ArrowRight className="w-4 h-4" />
                 </PrimaryBtn>
               </div>
@@ -1271,8 +1405,8 @@ export default function OnboardingWizard() {
 
 
 
-                {/* Step 8: Ready */}
-        {step === 8 && (
+                {/* Step 9: Ready */}
+        {step === 9 && (
           <div className="text-center space-y-6">
             <Sparkles className="w-16 h-16 text-violet-500 mx-auto" />
             <h1 className="text-3xl font-bold">You&apos;re All Set!</h1>

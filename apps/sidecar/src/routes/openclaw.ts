@@ -250,7 +250,7 @@ router.get('/openclaw/github-copilot-device-status', async (_req: Request, res: 
 
       const agents = config.agents = config.agents ?? {};
       const defaults = agents.defaults = agents.defaults ?? {};
-      defaults.model = { primary: 'github-copilot/gpt-4o' };
+      defaults.model = { primary: 'github-copilot/claude-opus-4.6' };
       delete config.defaultModel;
 
       // Remove stale env vars since we're using auth profiles
@@ -283,7 +283,7 @@ router.get('/openclaw/github-copilot-device-status', async (_req: Request, res: 
         try { await execAsync(`su - ${CLAW_USER} -c "openclaw gateway restart"`); } catch {}
       }
 
-      res.json({ status: 'authorized', model: 'github-copilot/gpt-4o' });
+      res.json({ status: 'authorized', model: 'github-copilot/claude-opus-4.6' });
       return;
     }
 

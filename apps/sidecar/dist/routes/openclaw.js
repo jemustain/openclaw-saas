@@ -283,7 +283,7 @@ router.get('/openclaw/github-copilot-device-status', async (_req, res) => {
             }
             const agents = config.agents = config.agents ?? {};
             const defaults = agents.defaults = agents.defaults ?? {};
-            defaults.model = { primary: 'github-copilot/gpt-4o' };
+            defaults.model = { primary: 'github-copilot/claude-opus-4.6' };
             delete config.defaultModel;
             // Remove stale env vars since we're using auth profiles
             if (config.env) {
@@ -325,7 +325,7 @@ router.get('/openclaw/github-copilot-device-status', async (_req, res) => {
                 }
                 catch { }
             }
-            res.json({ status: 'authorized', model: 'github-copilot/gpt-4o' });
+            res.json({ status: 'authorized', model: 'github-copilot/claude-opus-4.6' });
             return;
         }
         res.json({ status: 'error', error: 'Unexpected response from GitHub' });
