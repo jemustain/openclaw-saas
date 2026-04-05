@@ -208,16 +208,25 @@ router.get('/openclaw/github-copilot-device-status', async (_req: Request, res: 
 
       // Store token in OpenClaw auth profile store
       const CLAW_USER = process.env.OPENCLAW_USER || 'claw';
-      const stateDir = path.join('/home', CLAW_USER, '.openclaw', 'state');
-      const authProfilesPath = path.join(stateDir, 'auth-profiles.json');
 
-      if (!fs.existsSync(stateDir)) {
-        fs.mkdirSync(stateDir, { recursive: true });
+      // Write auth profiles to BOTH the global state dir and the per-agent dir.
+      // OpenClaw resolves auth from the per-agent path: ~/.openclaw/agents/main/agent/auth-profiles.json
+      const agentDir = path.join('/home', CLAW_USER, '.openclaw', 'agents', 'main', 'agent');
+      const stateDir = path.join('/home', CLAW_USER, '.openclaw', 'state');
+      const agentAuthPath = path.join(agentDir, 'auth-profiles.json');
+      const stateAuthPath = path.join(stateDir, 'auth-profiles.json');
+
+      for (const dir of [agentDir, stateDir]) {
+        if (!fs.existsSync(dir)) {
+          fs.mkdirSync(dir, { recursive: true });
+        }
       }
 
       let profiles: any = { profiles: {} };
-      if (fs.existsSync(authProfilesPath)) {
-        try { profiles = JSON.parse(fs.readFileSync(authProfilesPath, 'utf8')); } catch {}
+      if (fs.existsSync(agentAuthPath)) {
+        try { profiles = JSON.parse(fs.readFileSync(agentAuthPath, 'utf8')); } catch {}
+      } else if (fs.existsSync(stateAuthPath)) {
+        try { profiles = JSON.parse(fs.readFileSync(stateAuthPath, 'utf8')); } catch {}
       }
       profiles.profiles = profiles.profiles ?? {};
       profiles.profiles['github-copilot:github'] = {
@@ -225,7 +234,11 @@ router.get('/openclaw/github-copilot-device-status', async (_req: Request, res: 
         provider: 'github-copilot',
         token: token,
       };
-      fs.writeFileSync(authProfilesPath, JSON.stringify(profiles, null, 2));
+      // Write to both locations
+      for (const authPath of [agentAuthPath, stateAuthPath]) {
+        fs.writeFileSync(authPath, JSON.stringify(profiles, null, 2));
+      }
+      try { await execAsync(`chown -R ${CLAW_USER}:${CLAW_USER} ${agentDir}`); } catch {}
       try { await execAsync(`chown -R ${CLAW_USER}:${CLAW_USER} ${stateDir}`); } catch {}
 
       // Update openclaw.json config
