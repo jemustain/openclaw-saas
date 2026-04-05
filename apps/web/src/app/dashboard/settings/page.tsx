@@ -1,8 +1,15 @@
 'use client';
 
 import { useRouter } from 'next/navigation';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { TimezonePicker } from '@/components/ui/timezone-picker';
+import { Loader2, Monitor, Bot, Database, AlertTriangle } from 'lucide-react';
+
+interface AccountResources {
+  vm: { name: string; region: string; ip: string; size: string } | null;
+  telegramBot: { username: string } | null;
+  database: { tables: string[] };
+}
 
 function formatPlan(plan: string): string {
   if (!plan) return 'Free';
@@ -18,10 +25,12 @@ export default function SettingsPage() {
   const [plan, setPlan] = useState('Free');
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
-  const [showDelete, setShowDelete] = useState(false);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [deleteConfirm, setDeleteConfirm] = useState('');
   const [deleting, setDeleting] = useState(false);
   const [deleteError, setDeleteError] = useState<string | null>(null);
+  const [resources, setResources] = useState<AccountResources | null>(null);
+  const [resourcesLoading, setResourcesLoading] = useState(false);
   const [aiProvider, setAiProvider] = useState('');
   const [aiApiKeyMasked, setAiApiKeyMasked] = useState('');
   const [showAiChange, setShowAiChange] = useState(false);
@@ -68,8 +77,20 @@ export default function SettingsPage() {
     setTimeout(() => setSaved(false), 2000);
   }
 
+  const openDeleteModal = useCallback(() => {
+    setShowDeleteModal(true);
+    setDeleteConfirm('');
+    setDeleteError(null);
+    setResourcesLoading(true);
+    fetch('/api/account/resources')
+      .then((res) => res.json())
+      .then((data) => setResources(data.resources))
+      .catch(() => setResources({ vm: null, telegramBot: null, database: { tables: [] } }))
+      .finally(() => setResourcesLoading(false));
+  }, []);
+
   async function handleDelete() {
-    if (deleteConfirm !== 'DELETE') return;
+    if (deleteConfirm !== 'delete my account') return;
     setDeleting(true);
     setDeleteError(null);
     try {
@@ -85,6 +106,10 @@ export default function SettingsPage() {
       setDeleteError('Something went wrong. Please try again.');
       setDeleting(false);
     }
+  }
+
+  function formatRegion(region: string): string {
+    return region.replace(/([a-z])([A-Z])/g, '$1 $2').replace(/^./, (s) => s.toUpperCase());
   }
 
   const isPro = plan === 'pro' || plan === 'Pro';
@@ -300,45 +325,116 @@ export default function SettingsPage() {
           Permanently delete your account and all associated data. This will destroy your assistant,
           cancel any active subscription, and remove all your data. This action cannot be undone.
         </p>
-        {!showDelete ? (
-          <button
-            onClick={() => setShowDelete(true)}
-            className="rounded-lg border border-red-800/50 px-4 py-2 text-sm text-red-400 hover:bg-red-900/20 transition"
-          >
-            Delete Account
-          </button>
-        ) : (
-          <div className="space-y-3 rounded-lg border border-red-800/50 bg-red-950/20 p-4">
-            {deleteError && (
-              <p className="text-sm text-red-400">{deleteError}</p>
-            )}
-            <p className="text-sm text-slate-300">Type <code className="bg-slate-800 px-1.5 py-0.5 rounded text-red-400 text-xs font-mono">DELETE</code> to confirm:</p>
-            <input
-              value={deleteConfirm}
-              onChange={(e) => setDeleteConfirm(e.target.value)}
-              placeholder="DELETE"
-              disabled={deleting}
-              className="w-full max-w-xs rounded-lg border border-red-800/50 bg-slate-900 px-4 py-2 text-sm text-white focus:outline-none focus:border-red-600 disabled:opacity-50"
-            />
-            <div className="flex gap-3">
+        <button
+          onClick={openDeleteModal}
+          className="rounded-lg border border-red-800/50 px-4 py-2 text-sm text-red-400 hover:bg-red-900/20 transition"
+        >
+          Delete Account
+        </button>
+      </section>
+
+      {/* Delete Account Modal */}
+      {showDeleteModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          {/* Backdrop */}
+          <div
+            className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+            onClick={() => !deleting && setShowDeleteModal(false)}
+          />
+          {/* Modal */}
+          <div className="relative w-full max-w-lg rounded-2xl border border-slate-700 bg-slate-900 shadow-2xl">
+            {/* Header */}
+            <div className="flex items-center gap-3 border-b border-red-800/40 bg-red-950/30 px-6 py-4 rounded-t-2xl">
+              <div className="flex h-10 w-10 items-center justify-center rounded-full bg-red-600/20">
+                <AlertTriangle className="h-5 w-5 text-red-500" />
+              </div>
+              <div>
+                <h2 className="text-lg font-semibold text-red-400">Delete Your Account</h2>
+                <p className="text-sm text-red-400/70">This action is permanent and cannot be undone.</p>
+              </div>
+            </div>
+
+            {/* Body */}
+            <div className="px-6 py-5 space-y-5">
+              {resourcesLoading ? (
+                <div className="flex items-center justify-center py-8">
+                  <Loader2 className="h-6 w-6 animate-spin text-slate-500" />
+                  <span className="ml-2 text-sm text-slate-500">Loading account resources...</span>
+                </div>
+              ) : (
+                <>
+                  <p className="text-sm text-slate-300">The following resources will be permanently destroyed:</p>
+                  <div className="space-y-3">
+                    {resources?.vm && (
+                      <div className="flex items-start gap-3 rounded-lg border border-slate-700/50 bg-slate-800/50 p-3">
+                        <Monitor className="mt-0.5 h-5 w-5 flex-shrink-0 text-red-400" />
+                        <div>
+                          <p className="text-sm font-medium text-white">Azure VM: <code className="text-red-400 font-mono text-xs">{resources.vm.name}</code></p>
+                          <p className="text-xs text-slate-400">{formatRegion(resources.vm.region)}{resources.vm.ip ? `, ${resources.vm.ip}` : ''}</p>
+                        </div>
+                      </div>
+                    )}
+                    {resources?.telegramBot && (
+                      <div className="flex items-start gap-3 rounded-lg border border-slate-700/50 bg-slate-800/50 p-3">
+                        <Bot className="mt-0.5 h-5 w-5 flex-shrink-0 text-red-400" />
+                        <div>
+                          <p className="text-sm font-medium text-white">Telegram Bot: <span className="text-red-400">@{resources.telegramBot.username}</span></p>
+                        </div>
+                      </div>
+                    )}
+                    <div className="flex items-start gap-3 rounded-lg border border-slate-700/50 bg-slate-800/50 p-3">
+                      <Database className="mt-0.5 h-5 w-5 flex-shrink-0 text-red-400" />
+                      <div>
+                        <p className="text-sm font-medium text-white">All account data, credentials, and configuration</p>
+                        {resources?.database?.tables && resources.database.tables.length > 0 && (
+                          <p className="text-xs text-slate-400">{resources.database.tables.join(', ')}</p>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+
+                  {deleteError && (
+                    <p className="text-sm text-red-400">{deleteError}</p>
+                  )}
+
+                  <div>
+                    <label className="block text-sm text-slate-300 mb-2">
+                      Type <code className="bg-slate-800 px-1.5 py-0.5 rounded text-red-400 text-xs font-mono">delete my account</code> to confirm:
+                    </label>
+                    <input
+                      value={deleteConfirm}
+                      onChange={(e) => setDeleteConfirm(e.target.value)}
+                      placeholder="delete my account"
+                      disabled={deleting}
+                      className="w-full rounded-lg border border-red-800/50 bg-slate-950 px-4 py-2.5 text-sm text-white placeholder-slate-600 focus:outline-none focus:border-red-500 focus:ring-1 focus:ring-red-500/30 disabled:opacity-50"
+                      autoComplete="off"
+                      spellCheck={false}
+                    />
+                  </div>
+                </>
+              )}
+            </div>
+
+            {/* Footer */}
+            <div className="flex justify-end gap-3 border-t border-slate-800 px-6 py-4">
               <button
-                onClick={handleDelete}
-                disabled={deleteConfirm !== 'DELETE' || deleting}
-                className="rounded-lg bg-red-600 px-4 py-2 text-sm font-medium text-white hover:bg-red-500 disabled:opacity-50 transition"
-              >
-                {deleting ? 'Deleting...' : 'Permanently Delete'}
-              </button>
-              <button
-                onClick={() => { setShowDelete(false); setDeleteConfirm(''); setDeleteError(null); }}
+                onClick={() => { setShowDeleteModal(false); setDeleteConfirm(''); setDeleteError(null); }}
                 disabled={deleting}
                 className="rounded-lg border border-slate-700 px-4 py-2 text-sm text-slate-300 hover:bg-slate-800 transition disabled:opacity-50"
               >
                 Cancel
               </button>
+              <button
+                onClick={handleDelete}
+                disabled={deleteConfirm !== 'delete my account' || deleting || resourcesLoading}
+                className="rounded-lg bg-red-600 px-5 py-2 text-sm font-medium text-white hover:bg-red-500 disabled:opacity-50 disabled:cursor-not-allowed transition"
+              >
+                {deleting ? 'Deleting...' : 'Delete Everything'}
+              </button>
             </div>
           </div>
-        )}
-      </section>
+        </div>
+      )}
     </div>
   );
 }
