@@ -311,15 +311,24 @@ router2.get("/openclaw/github-copilot-device-status", async (_req, res) => {
       delete deviceFlowStore["copilot-device"];
       const token = data.access_token;
       const CLAW_USER2 = process.env.OPENCLAW_USER || "claw";
+      const agentDir = path.join("/home", CLAW_USER2, ".openclaw", "agents", "main", "agent");
       const stateDir = path.join("/home", CLAW_USER2, ".openclaw", "state");
-      const authProfilesPath = path.join(stateDir, "auth-profiles.json");
-      if (!fs.existsSync(stateDir)) {
-        fs.mkdirSync(stateDir, { recursive: true });
+      const agentAuthPath = path.join(agentDir, "auth-profiles.json");
+      const stateAuthPath = path.join(stateDir, "auth-profiles.json");
+      for (const dir of [agentDir, stateDir]) {
+        if (!fs.existsSync(dir)) {
+          fs.mkdirSync(dir, { recursive: true });
+        }
       }
       let profiles = { profiles: {} };
-      if (fs.existsSync(authProfilesPath)) {
+      if (fs.existsSync(agentAuthPath)) {
         try {
-          profiles = JSON.parse(fs.readFileSync(authProfilesPath, "utf8"));
+          profiles = JSON.parse(fs.readFileSync(agentAuthPath, "utf8"));
+        } catch {
+        }
+      } else if (fs.existsSync(stateAuthPath)) {
+        try {
+          profiles = JSON.parse(fs.readFileSync(stateAuthPath, "utf8"));
         } catch {
         }
       }
@@ -329,7 +338,13 @@ router2.get("/openclaw/github-copilot-device-status", async (_req, res) => {
         provider: "github-copilot",
         token
       };
-      fs.writeFileSync(authProfilesPath, JSON.stringify(profiles, null, 2));
+      for (const authPath of [agentAuthPath, stateAuthPath]) {
+        fs.writeFileSync(authPath, JSON.stringify(profiles, null, 2));
+      }
+      try {
+        await execAsync2(`chown -R ${CLAW_USER2}:${CLAW_USER2} ${agentDir}`);
+      } catch {
+      }
       try {
         await execAsync2(`chown -R ${CLAW_USER2}:${CLAW_USER2} ${stateDir}`);
       } catch {
