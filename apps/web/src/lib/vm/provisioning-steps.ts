@@ -391,6 +391,18 @@ export async function advanceProvisioning(assistant: Assistant): Promise<Assista
       const nicId = `/subscriptions/${subscriptionId}/resourceGroups/${rgName}/providers/Microsoft.Network/networkInterfaces/${vmName}-nic`;
       const vmPath = `${base}/Microsoft.Compute/virtualMachines/${vmName}?api-version=${COMPUTE_API}`;
 
+      // Safety check: reject known ARM64-only size families (our image is x64)
+      const ARM64_PREFIXES = ['Standard_B2ps', 'Standard_B4ps', 'Standard_B8ps', 'Standard_B16ps',
+        'Standard_B2pts', 'Standard_B4pts', 'Standard_B8pts', 'Standard_B16pts',
+        'Standard_Dpls', 'Standard_Dpds', 'Standard_Dplds', 'Standard_Epls', 'Standard_Epds'];
+      const resolvedSize = vmSize ?? 'Standard_D2als_v7';
+      if (ARM64_PREFIXES.some(p => resolvedSize.startsWith(p))) {
+        console.warn(`[provisioning] ARM64 VM size ${resolvedSize} is incompatible with x64 image, falling back to Standard_B2s`);
+        return await updateAssistant(assistant.id, {
+          provisioning_data: { ...pd, vmSize: 'Standard_B2s' } as any,
+        });
+      }
+
       // Check if already exists
       const state = await checkProvisioningState(token, vmPath);
       if (state === 'Succeeded') {
