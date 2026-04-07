@@ -123,6 +123,10 @@ export async function GET(req: NextRequest) {
 
       if (vCPUs < 1 || vCPUs > 8 || memoryGB < 1 || memoryGB > 32) continue;
 
+      // Filter out ARM64-only SKUs — our default image is x64
+      const cpuArch = caps.get('CpuArchitectureType') || 'x64';
+      if (cpuArch.toLowerCase() === 'arm64') continue;
+
       // Check quota availability
       const familyKey = (sku.family || caps.get('VMDeploymentTypes') || '').toLowerCase();
       // Try common family patterns for quota lookup
