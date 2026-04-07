@@ -1196,25 +1196,8 @@ export default function OnboardingWizard() {
                 </div>
               </div>
 
-              {/* Right: messenger setup cards */}
+              {/* AI Provider setup - configure before messengers */}
               <div className="space-y-3">
-                <h3 className="text-xs font-bold uppercase tracking-wider text-slate-500 flex items-center gap-2">
-                  <MessageCircle className="w-3 h-3" />
-                  Connect Messengers
-                </h3>
-                <div className="space-y-3">
-                  {messengers.map((id) => (
-                    <MessengerSetupCard
-                      key={id}
-                      messengerId={id}
-                      isServerActive={serverActive}
-                      onReady={(platform, link) => setBotLinks((prev) => ({ ...prev, [platform]: link }))}
-                    />
-                  ))}
-                </div>
-              </div>
-              {/* AI Provider setup */}
-              <div className="space-y-3 mt-4">
                 <h3 className="text-xs font-bold uppercase tracking-wider text-slate-500 flex items-center gap-2">
                   <Key className="w-3 h-3" />
                   AI Provider
@@ -1372,6 +1355,23 @@ export default function OnboardingWizard() {
                   {!serverActive && (
                     <p className="text-xs text-slate-400">Waiting for server to start...</p>
                   )}
+                </div>
+              </div>
+              {/* Messenger setup cards - after AI provider */}
+              <div className="space-y-3">
+                <h3 className="text-xs font-bold uppercase tracking-wider text-slate-500 flex items-center gap-2">
+                  <MessageCircle className="w-3 h-3" />
+                  Connect Messengers
+                </h3>
+                <div className="space-y-3">
+                  {messengers.map((id) => (
+                    <MessengerSetupCard
+                      key={id}
+                      messengerId={id}
+                      isServerActive={serverActive}
+                      onReady={(platform, link) => setBotLinks((prev) => ({ ...prev, [platform]: link }))}
+                    />
+                  ))}
                 </div>
               </div>
             </div>
