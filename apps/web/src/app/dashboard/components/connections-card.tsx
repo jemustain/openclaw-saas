@@ -224,8 +224,11 @@ export function ConnectionsCard({
             }
 
             // For free plan, hide messengers that are neither selected, connected,
-            // configured, nor have a telegram bot ready
-            if (isFree && !connected && !configured && !isUserSelected && !(m === "telegram" && telegramBotUsername)) {
+            // configured, nor have a telegram bot ready.
+            // Exception: if NO messengers are selected at all (empty array from
+            // broken onboarding), show everything so the user can connect.
+            const hasAnySelected = messengers.length > 0;
+            if (isFree && hasAnySelected && !connected && !configured && !isUserSelected && !(m === "telegram" && telegramBotUsername)) {
               return null;
             }
 
