@@ -4,6 +4,7 @@ import { createClient } from '@/lib/supabase/server';
 import { destroyAssistant } from '@/lib/vm/lifecycle';
 import { stripe } from '@/lib/stripe/client';
 import { apiError, handleApiError, ERR } from '@/lib/errors';
+import { sendEmail } from '@/lib/email/send';
 
 /**
  * POST /api/account/delete
@@ -55,7 +56,29 @@ export async function POST() {
       }
     }
 
-    // 3. Delete all user data from DB
+    // 3. Send goodbye email (before deleting user record)
+    if (userEmail) {
+      try {
+        await sendEmail(
+          userEmail,
+          'We\'re sorry to see you go',
+          `<div style="font-family: sans-serif; max-width: 560px; margin: 0 auto; padding: 24px;">
+            <h2 style="color: #1a1a1a;">Goodbye from ShiftWorker</h2>
+            <p>Hi there,</p>
+            <p>Your ShiftWorker account has been deleted and all associated data has been permanently removed.</p>
+            <p>Thank you for giving us a try — we truly appreciate it. If things change down the road, we'd love to have you back. Just sign up again anytime at <a href="https://shiftworker.ai">shiftworker.ai</a>.</p>
+            <p>If you have any feedback on how we could improve, feel free to reply to this email. We read every response.</p>
+            <p style="margin-top: 24px;">All the best,<br/>The ShiftWorker Team</p>
+          </div>`,
+        );
+        console.log(`Sent goodbye email to ${userEmail}`);
+      } catch (err) {
+        console.error(`Failed to send goodbye email:`, err);
+        // Non-blocking — don't fail the deletion over an email
+      }
+    }
+
+    // 4. Delete all user data from DB
     const tables = [
       'telegram_pairings',
       'usage_logs',
@@ -82,7 +105,7 @@ export async function POST() {
 
     console.log(`Account deletion complete: user=${userId}`);
 
-    // 4. Destroy the session
+    // 5. Destroy the session
     const { destroySession } = await import('@/lib/auth/session');
     await destroySession();
 

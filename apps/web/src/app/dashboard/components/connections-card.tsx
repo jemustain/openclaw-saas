@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
-import { Send, MessageCircle, Hash, Slack, Shield } from "lucide-react";
+import { Send, MessageCircle, Hash, Slack, Shield, Plus, X } from "lucide-react";
 import { MessengerSetupModal } from "./messenger-setup-modal";
 
 const ALL_MESSENGERS = ["telegram", "whatsapp"] as const;
@@ -66,6 +66,7 @@ export function ConnectionsCard({
   const [disconnecting, setDisconnecting] = useState<string | null>(null);
   const [switchConfirm, setSwitchConfirm] = useState<string | null>(null);
   const [switching, setSwitching] = useState(false);
+  const [chooserOpen, setChooserOpen] = useState(false);
 
   const isFree = plan === "free";
 
@@ -258,9 +259,9 @@ export function ConnectionsCard({
                           href={telegramLink || botLink!}
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="rounded-md bg-slate-800 px-3 py-1.5 text-xs text-slate-300 hover:bg-slate-700"
+                          className="rounded-md bg-indigo-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-indigo-500 transition-colors"
                         >
-                          Open in {config.name}
+                          Open in {config.name} →
                         </a>
                       )}
                       <button
@@ -373,14 +374,27 @@ export function ConnectionsCard({
             );
           })}
 
+          {/* No connection: show prominent chooser CTA */}
+          {!hasConnection && !fetchLoading && (
+            <div className="pt-3 border-t border-slate-800">
+              <button
+                type="button"
+                disabled={disabled}
+                onClick={() => setChooserOpen(true)}
+                className="flex w-full items-center justify-center gap-2 rounded-lg bg-gradient-to-r from-violet-600 to-indigo-600 px-4 py-2.5 text-sm font-semibold text-white hover:from-violet-500 hover:to-indigo-500 transition-all disabled:opacity-50"
+              >
+                <Plus className="w-4 h-4" />
+                Choose a Messenger
+              </button>
+            </div>
+          )}
+
           {/* Free plan: show change messenger option */}
           {isFree && hasConnection && (
             <div className="pt-2 border-t border-slate-800">
               <button
                 type="button"
-                onClick={() => setSwitchConfirm(
-                  connectedMessenger?.messenger === "telegram" ? "whatsapp" : "telegram"
-                )}
+                onClick={() => setChooserOpen(true)}
                 className="text-xs text-slate-500 hover:text-violet-400 transition-colors"
               >
                 Change messenger...
@@ -389,6 +403,58 @@ export function ConnectionsCard({
           )}
         </div>
       </div>
+
+      {/* Messenger Chooser Dialog */}
+      {chooserOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
+          <div className="relative w-full max-w-sm rounded-xl border border-slate-700 bg-slate-900 p-6 shadow-2xl">
+            <button
+              type="button"
+              onClick={() => setChooserOpen(false)}
+              className="absolute right-3 top-3 text-slate-500 hover:text-white"
+            >
+              <X className="w-4 h-4" />
+            </button>
+            <h3 className="text-lg font-semibold text-white mb-1">Choose a Messenger</h3>
+            <p className="text-xs text-slate-400 mb-5">
+              Pick where you want to chat with your AI assistant.
+            </p>
+            <div className="space-y-3">
+              {ALL_MESSENGERS.map((key) => {
+                const cfg = MESSENGER_CONFIG[key];
+                if (!cfg) return null;
+                const Icon = cfg.icon;
+                const descriptions: Record<string, string> = {
+                  telegram: "Fast, feature-rich, great bot support",
+                  whatsapp: "Familiar, works on any phone",
+                };
+                return (
+                  <button
+                    key={key}
+                    type="button"
+                    onClick={() => {
+                      setChooserOpen(false);
+                      if (isFree && hasConnection && connectedMessenger?.messenger !== key) {
+                        setSwitchConfirm(key);
+                      } else {
+                        setSetupModal(key);
+                      }
+                    }}
+                    className="flex w-full items-center gap-3 rounded-lg border border-slate-700 bg-slate-800/50 px-4 py-3 text-left hover:border-indigo-500 hover:bg-slate-800 transition-all"
+                  >
+                    <Icon className={`w-6 h-6 ${cfg.color} shrink-0`} />
+                    <div className="flex-1 min-w-0">
+                      <div className="text-sm font-medium text-white">{cfg.name}</div>
+                      <div className="text-xs text-slate-400">{descriptions[key] ?? ""}</div>
+                    </div>
+                    <span className="text-xs font-medium text-indigo-400">Set Up →</span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+      )}
 
       {setupModal && (
         <MessengerSetupModal
