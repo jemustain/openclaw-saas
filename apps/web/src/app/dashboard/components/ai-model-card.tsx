@@ -24,6 +24,7 @@ export function AiModelCard({
   disabled?: boolean;
 }) {
   const configured = !!provider && !!apiKey;
+  const providerKnown = !!provider && !apiKey;
   const label = provider ? PROVIDER_LABELS[provider] ?? provider : null;
 
   return (
@@ -37,6 +38,13 @@ export function AiModelCard({
             Key: {maskKey(apiKey!)}
           </p>
         </>
+      ) : providerKnown ? (
+        <>
+          <p className="text-2xl font-bold text-indigo-400 mb-2">{label}</p>
+          <p className="text-sm text-amber-400 mb-4">
+            Token expired or missing. Please reconnect.
+          </p>
+        </>
       ) : (
         <>
           <p className="text-sm text-slate-400 mb-4">
@@ -48,14 +56,14 @@ export function AiModelCard({
 
       {disabled ? (
         <span className="inline-block rounded-lg bg-slate-700 px-4 py-2 text-sm text-slate-500 cursor-not-allowed">
-          {configured ? "Change" : "Set up AI provider"}
+          {configured ? "Change" : providerKnown ? "Reconnect" : "Set up AI provider"}
         </span>
       ) : (
         <Link
           href="/dashboard/settings"
           className="inline-block rounded-lg bg-indigo-600 px-4 py-2 text-sm text-white hover:bg-indigo-500"
         >
-          {configured ? "Change" : "Set up AI provider"}
+          {configured ? "Change" : providerKnown ? "Reconnect" : "Set up AI provider"}
         </Link>
       )}
     </div>
