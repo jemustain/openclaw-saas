@@ -121,7 +121,8 @@ export async function GET(req: NextRequest) {
       const vCPUs = parseInt(caps.get('vCPUs') || '0', 10);
       const memoryGB = parseFloat(caps.get('MemoryGB') || '0');
 
-      if (vCPUs < 1 || vCPUs > 8 || memoryGB < 1 || memoryGB > 32) continue;
+      // Minimum 2 GB RAM required — OpenClaw + sidecar + Node.js OOMs on 1 GB
+      if (vCPUs < 1 || vCPUs > 8 || memoryGB < 2 || memoryGB > 32) continue;
 
       // Filter out ARM64-only SKUs — our default image is x64
       const cpuArch = caps.get('CpuArchitectureType') || 'x64';
