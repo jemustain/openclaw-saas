@@ -36,7 +36,11 @@ export async function GET() {
     > = {
       telegram: {
         configured: !!assistant.telegram_bot_username,
-        connected: false,
+        // Treat as connected when bot token + username exist in DB.
+        // The sidecar being unreachable is a VM health issue, not a
+        // Telegram connection issue - the bot is still configured and
+        // will work once the VM recovers.
+        connected: !!(assistant.telegram_bot_username && assistant.telegram_bot_token),
         ...(assistant.telegram_bot_username && {
           botLink: `https://t.me/${assistant.telegram_bot_username}`,
         }),
