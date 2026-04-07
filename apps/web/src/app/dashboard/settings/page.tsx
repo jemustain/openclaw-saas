@@ -1,7 +1,7 @@
 'use client';
 
-import { useRouter } from 'next/navigation';
-import { useEffect, useState, useCallback } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
+import { useEffect, useState, useCallback, useRef, Suspense } from 'react';
 import { TimezonePicker } from '@/components/ui/timezone-picker';
 import { Loader2, Monitor, Bot, Database, AlertTriangle } from 'lucide-react';
 
@@ -17,7 +17,26 @@ function formatPlan(plan: string): string {
 }
 
 export default function SettingsPage() {
+  return (
+    <Suspense fallback={
+      <div className="max-w-2xl space-y-8" data-testid="settings-skeleton">
+        <div className="h-8 w-32 animate-pulse rounded bg-slate-800" />
+        <div className="rounded-xl border border-slate-800 bg-slate-900/50 p-6 space-y-4">
+          <div className="h-5 w-20 animate-pulse rounded bg-slate-800" />
+          <div className="h-10 w-full animate-pulse rounded-lg bg-slate-800" />
+          <div className="h-10 w-full animate-pulse rounded-lg bg-slate-800" />
+        </div>
+      </div>
+    }>
+      <SettingsContent />
+    </Suspense>
+  );
+}
+
+function SettingsContent() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const aiSectionRef = useRef<HTMLDivElement>(null);
 
   const [email, setEmail] = useState('');
   const [name, setName] = useState('');
@@ -56,6 +75,17 @@ export default function SettingsPage() {
           setPlan(data.user.plan ?? 'Free');
           setAiProvider(data.user.ai_provider ?? '');
           setAiApiKeyMasked(data.user.ai_api_key ?? '');
+
+          // Auto-expand AI setup when linked from dashboard or when not configured
+          const section = searchParams.get('section');
+          if (section === 'ai' || (!data.user.ai_provider && !data.user.ai_api_key)) {
+            setShowAiChange(true);
+            setNewAiProvider((data.user.ai_provider as any) || '');
+            // Scroll to AI section after render
+            setTimeout(() => {
+              aiSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            }, 100);
+          }
         }
       })
       .catch(() => {
@@ -63,7 +93,7 @@ export default function SettingsPage() {
         setPageError('Failed to load settings');
       })
       .finally(() => setPageLoading(false));
-  }, []);
+  }, [searchParams]);
 
   async function handleSave() {
     setSaving(true);
@@ -167,7 +197,7 @@ export default function SettingsPage() {
           <input value={name} onChange={(e) => setName(e.target.value)} className={inputClass} />
         </div>
 
-        <div>
+        <div ref={aiSectionRef}>
           <label className="block text-sm text-slate-400 mb-1">AI Model</label>
           {!showAiChange ? (
             <div className="flex items-center gap-3">
