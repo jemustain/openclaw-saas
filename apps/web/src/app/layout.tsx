@@ -15,7 +15,13 @@ export const metadata: Metadata = {
   description:
     "ShiftWorker provisions and manages OpenClaw instances for you. Get a personal AI agent that handles your email, calendar, research, and more — no servers, no setup.",
   metadataBase: new URL(siteUrl),
-  icons: { icon: "/favicon.ico" },
+  icons: {
+    icon: [
+      { url: "/favicon.ico", sizes: "48x48" },
+      { url: "/icon.svg", type: "image/svg+xml" },
+    ],
+    apple: "/apple-touch-icon.png",
+  },
   openGraph: {
     title: "ShiftWorker — AI Agent Hosting Platform",
     description:
