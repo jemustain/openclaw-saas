@@ -58,7 +58,7 @@ async function DashboardContent({
   }
 
   const messengers: string[] = user?.messengers ?? [];
-  let aiProvider: string | null = user?.ai_provider ?? user?.provider_preference ?? null;
+  let aiProvider: string | null = user?.ai_provider ?? null;
   let aiApiKey: string | null = user?.ai_api_key ?? null;
 
   // For GitHub Copilot, the token is in provider_tokens (OAuth flow), not users.ai_api_key
@@ -67,6 +67,18 @@ async function DashboardContent({
     const ghToken = await getProviderToken(session.userId, 'github-copilot');
     if (ghToken?.accessToken) {
       aiApiKey = ghToken.accessToken;
+    }
+  }
+
+  // Fallback: if no AI provider detected yet, check provider_tokens for any known provider
+  if (!aiProvider || !aiApiKey) {
+    for (const provider of ['github-copilot', 'gemini', 'openai', 'anthropic'] as const) {
+      const token = await getProviderToken(session.userId, provider);
+      if (token?.accessToken) {
+        aiProvider = aiProvider || provider;
+        aiApiKey = aiApiKey || token.accessToken;
+        break;
+      }
     }
   }
 

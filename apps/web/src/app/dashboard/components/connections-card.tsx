@@ -223,9 +223,9 @@ export function ConnectionsCard({
               statusLabel = "Needs setup";
             }
 
-            // For free plan, only show the connected/configured messenger
-            // Hide other messengers entirely, show "Change messenger" link instead
-            if (isFree && !connected && !configured && !(m === "telegram" && telegramBotUsername)) {
+            // For free plan, hide messengers that are neither selected, connected,
+            // configured, nor have a telegram bot ready
+            if (isFree && !connected && !configured && !isUserSelected && !(m === "telegram" && telegramBotUsername)) {
               return null;
             }
 
