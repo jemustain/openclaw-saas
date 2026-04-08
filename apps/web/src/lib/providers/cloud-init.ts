@@ -151,7 +151,8 @@ write_files:
       gw = config.setdefault("gateway", {})
       gw["mode"] = "local"
       gw["bind"] = "lan"
-      gw["controlUi"] = {"dangerouslyAllowHostHeaderOriginFallback": True}
+      gw["controlUi"] = {"dangerouslyAllowHostHeaderOriginFallback": True, "dangerouslyDisableDeviceAuth": True}
+      gw["port"] = 8787
       with open(config_path, "w") as f:
           json.dump(config, f, indent=2)
       pw = pwd.getpwnam(user)
