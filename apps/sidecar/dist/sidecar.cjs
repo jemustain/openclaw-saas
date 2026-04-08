@@ -270,6 +270,18 @@ router2.get("/openclaw/github-copilot-device-status", async (_req, res) => {
   try {
     const stored = deviceFlowStore["copilot-device"];
     if (!stored) {
+      const CLAW_USER2 = process.env.OPENCLAW_USER || "claw";
+      const agentAuthPath = path.join("/home", CLAW_USER2, ".openclaw", "agents", "main", "agent", "auth-profiles.json");
+      if (fs.existsSync(agentAuthPath)) {
+        try {
+          const profiles = JSON.parse(fs.readFileSync(agentAuthPath, "utf8"));
+          if (profiles?.profiles?.["github-copilot:github"]?.token) {
+            res.json({ status: "authorized", model: "github-copilot/claude-opus-4.6" });
+            return;
+          }
+        } catch {
+        }
+      }
       res.json({ status: "error", error: "No device flow in progress. Call device-start first." });
       return;
     }
