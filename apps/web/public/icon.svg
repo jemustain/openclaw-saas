@@ -1,1 +1,5 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64"><polygon points="32,4 58,18 58,46 32,60 6,46 6,18" fill="#7c3aed"/><text x="32" y="44" font-family="system-ui" font-size="34" font-weight="800" fill="white" text-anchor="middle">S</text></svg>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <rect width="64" height="64" rx="14" fill="#1e1b2e"/>
+  <polygon points="32,8 52,20 52,44 32,56 12,44 12,20" fill="#7c3aed"/>
+  <text x="32" y="43" font-family="system-ui,sans-serif" font-size="30" font-weight="700" fill="white" text-anchor="middle">S</text>
+</svg>
