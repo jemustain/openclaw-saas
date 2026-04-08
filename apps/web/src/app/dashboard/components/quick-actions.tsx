@@ -4,17 +4,21 @@ import Link from "next/link";
 
 interface QuickActionsProps {
   ipAddress?: string | null;
+  gatewayToken?: string | null;
   isActive: boolean;
   disabled?: boolean;
 }
 
-export function QuickActions({ ipAddress, isActive, disabled }: QuickActionsProps) {
+export function QuickActions({ ipAddress, gatewayToken, isActive, disabled }: QuickActionsProps) {
   const disableAll = disabled || !isActive;
+  const controlPanelUrl = ipAddress
+    ? `https://${ipAddress}.sslip.io${gatewayToken ? `#token=${gatewayToken}` : ''}`
+    : '';
   return (
     <div className="flex flex-wrap gap-3">
       {isActive && ipAddress && !disabled ? (
         <a
-          href={`http://${ipAddress}:8787`}
+          href={controlPanelUrl}
           target="_blank"
           rel="noopener noreferrer"
           className="inline-flex items-center gap-2 rounded-full bg-violet-600 px-5 py-2 text-sm font-medium text-white hover:bg-violet-500 transition-colors"

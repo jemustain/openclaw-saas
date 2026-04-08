@@ -243,6 +243,14 @@ export async function advanceProvisioning(assistant: Assistant): Promise<Assista
                 },
               },
               {
+                name: 'AllowHTTP',
+                properties: {
+                  priority: 1015, protocol: 'Tcp', access: 'Allow', direction: 'Inbound',
+                  sourceAddressPrefix: '*', sourcePortRange: '*',
+                  destinationAddressPrefix: '*', destinationPortRange: '80',
+                },
+              },
+              {
                 name: 'AllowGateway',
                 properties: {
                   priority: 1020, protocol: 'Tcp', access: 'Allow', direction: 'Inbound',
