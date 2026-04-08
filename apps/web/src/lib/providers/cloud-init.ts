@@ -153,6 +153,16 @@ write_files:
       gw["bind"] = "lan"
       gw["controlUi"] = {"dangerouslyAllowHostHeaderOriginFallback": True, "dangerouslyDisableDeviceAuth": True}
       gw["port"] = 8787
+      # Use sidecar token as gateway token so the portal can build auto-auth URLs
+      env_path = "/etc/shiftworker/sidecar.env"
+      if os.path.exists(env_path):
+          with open(env_path) as f:
+              for line in f:
+                  if line.startswith("SIDECAR_TOKEN="):
+                      token = line.strip().split("=", 1)[1]
+                      gw.setdefault("auth", {})["mode"] = "token"
+                      gw["auth"]["token"] = token
+                      break
       with open(config_path, "w") as f:
           json.dump(config, f, indent=2)
       pw = pwd.getpwnam(user)

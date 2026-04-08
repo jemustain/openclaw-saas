@@ -29,7 +29,7 @@ async function DashboardContent({
 
   const { data: assistant } = await supabase
     .from("assistants")
-    .select("id, status, ip_address, provider, region, created_at, provisioning_step, provisioning_data")
+    .select("id, status, ip_address, sidecar_token, provider, region, created_at, provisioning_step, provisioning_data")
     .eq("user_id", session.userId)
     .neq("status", "destroyed")
     .order("created_at", { ascending: false })
@@ -97,6 +97,7 @@ async function DashboardContent({
         {/* Quick Actions */}
         <QuickActions
           ipAddress={assistant?.ip_address}
+          gatewayToken={assistant?.sidecar_token}
           isActive={isActive}
           disabled={disableActions}
         />
