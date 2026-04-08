@@ -59,6 +59,7 @@ describe('cloud-init', () => {
     expect(paths).toContain('/etc/systemd/system/shiftworker-sidecar.service');
     expect(paths).toContain('/opt/shiftworker/patch-config.py');
     expect(paths).toContain('/opt/shiftworker/setup.sh');
+    expect(paths).toContain('/opt/shiftworker/setup-caddy.sh');
   });
 
   it('does NOT include configure-ai.py (AI config happens post-provisioning)', () => {
@@ -130,5 +131,29 @@ describe('cloud-init', () => {
   it('runcmd calls setup.sh', () => {
     const doc = parseCloudInit(generateCloudInit(baseOpts));
     expect(doc.runcmd).toEqual([['bash', '/opt/shiftworker/setup.sh']]);
+  });
+
+  // --- Caddy HTTPS tests ---
+
+  it('setup-caddy.sh installs caddy and writes Caddyfile with sslip.io', () => {
+    const doc = parseCloudInit(generateCloudInit(baseOpts));
+    const caddyScript = getWriteFileContent(doc, '/opt/shiftworker/setup-caddy.sh');
+    expect(caddyScript).toBeDefined();
+    expect(caddyScript).toContain('apt-get install -y caddy');
+    expect(caddyScript).toContain('sslip.io');
+    expect(caddyScript).toContain('reverse_proxy localhost:8787');
+    expect(caddyScript).toContain('systemctl restart caddy');
+  });
+
+  it('setup.sh calls setup-caddy.sh', () => {
+    const doc = parseCloudInit(generateCloudInit(baseOpts));
+    const setupSh = getWriteFileContent(doc, '/opt/shiftworker/setup.sh');
+    expect(setupSh).toContain('bash /opt/shiftworker/setup-caddy.sh');
+  });
+
+  it('setup.sh opens port 80 for ACME challenges', () => {
+    const doc = parseCloudInit(generateCloudInit(baseOpts));
+    const setupSh = getWriteFileContent(doc, '/opt/shiftworker/setup.sh');
+    expect(setupSh).toContain('ufw allow 80/tcp');
   });
 });

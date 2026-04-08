@@ -74,8 +74,28 @@ packages:
   - curl
   - git
   - unzip
+  - debian-keyring
+  - debian-archive-keyring
+  - apt-transport-https
 
 write_files:
+  - path: /opt/shiftworker/setup-caddy.sh
+    permissions: "0755"
+    content: |
+      #!/bin/bash
+      set -ex
+      # Install Caddy for automatic HTTPS reverse proxy
+      curl -1sLf "https://dl.cloudsmith.io/public/caddy/stable/gpg.key" | gpg --dearmor -o /usr/share/keyrings/caddy-stable-archive-keyring.gpg 2>/dev/null || true
+      curl -1sLf "https://dl.cloudsmith.io/public/caddy/stable/debian.deb.txt" > /etc/apt/sources.list.d/caddy-stable.list
+      apt-get update
+      apt-get install -y caddy
+      # Get public IP and write Caddyfile
+      PUBLIC_IP=$(curl -sf http://checkip.amazonaws.com || curl -sf http://ifconfig.me)
+      echo "$PUBLIC_IP.sslip.io {" > /etc/caddy/Caddyfile
+      echo "    reverse_proxy localhost:8787" >> /etc/caddy/Caddyfile
+      echo "}" >> /etc/caddy/Caddyfile
+      systemctl enable caddy
+      systemctl restart caddy
   - path: /etc/shiftworker/sidecar.env
     permissions: "0600"
     content: |
@@ -146,6 +166,7 @@ ${extraWriteFiles.length > 0 ? extraWriteFiles.join('\n') + '\n' : ''}  - path: 
       ufw allow 22/tcp
       ufw allow 443/tcp
       ufw allow 3000/tcp
+      ufw allow 80/tcp
       ufw allow 8787/tcp
       ufw allow 8788/tcp
       ufw --force enable
@@ -167,6 +188,8 @@ ${extraWriteFiles.length > 0 ? extraWriteFiles.join('\n') + '\n' : ''}  - path: 
       chmod +x /opt/shiftworker/sidecar/auto-update.sh
       echo "0 * * * * root /opt/shiftworker/sidecar/auto-update.sh" > /etc/cron.d/shiftworker-sidecar-update
       chmod 644 /etc/cron.d/shiftworker-sidecar-update
+      # Install Caddy HTTPS reverse proxy
+      bash /opt/shiftworker/setup-caddy.sh
       # Start services
       systemctl daemon-reload
       systemctl enable --now openclaw-sidecar
