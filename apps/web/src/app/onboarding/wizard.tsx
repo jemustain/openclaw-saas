@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useRef } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import {
   Sparkles, Cloud, Server, CreditCard, MessageSquare,
@@ -78,28 +78,50 @@ function DeviceFlowPoll({ userCode, verificationUri, onAuthorized, onExpired, on
   onExpired: () => void;
   onError: (msg: string) => void;
 }) {
+  const [checking, setChecking] = useState(false);
+  const [pollCount, setPollCount] = useState(0);
+  const onAuthorizedRef = useRef(onAuthorized);
+  const onExpiredRef = useRef(onExpired);
+  const onErrorRef = useRef(onError);
+  onAuthorizedRef.current = onAuthorized;
+  onExpiredRef.current = onExpired;
+  onErrorRef.current = onError;
+
+  const checkStatus = useCallback(async () => {
+    try {
+      const res = await fetch('/api/assistant/copilot-device-status');
+      const data = await res.json();
+      if (data.status === 'authorized') { onAuthorizedRef.current(); return true; }
+      if (data.status === 'expired') { onExpiredRef.current(); return true; }
+      if (data.status === 'error' && !data.error?.includes('No device flow')) {
+        onErrorRef.current(data.error || 'Unknown error'); return true;
+      }
+      return false;
+    } catch {
+      return false;
+    }
+  }, []);
+
   useEffect(() => {
     let cancelled = false;
     const poll = async () => {
       while (!cancelled) {
-        await new Promise(r => setTimeout(r, 4000));
+        await new Promise(r => setTimeout(r, 5000));
         if (cancelled) return;
-        try {
-          const res = await fetch('/api/assistant/copilot-device-status');
-          const data = await res.json();
-          if (cancelled) return;
-          if (data.status === 'authorized') { onAuthorized(); return; }
-          if (data.status === 'expired') { onExpired(); return; }
-          if (data.status === 'error') { onError(data.error || 'Unknown error'); return; }
-          // pending — continue polling
-        } catch {
-          // network error, keep polling
-        }
+        const done = await checkStatus();
+        if (done || cancelled) return;
+        setPollCount(c => c + 1);
       }
     };
     poll();
     return () => { cancelled = true; };
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [checkStatus]);
+
+  const handleManualCheck = async () => {
+    setChecking(true);
+    await checkStatus();
+    setChecking(false);
+  };
 
   return (
     <div className="space-y-3">
@@ -111,17 +133,28 @@ function DeviceFlowPoll({ userCode, verificationUri, onAuthorized, onExpired, on
           {userCode}
         </span>
       </div>
-      <a
-        href={verificationUri}
-        target="_blank"
-        rel="noopener noreferrer"
-        className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-violet-600 hover:bg-violet-500 text-sm font-medium text-white transition-colors"
-      >
-        Open GitHub <ExternalLink className="w-3 h-3" />
-      </a>
+      <div className="flex flex-wrap gap-2">
+        <a
+          href={verificationUri}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-violet-600 hover:bg-violet-500 text-sm font-medium text-white transition-colors"
+        >
+          Open GitHub <ExternalLink className="w-3 h-3" />
+        </a>
+        <button
+          type="button"
+          onClick={handleManualCheck}
+          disabled={checking}
+          className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-slate-700 hover:bg-slate-600 text-sm font-medium text-white transition-colors disabled:opacity-50"
+        >
+          {checking ? <Loader2 className="w-3 h-3 animate-spin" /> : <Check className="w-3 h-3" />}
+          I've authorized, check now
+        </button>
+      </div>
       <div className="flex items-center gap-2 text-xs text-slate-400">
         <Loader2 className="w-3 h-3 animate-spin" />
-        Waiting for authorization...
+        Checking automatically{pollCount > 0 ? ` (${pollCount} checks)` : ''}...
       </div>
     </div>
   );
@@ -279,6 +312,30 @@ export default function OnboardingWizard() {
           // Restore AI provider from user profile
           if (data.aiProvider) {
             setAiProvider(data.aiProvider as typeof aiProvider);
+          }
+          // Restore device flow state from sessionStorage
+          try {
+            const savedFlow = sessionStorage.getItem('sw_device_flow');
+            if (savedFlow && data.aiProvider === 'github-copilot') {
+              const { userCode, verificationUri } = JSON.parse(savedFlow);
+              if (userCode && verificationUri) {
+                setDeviceFlowCode(userCode);
+                setDeviceFlowUri(verificationUri);
+                setDeviceFlowPolling(true);
+              }
+            }
+          } catch {}
+          // Check if copilot auth is already complete
+          if (data.aiProvider === 'github-copilot') {
+            try {
+              const statusRes = await fetch('/api/assistant/copilot-device-status');
+              const statusData = await statusRes.json();
+              if (statusData.status === 'authorized') {
+                setAiKeyVerified(true);
+                setDeviceFlowPolling(false);
+                sessionStorage.removeItem('sw_device_flow');
+              }
+            } catch {}
           }
           setStep((currentStep) => {
             if (currentStep < 7) return 7;
@@ -1234,6 +1291,11 @@ export default function OnboardingWizard() {
                                       setDeviceFlowCode(data.userCode);
                                       setDeviceFlowUri(data.verificationUri);
                                       setDeviceFlowPolling(true);
+                                      // Persist for page reload recovery
+                                      sessionStorage.setItem('sw_device_flow', JSON.stringify({
+                                        userCode: data.userCode,
+                                        verificationUri: data.verificationUri,
+                                      }));
                                     } else {
                                       setDeviceFlowError(data.error || 'Failed to start device flow');
                                     }
@@ -1257,6 +1319,7 @@ export default function OnboardingWizard() {
                               onAuthorized={async () => {
                                 setAiKeyVerified(true);
                                 setDeviceFlowPolling(false);
+                                sessionStorage.removeItem('sw_device_flow');
                                 // Persist AI provider choice to the DB
                                 try {
                                   await fetch('/api/onboarding', {
