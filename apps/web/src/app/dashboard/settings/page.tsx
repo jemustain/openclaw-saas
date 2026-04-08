@@ -3,7 +3,91 @@
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useEffect, useState, useCallback, useRef, Suspense } from 'react';
 import { TimezonePicker } from '@/components/ui/timezone-picker';
-import { Loader2, Monitor, Bot, Database, AlertTriangle } from 'lucide-react';
+import { Loader2, Monitor, Bot, Database, AlertTriangle, Check, ExternalLink } from 'lucide-react';
+
+/** Device flow polling for Settings page */
+function SettingsDeviceFlowPoll({ userCode, verificationUri, onAuthorized, onExpired, onError }: {
+  userCode: string;
+  verificationUri: string;
+  onAuthorized: () => void;
+  onExpired: () => void;
+  onError: (msg: string) => void;
+}) {
+  const [checking, setChecking] = useState(false);
+  const [pollCount, setPollCount] = useState(0);
+  const onAuthorizedRef = useRef(onAuthorized);
+  const onExpiredRef = useRef(onExpired);
+  const onErrorRef = useRef(onError);
+  onAuthorizedRef.current = onAuthorized;
+  onExpiredRef.current = onExpired;
+  onErrorRef.current = onError;
+
+  const checkStatus = useCallback(async () => {
+    try {
+      const res = await fetch('/api/assistant/copilot-device-status');
+      const data = await res.json();
+      if (data.status === 'authorized') { onAuthorizedRef.current(); return true; }
+      if (data.status === 'expired') { onExpiredRef.current(); return true; }
+      if (data.status === 'error' && !data.error?.includes('No device flow')) {
+        onErrorRef.current(data.error || 'Unknown error'); return true;
+      }
+      return false;
+    } catch {
+      return false;
+    }
+  }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+    const poll = async () => {
+      while (!cancelled) {
+        await new Promise(r => setTimeout(r, 5000));
+        if (cancelled) return;
+        const done = await checkStatus();
+        if (done || cancelled) return;
+        setPollCount(c => c + 1);
+      }
+    };
+    poll();
+    return () => { cancelled = true; };
+  }, [checkStatus]);
+
+  return (
+    <div className="space-y-3">
+      <p className="text-sm text-slate-300">
+        Go to <span className="font-mono text-violet-400">{verificationUri}</span> and enter this code:
+      </p>
+      <div className="text-center">
+        <span className="text-2xl font-mono font-bold tracking-widest text-white bg-slate-800 px-4 py-2 rounded-lg">
+          {userCode}
+        </span>
+      </div>
+      <div className="flex flex-wrap gap-2">
+        <a
+          href={verificationUri}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-violet-600 hover:bg-violet-500 text-sm font-medium text-white transition-colors"
+        >
+          Open GitHub <ExternalLink className="w-3 h-3" />
+        </a>
+        <button
+          type="button"
+          onClick={async () => { setChecking(true); await checkStatus(); setChecking(false); }}
+          disabled={checking}
+          className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-slate-700 hover:bg-slate-600 text-sm font-medium text-white transition-colors disabled:opacity-50"
+        >
+          {checking ? <Loader2 className="w-3 h-3 animate-spin" /> : <Check className="w-3 h-3" />}
+          I've authorized, check now
+        </button>
+      </div>
+      <div className="flex items-center gap-2 text-xs text-slate-400">
+        <Loader2 className="w-3 h-3 animate-spin" />
+        Checking automatically{pollCount > 0 ? ` (${pollCount} checks)` : ''}...
+      </div>
+    </div>
+  );
+}
 
 interface AccountResources {
   vm: { name: string; region: string; ip: string; size: string } | null;
@@ -61,6 +145,12 @@ function SettingsContent() {
   const [aiSaving, setAiSaving] = useState(false);
   const [pageLoading, setPageLoading] = useState(true);
   const [pageError, setPageError] = useState<string | null>(null);
+  const [deviceFlowCode, setDeviceFlowCode] = useState<string | null>(null);
+  const [deviceFlowUri, setDeviceFlowUri] = useState<string | null>(null);
+  const [deviceFlowLoading, setDeviceFlowLoading] = useState(false);
+  const [deviceFlowError, setDeviceFlowError] = useState<string | null>(null);
+  const [deviceFlowPolling, setDeviceFlowPolling] = useState(false);
+  const [deviceFlowChecking, setDeviceFlowChecking] = useState(false);
 
   useEffect(() => {
     const detectedTz = Intl.DateTimeFormat().resolvedOptions().timeZone;
@@ -233,15 +323,65 @@ function SettingsContent() {
                 })}
               </div>
               {newAiProvider && (
-                newAiProvider === 'github-copilot' && process.env.NEXT_PUBLIC_GITHUB_CLIENT_ID ? (
-                  <div className="space-y-2">
-                    <p className="text-sm text-slate-400">Sign in with GitHub to connect your Copilot subscription.</p>
-                    <a
-                      href={`/api/auth/github?returnTo=${encodeURIComponent('/dashboard/settings')}`}
-                      className="inline-flex items-center gap-2 px-4 py-2.5 rounded-lg bg-slate-700 hover:bg-slate-600 border border-slate-600 text-sm font-medium text-white transition-colors"
-                    >
-                      Sign in with GitHub
-                    </a>
+                newAiProvider === 'github-copilot' ? (
+                  <div className="space-y-3">
+                    {!deviceFlowCode && !deviceFlowPolling && (
+                      <>
+                        <p className="text-sm text-slate-400">Sign in with GitHub to connect your Copilot subscription.</p>
+                        <button
+                          type="button"
+                          disabled={deviceFlowLoading}
+                          onClick={async () => {
+                            setDeviceFlowLoading(true);
+                            setDeviceFlowError(null);
+                            try {
+                              const res = await fetch('/api/assistant/copilot-device-start', { method: 'POST' });
+                              const data = await res.json();
+                              if (data.userCode && data.verificationUri) {
+                                setDeviceFlowCode(data.userCode);
+                                setDeviceFlowUri(data.verificationUri);
+                                setDeviceFlowPolling(true);
+                              } else {
+                                setDeviceFlowError(data.error || 'Failed to start device flow');
+                              }
+                            } catch {
+                              setDeviceFlowError('Failed to start device flow');
+                            }
+                            setDeviceFlowLoading(false);
+                          }}
+                          className="inline-flex items-center gap-2 px-4 py-2.5 rounded-lg bg-slate-700 hover:bg-slate-600 border border-slate-600 text-sm font-medium text-white transition-colors"
+                        >
+                          {deviceFlowLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
+                          Connect GitHub Copilot
+                        </button>
+                        {deviceFlowError && <p className="text-sm text-red-400">{deviceFlowError}</p>}
+                      </>
+                    )}
+                    {deviceFlowCode && deviceFlowPolling && (
+                      <SettingsDeviceFlowPoll
+                        userCode={deviceFlowCode}
+                        verificationUri={deviceFlowUri!}
+                        onAuthorized={() => {
+                          setAiKeyVerified(true);
+                          setDeviceFlowPolling(false);
+                          setAiProvider('github-copilot');
+                          setAiApiKeyMasked('Device flow · Connected');
+                          setShowAiChange(false);
+                        }}
+                        onExpired={() => {
+                          setDeviceFlowCode(null);
+                          setDeviceFlowUri(null);
+                          setDeviceFlowPolling(false);
+                          setDeviceFlowError('Code expired. Try again.');
+                        }}
+                        onError={(msg) => {
+                          setDeviceFlowCode(null);
+                          setDeviceFlowUri(null);
+                          setDeviceFlowPolling(false);
+                          setDeviceFlowError(msg);
+                        }}
+                      />
+                    )}
                   </div>
                 ) : (
                 <div className="flex gap-2">
@@ -249,7 +389,7 @@ function SettingsContent() {
                     type="password"
                     value={newAiApiKey}
                     onChange={(e) => { setNewAiApiKey(e.target.value); setAiKeyVerified(false); setAiKeyError(null); }}
-                    placeholder={newAiProvider === 'gemini' ? 'AIza...' : newAiProvider === 'openai' ? 'sk-...' : newAiProvider === 'github-copilot' ? 'ghp_... or github_pat_...' : 'sk-ant-...'}
+                    placeholder={newAiProvider === 'gemini' ? 'AIza...' : newAiProvider === 'openai' ? 'sk-...' : 'sk-ant-...'}
                     className={inputClass}
                   />
                   <button
@@ -276,6 +416,7 @@ function SettingsContent() {
               )
               )}
               {aiKeyError && <p className="text-sm text-red-400">{aiKeyError}</p>}
+              {newAiProvider !== 'github-copilot' && (
               <div className="flex gap-2">
                 <button
                   disabled={!aiKeyVerified || aiSaving}
@@ -305,6 +446,7 @@ function SettingsContent() {
                   Cancel
                 </button>
               </div>
+              )}
             </div>
           )}
         </div>
