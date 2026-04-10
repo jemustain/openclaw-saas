@@ -241,7 +241,7 @@ export function ConnectionsCard({
             return (
               <div key={m}>
                 <div
-                  className={`flex items-center justify-between py-2 ${locked ? "opacity-60" : ""}`}
+                  className={`flex flex-wrap items-center justify-between gap-2 py-2 ${locked ? "opacity-60" : ""}`}
                 >
                   <div className="flex items-center gap-2.5">
                     {(() => { const Icon = config.icon; return <Icon className={`w-5 h-5 ${config.color}`} />; })()}
@@ -253,7 +253,7 @@ export function ConnectionsCard({
 
                   {/* Connected: show Open + Disconnect */}
                   {connected && (
-                    <div className="flex items-center gap-2">
+                    <div className="flex flex-wrap items-center gap-2">
                       {(telegramLink || botLink) && (
                         <a
                           href={telegramLink || botLink!}
@@ -268,7 +268,7 @@ export function ConnectionsCard({
                         type="button"
                         disabled={disconnecting === m || disabled}
                         onClick={() => handleDisconnect(m)}
-                        className="rounded-md bg-red-900/50 px-3 py-1.5 text-xs text-red-400 hover:bg-red-900/80 disabled:opacity-50"
+                        className="whitespace-nowrap rounded-md bg-red-900/50 px-3 py-1.5 text-xs text-red-400 hover:bg-red-900/80 disabled:opacity-50"
                       >
                         {disconnecting === m ? "Disconnecting…" : "Disconnect"}
                       </button>
