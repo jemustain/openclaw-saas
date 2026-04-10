@@ -140,7 +140,7 @@ var execAsync2 = (0, import_util2.promisify)(import_child_process2.exec);
 var router2 = (0, import_express2.Router)();
 var deviceFlowStore = {};
 async function getOpenclawStatus() {
-  let running = false;
+  let running2 = false;
   let version = "unknown";
   let uptime = "unknown";
   try {
@@ -150,22 +150,22 @@ async function getOpenclawStatus() {
   }
   try {
     await execAsync2("systemctl is-active openclaw");
-    running = true;
+    running2 = true;
   } catch {
     try {
       await execAsync2("pgrep -f openclaw");
-      running = true;
+      running2 = true;
     } catch {
     }
   }
-  if (running) {
+  if (running2) {
     try {
       const { stdout } = await execAsync2("systemctl show openclaw --property=ActiveEnterTimestamp --value");
       uptime = stdout.trim() || "unknown";
     } catch {
     }
   }
-  return { running, version, uptime };
+  return { running: running2, version, uptime };
 }
 router2.get("/openclaw/status", async (_req, res) => {
   const status = await getOpenclawStatus();
@@ -1249,6 +1249,99 @@ router6.get("/messaging/whatsapp/qr", async (_req, res) => {
 });
 var messaging_default = router6;
 
+// src/services/usage-tracker.ts
+var import_child_process5 = require("child_process");
+var import_fs3 = require("fs");
+var import_promises3 = require("fs/promises");
+var import_path4 = require("path");
+var DEFAULT_LOG_DIRS = [
+  (0, import_path4.join)(process.env.HOME || "/home/claw", ".openclaw/agents/main/agent/logs"),
+  "/home/claw/.openclaw/agents/main/agent/logs"
+];
+var SIDECAR_PORT = parseInt(process.env.PORT || "8787", 10);
+var SIDECAR_TOKEN = process.env.SIDECAR_TOKEN || "";
+var MESSAGE_PATTERNS = [
+  /\[inbound\]/i,
+  /\[outbound\]/i,
+  /\bmessage\s+(sent|received|delivered)\b/i,
+  /\bhandleInbound\b/i,
+  /\bhandleOutbound\b/i,
+  /\b(telegram|whatsapp|discord|slack|signal)\b.*\b(send|recv|message)\b/i
+];
+async function findLogFile() {
+  const explicit = process.env.OPENCLAW_LOG_PATH;
+  if (explicit) {
+    if ((0, import_fs3.existsSync)(explicit)) return explicit;
+    console.warn(`[usage-tracker] OPENCLAW_LOG_PATH=${explicit} not found`);
+  }
+  for (const dir of DEFAULT_LOG_DIRS) {
+    if (!(0, import_fs3.existsSync)(dir)) continue;
+    try {
+      const files = await (0, import_promises3.readdir)(dir);
+      if (files.includes("agent.log")) return (0, import_path4.join)(dir, "agent.log");
+      const logFile = files.find((f) => f.endsWith(".log"));
+      if (logFile) return (0, import_path4.join)(dir, logFile);
+    } catch {
+    }
+  }
+  return null;
+}
+async function incrementUsage(messages = 1) {
+  try {
+    const url = `http://127.0.0.1:${SIDECAR_PORT}/usage/increment`;
+    const headers = { "Content-Type": "application/json" };
+    if (SIDECAR_TOKEN) {
+      headers["Authorization"] = `Bearer ${SIDECAR_TOKEN}`;
+    }
+    await fetch(url, {
+      method: "POST",
+      headers,
+      body: JSON.stringify({ messages })
+    });
+  } catch (err) {
+    console.warn("[usage-tracker] increment failed:", err.message);
+  }
+}
+function isMessageLine(line) {
+  return MESSAGE_PATTERNS.some((pat) => pat.test(line));
+}
+var running = false;
+async function startUsageTracker() {
+  if (running) return;
+  const logFile = await findLogFile();
+  if (!logFile) {
+    console.warn("[usage-tracker] No OpenClaw log file found. Usage tracking disabled.");
+    console.warn("[usage-tracker] Set OPENCLAW_LOG_PATH to enable.");
+    return;
+  }
+  console.log(`[usage-tracker] Tailing ${logFile}`);
+  running = true;
+  const tail = (0, import_child_process5.spawn)("tail", ["-F", "-n", "0", logFile], {
+    stdio: ["ignore", "pipe", "ignore"]
+  });
+  let buffer = "";
+  tail.stdout.on("data", (chunk) => {
+    buffer += chunk.toString();
+    const lines = buffer.split("\n");
+    buffer = lines.pop() || "";
+    for (const line of lines) {
+      if (line.trim() && isMessageLine(line)) {
+        incrementUsage(1);
+      }
+    }
+  });
+  tail.on("exit", (code) => {
+    console.warn(`[usage-tracker] tail exited with code ${code}, restarting in 5s...`);
+    running = false;
+    setTimeout(() => startUsageTracker(), 5e3);
+  });
+  tail.on("error", (err) => {
+    console.warn("[usage-tracker] tail error:", err.message);
+    running = false;
+    setTimeout(() => startUsageTracker(), 5e3);
+  });
+}
+
 // src/index.ts
 var app = (0, import_express7.default)();
 var PORT = parseInt(process.env.PORT || "8787", 10);
@@ -1262,5 +1355,8 @@ app.use(messaging_default);
 app.use(usage_default);
 app.listen(PORT, "0.0.0.0", () => {
   console.log(`[sidecar] listening on port ${PORT}`);
+  startUsageTracker().catch((err) => {
+    console.warn("[sidecar] usage tracker failed to start:", err.message);
+  });
 });
 var index_default = app;
