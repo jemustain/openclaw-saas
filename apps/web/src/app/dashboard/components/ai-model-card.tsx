@@ -34,7 +34,7 @@ export function AiModelCard({
       {configured ? (
         <>
           <p className="text-2xl font-bold text-indigo-400 mb-2">{label}</p>
-          <p className="text-sm text-slate-400 mb-4 font-mono">
+          <p className="text-sm text-slate-400 mb-4 font-mono truncate">
             Key: {maskKey(apiKey!)}
           </p>
         </>
