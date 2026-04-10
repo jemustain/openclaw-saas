@@ -33,11 +33,9 @@ jobs:
         working-directory: apps/web
         run: npx tsc --noEmit
 
-      # Lint step temporarily disabled - next lint is deprecated in Next.js 16
-      # and requires migration to ESLint flat config. TODO: set up eslint directly.
-      # - name: Lint
-      #   working-directory: apps/web
-      #   run: npm run lint
+      - name: Lint
+        working-directory: apps/web
+        run: npm run lint
 
       - name: Test with coverage
         working-directory: apps/web
