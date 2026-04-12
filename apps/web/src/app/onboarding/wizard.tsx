@@ -241,16 +241,20 @@ export default function OnboardingWizard() {
     if (errorParam) {
       const errorMessages: Record<string, string> = {
         azure_no_subscription: 'Could not connect to Azure. Make sure you have an active Azure subscription with your Microsoft account.',
+        azure_denied: 'Azure sign-in was denied. Please try again and accept the permissions.',
+        azure_error: 'Azure sign-in failed. Please try again.',
+        azure_personal_account: 'Your Microsoft account could not get Azure management access. Make sure you have an active Azure subscription.',
         token_exchange: 'Sign-in failed. Please try again.',
         missing_code: 'Sign-in was incomplete. Please try again.',
         invalid_state: 'Sign-in verification failed. Please try again.',
         no_tenant: 'Could not determine your Azure tenant. Please try again.',
+        no_id_token: 'Azure sign-in did not return account info. Please try again.',
         access_denied: 'Access was denied. Please try again.',
         github_error: 'GitHub sign-in failed. Please try again.',
         oauth_not_configured: 'GitHub OAuth is not configured.',
         save_failed: 'Failed to save your credentials. Please try again.',
       };
-      setOnboardingError(errorMessages[errorParam] ?? 'Something went wrong. Please try again.');
+      setOnboardingError(errorMessages[errorParam] ?? `Something went wrong (${errorParam}). Please try again.`);
 
       // Route back to the correct step based on where the error came from
       const githubErrors = ['token_exchange', 'missing_code', 'invalid_state', 'access_denied', 'github_error', 'oauth_not_configured', 'save_failed'];
