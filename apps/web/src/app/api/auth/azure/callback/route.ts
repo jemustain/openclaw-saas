@@ -34,7 +34,7 @@ export async function GET(request: NextRequest) {
   const clientId = process.env.AZURE_CLIENT_ID!.trim();
   const clientSecret = process.env.AZURE_CLIENT_SECRET!.trim();
   const redirectUri = process.env.AZURE_REDIRECT_URI!.trim();
-  const azureTenantId = process.env.AZURE_TENANT_ID?.trim() || 'organizations';
+  const azureTenantId = process.env.AZURE_TENANT_ID?.trim() || 'common';
 
   // Single-step token exchange: the auth code was issued with ARM scope,
   // so the access_token will be an ARM management token directly.

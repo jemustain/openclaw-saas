@@ -13,10 +13,9 @@ export async function GET() {
   // Anti-CSRF state token
   const state = crypto.randomBytes(32).toString('hex');
 
-  // Use the specific Azure AD tenant endpoint. Personal Microsoft accounts that
-  // are members of this tenant can authenticate here and get ARM-scoped tokens.
-  // We request ARM scope directly so the code exchange gives us ARM tokens.
-  const azureTenantId = process.env.AZURE_TENANT_ID?.trim() || 'organizations';
+  // Use 'common' to allow sign-in from any Azure AD tenant + personal Microsoft
+  // accounts. Override with AZURE_TENANT_ID to restrict to a specific tenant.
+  const azureTenantId = process.env.AZURE_TENANT_ID?.trim() || 'common';
 
   const params = new URLSearchParams({
     client_id: clientId,

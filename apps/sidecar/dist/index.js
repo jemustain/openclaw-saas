@@ -11,6 +11,7 @@ const heartbeat_1 = __importDefault(require("./routes/heartbeat"));
 const skills_1 = __importDefault(require("./routes/skills"));
 const messaging_1 = __importDefault(require("./routes/messaging"));
 const usage_1 = __importDefault(require("./routes/usage"));
+const usage_tracker_1 = require("./services/usage-tracker");
 const app = (0, express_1.default)();
 const PORT = parseInt(process.env.PORT || '8787', 10);
 app.use(express_1.default.json());
@@ -25,5 +26,8 @@ app.use(messaging_1.default);
 app.use(usage_1.default);
 app.listen(PORT, '0.0.0.0', () => {
     console.log(`[sidecar] listening on port ${PORT}`);
+    (0, usage_tracker_1.startUsageTracker)().catch((err) => {
+        console.warn('[sidecar] usage tracker failed to start:', err.message);
+    });
 });
 exports.default = app;
