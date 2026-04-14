@@ -239,10 +239,13 @@ export default function OnboardingWizard() {
     const errorParam = searchParams.get('error');
 
     if (errorParam) {
+      const errorDetail = searchParams.get('error_detail');
+      const errorCode = searchParams.get('error_code');
       const errorMessages: Record<string, string> = {
         azure_no_subscription: 'Could not connect to Azure. Make sure you have an active Azure subscription with your Microsoft account.',
         azure_denied: 'Azure sign-in was denied. Please try again and accept the permissions.',
-        azure_error: 'Azure sign-in failed. Please try again.',
+        azure_error: `Azure sign-in failed${errorCode ? ` (${errorCode})` : ''}. ${errorDetail || 'Please try again.'}`,
+        azure_consent_required: 'Azure requires additional consent. Please try again and accept all permissions when prompted.',
         azure_personal_account: 'Your Microsoft account could not get Azure management access. Make sure you have an active Azure subscription.',
         token_exchange: 'Sign-in failed. Please try again.',
         missing_code: 'Sign-in was incomplete. Please try again.',
