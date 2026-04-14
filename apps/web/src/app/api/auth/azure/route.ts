@@ -42,7 +42,7 @@ export async function GET(request: NextRequest) {
       client_id: clientId,
       response_type: 'code',
       redirect_uri: redirectUri,
-      scope: 'openid profile offline_access https://management.azure.com/user_impersonation',
+      scope: 'openid profile offline_access https://management.azure.com/.default',
       state: statePayload,
       prompt: 'consent',
       // login_hint could be added here if we stored the email from step 1

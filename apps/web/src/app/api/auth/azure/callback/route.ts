@@ -134,7 +134,7 @@ export async function GET(request: NextRequest) {
         client_id: clientId,
         client_secret: clientSecret,
         redirect_uri: redirectUri,
-        scope: 'openid profile offline_access https://management.azure.com/user_impersonation',
+        scope: 'openid profile offline_access https://management.azure.com/.default',
       }),
     });
 
