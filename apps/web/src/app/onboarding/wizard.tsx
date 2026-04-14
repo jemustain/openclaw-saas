@@ -244,9 +244,9 @@ export default function OnboardingWizard() {
       const errorMessages: Record<string, string> = {
         azure_no_subscription: 'Could not connect to Azure. Make sure you have an active Azure subscription with your Microsoft account.',
         azure_denied: 'Azure sign-in was denied. Please try again and accept the permissions.',
-        azure_error: `Azure sign-in failed${errorCode ? ` (${errorCode})` : ''}. ${errorDetail || 'Please try again.'}`,
+        azure_error: `Azure sign-in failed${errorCode ? ` (${errorCode})` : ''}. ${errorDetail || 'Please sign in with a work or school account (not a personal @outlook.com account).'}`,
         azure_consent_required: 'Azure requires additional consent. Please try again and accept all permissions when prompted.',
-        azure_personal_account: 'Your Microsoft account could not get Azure management access. Make sure you have an active Azure subscription.',
+        azure_personal_account: 'Azure requires a work or school account. Personal Microsoft accounts (@outlook.com, @hotmail.com) cannot manage Azure resources. Please sign in with your organization account.',
         token_exchange: 'Sign-in failed. Please try again.',
         missing_code: 'Sign-in was incomplete. Please try again.',
         invalid_state: 'Sign-in verification failed. Please try again.',
