@@ -37,19 +37,23 @@ export async function GET(request: NextRequest) {
     : `discover:${crypto.randomBytes(16).toString('hex')}`;
 
   if (step === 'arm' && tenantHint) {
-    // ─── Step 2: ARM consent through the user's specific tenant ───
+    // ─── Step 2: ARM consent through the user's specific tenant (v1.0 endpoint) ───
+    //
+    // We use the v1.0 OAuth endpoint here because the v2.0 endpoint does not
+    // support Azure Resource Manager scopes for converged apps
+    // (signInAudience: AzureADandPersonalMicrosoftAccount). The v1.0 endpoint
+    // uses `resource` instead of `scope` and works regardless of app audience.
     const params = new URLSearchParams({
       client_id: clientId,
       response_type: 'code',
       redirect_uri: redirectUri,
-      scope: 'openid profile offline_access https://management.azure.com/.default',
+      resource: 'https://management.azure.com/',
       state: statePayload,
       prompt: 'consent',
-      // login_hint could be added here if we stored the email from step 1
     });
 
     const response = NextResponse.redirect(
-      `https://login.microsoftonline.com/${tenantHint}/oauth2/v2.0/authorize?${params.toString()}`,
+      `https://login.microsoftonline.com/${tenantHint}/oauth2/authorize?${params.toString()}`,
     );
     response.cookies.set('azure_oauth_state', statePayload, {
       httpOnly: true,

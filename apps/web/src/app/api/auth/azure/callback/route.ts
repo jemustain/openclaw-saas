@@ -121,11 +121,13 @@ export async function GET(request: NextRequest) {
   }
 
   if (isArm) {
-    // ─── Step 2 callback: Exchange code for ARM tokens ───
+    // ─── Step 2 callback: Exchange code for ARM tokens (v1.0 endpoint) ───
     // Extract tenant ID from state: "arm:<tid>:<random>"
     const tenantId = state.split(':')[1];
 
-    const tokenRes = await fetch(`https://login.microsoftonline.com/${tenantId}/oauth2/v2.0/token`, {
+    // Use v1.0 token endpoint to match the v1.0 authorize request.
+    // v1.0 uses `resource` instead of `scope`.
+    const tokenRes = await fetch(`https://login.microsoftonline.com/${tenantId}/oauth2/token`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
       body: new URLSearchParams({
@@ -134,7 +136,7 @@ export async function GET(request: NextRequest) {
         client_id: clientId,
         client_secret: clientSecret,
         redirect_uri: redirectUri,
-        scope: 'openid profile offline_access https://management.azure.com/.default',
+        resource: 'https://management.azure.com/',
       }),
     });
 
