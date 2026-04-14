@@ -7,7 +7,7 @@
  * the previous one left off.
  *
  * Steps:
- *   validate → create_rg → create_nsg → create_vnet → create_ip → create_nic → create_vm → wait_vm → done
+ *   validate → register_providers → create_rg → create_nsg → create_vnet → create_ip → create_nic → create_vm → wait_vm → done
  */
 
 import { createClient } from '../supabase/server';
@@ -35,6 +35,13 @@ const DEFAULT_IMAGE = {
   sku: 'server',
   version: 'latest',
 };
+
+/** Azure resource providers required for VM provisioning */
+const REQUIRED_PROVIDERS = [
+  'Microsoft.Compute',
+  'Microsoft.Network',
+  'Microsoft.Storage',
+];
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -135,7 +142,7 @@ export async function advanceProvisioning(assistant: Assistant): Promise<Assista
               });
             }
             return await updateAssistant(assistant.id, {
-              provisioning_step: 'create_rg' as ProvisioningStep,
+              provisioning_step: 'register_providers' as ProvisioningStep,
               provisioning_data: {
                 ...pd,
                 subscriptionId: validation.subscriptionId,
@@ -144,7 +151,7 @@ export async function advanceProvisioning(assistant: Assistant): Promise<Assista
           }
           // Chosen subscription is valid - proceed
           return await updateAssistant(assistant.id, {
-            provisioning_step: 'create_rg' as ProvisioningStep,
+            provisioning_step: 'register_providers' as ProvisioningStep,
             provisioning_data: pd as any,
           });
         } catch {
@@ -166,12 +173,50 @@ export async function advanceProvisioning(assistant: Assistant): Promise<Assista
         });
       }
       return await updateAssistant(assistant.id, {
-        provisioning_step: 'create_rg' as ProvisioningStep,
+        provisioning_step: 'register_providers' as ProvisioningStep,
         provisioning_data: {
           ...pd,
           subscriptionId: validation.subscriptionId,
         } as any,
       });
+    }
+
+    case 'register_providers': {
+      // Register required Azure resource providers on the subscription.
+      // New subscriptions don't have these enabled by default.
+      const { subscriptionId } = pd;
+      let allRegistered = true;
+
+      for (const provider of REQUIRED_PROVIDERS) {
+        try {
+          const status = await azureFetch(
+            token,
+            `/subscriptions/${subscriptionId}/providers/${provider}?api-version=2021-04-01`,
+          );
+          if (status?.registrationState === 'Registered') continue;
+
+          // Not registered - register it
+          await azureFetch(
+            token,
+            `/subscriptions/${subscriptionId}/providers/${provider}/register?api-version=2021-04-01`,
+            { method: 'POST' },
+          );
+          allRegistered = false; // Will need to poll again to confirm
+        } catch (e) {
+          console.warn(`Failed to register ${provider}:`, e);
+          allRegistered = false;
+        }
+      }
+
+      if (allRegistered) {
+        return await updateAssistant(assistant.id, {
+          provisioning_step: 'create_rg' as ProvisioningStep,
+          provisioning_data: pd as any,
+        });
+      }
+
+      // Some still registering - stay on this step, next poll will check again
+      return assistant;
     }
 
     case 'create_rg': {

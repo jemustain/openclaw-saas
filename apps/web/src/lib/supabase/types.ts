@@ -17,6 +17,7 @@ export type AssistantStatus =
  */
 export type ProvisioningStep =
   | 'validate'
+  | 'register_providers'
   | 'create_rg'
   | 'create_nsg'
   | 'create_vnet'
