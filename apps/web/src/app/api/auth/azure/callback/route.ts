@@ -34,18 +34,34 @@ export async function GET(request: NextRequest) {
   // Handle OAuth errors from Microsoft
   if (error) {
     console.error(`Azure OAuth error: ${error} - ${errorDescription}`);
-    const errorMsg = error === 'access_denied'
-      ? 'azure_denied'
-      : 'azure_error';
-    return NextResponse.redirect(new URL(`/onboarding?error=${errorMsg}`, request.url));
+    let errorMsg: string;
+    if (error === 'access_denied') {
+      errorMsg = 'azure_denied';
+    } else if (error === 'consent_required' || error === 'interaction_required') {
+      errorMsg = 'azure_consent_required';
+    } else {
+      errorMsg = 'azure_error';
+    }
+    // Pass the raw error code and description for debugging
+    const params = new URLSearchParams({ error: errorMsg });
+    if (errorDescription) params.set('error_detail', errorDescription.slice(0, 200));
+    if (error !== 'access_denied') params.set('error_code', error);
+    return NextResponse.redirect(new URL(`/onboarding?${params.toString()}`, request.url));
   }
 
   if (!code) {
     return NextResponse.redirect(new URL('/onboarding?error=missing_code', request.url));
   }
 
-  // CSRF check
+  // CSRF check — log details to help debug cookie-loss issues on mobile
   if (!state || !storedState || state !== storedState) {
+    console.error('Azure CSRF check failed:', {
+      hasState: !!state,
+      hasStoredState: !!storedState,
+      statePrefix: state?.split(':')[0],
+      storedStatePrefix: storedState?.split(':')[0],
+      match: state === storedState,
+    });
     return NextResponse.redirect(new URL('/onboarding?error=invalid_state', request.url));
   }
 
