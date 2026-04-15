@@ -125,8 +125,14 @@ export async function createTelegramBot(
   const result = await attemptBotCreation(tg, botFather, botUsername, botName);
 
   if (result.token) {
-    await configureBotSettings(tg, botFather, botUsername);
-    return { botUsername, botToken: result.token, botDisplayName: botName };
+    // Verify the bot actually exists on Telegram before returning
+    const verifiedUsername = await verifyBotToken(result.token);
+    if (!verifiedUsername) {
+      console.error(`Bot @${botUsername} token received but getMe failed - bot may not exist`);
+      throw new Error('telegram_bot_creation_failed');
+    }
+    await configureBotSettings(tg, botFather, verifiedUsername);
+    return { botUsername: verifiedUsername, botToken: result.token, botDisplayName: botName };
   }
 
   // Username taken - try to recover the existing bot's token
@@ -142,9 +148,14 @@ export async function createTelegramBot(
     const fallbackResult = await attemptBotCreation(tg, botFather, fallbackUsername, botName);
 
     if (fallbackResult.token) {
-      await configureBotSettings(tg, botFather, fallbackUsername);
+      const verifiedFallback = await verifyBotToken(fallbackResult.token);
+      if (!verifiedFallback) {
+        console.error(`Fallback bot @${fallbackUsername} token received but getMe failed`);
+        throw new Error('telegram_bot_creation_failed');
+      }
+      await configureBotSettings(tg, botFather, verifiedFallback);
       return {
-        botUsername: fallbackUsername,
+        botUsername: verifiedFallback,
         botToken: fallbackResult.token,
         botDisplayName: botName,
       };
@@ -221,4 +232,24 @@ export async function deleteTelegramBot(botUsername: string): Promise<void> {
 
 function sleep(ms: number): Promise<void> {
   return new Promise((r) => setTimeout(r, ms));
+}
+
+/**
+ * Verify a bot token is valid by calling Telegram's getMe API.
+ * Returns the bot username if valid, null if the bot doesn't exist.
+ */
+export async function verifyBotToken(token: string): Promise<string | null> {
+  try {
+    const res = await fetch(`https://api.telegram.org/bot${token}/getMe`, {
+      signal: AbortSignal.timeout(10_000),
+    });
+    if (!res.ok) return null;
+    const data = await res.json();
+    if (data.ok && data.result?.username) {
+      return data.result.username;
+    }
+    return null;
+  } catch {
+    return null;
+  }
 }
