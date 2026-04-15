@@ -111,7 +111,7 @@ async function DashboardContent({
 
           {/* Col 2: AI Model + Usage stacked */}
           <div className="space-y-6">
-            <AiModelCard provider={aiProvider} apiKey={aiApiKey} disabled={disableActions} />
+            <AiModelCard provider={aiProvider} apiKey={aiApiKey} disabled={disableActions} assistantActive={isActive} />
             <UsageCard />
           </div>
 
