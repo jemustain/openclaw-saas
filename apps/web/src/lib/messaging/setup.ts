@@ -1,4 +1,4 @@
-import { createTelegramBot, deleteTelegramBot } from './telegram-bot-factory';
+import { createTelegramBot, deleteTelegramBot, verifyBotToken } from './telegram-bot-factory';
 import { createClient } from '../supabase/server';
 
 export interface MessagingSetupResult {
@@ -73,24 +73,40 @@ export async function setupTelegramForAssistant(
 
   // Check if bot already exists for this assistant
   if (assistant.telegram_bot_username && assistant.telegram_bot_token) {
-    // Re-configure sidecar with existing bot (in case of restart)
-    try {
-      await callSidecar(
-        assistant.ip_address,
-        assistant.sidecar_token,
-        'telegram',
-        { botToken: assistant.telegram_bot_token },
-      );
-    } catch {
-      // Best-effort reconfiguration
-    }
+    // Verify the bot still exists on Telegram before reusing
+    const verified = await verifyBotToken(assistant.telegram_bot_token);
+    if (!verified) {
+      // Bot token is stale/invalid - clear it and create a new one
+      console.warn(`Stale Telegram bot @${assistant.telegram_bot_username} - clearing and recreating`);
+      await (supabase as any)
+        .from('assistants')
+        .update({
+          telegram_bot_username: null,
+          telegram_bot_token: null,
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', assistantId);
+      // Fall through to create a new bot below
+    } else {
+      // Bot is valid - re-configure sidecar with existing bot (in case of restart)
+      try {
+        await callSidecar(
+          assistant.ip_address,
+          assistant.sidecar_token,
+          'telegram',
+          { botToken: assistant.telegram_bot_token },
+        );
+      } catch {
+        // Best-effort reconfiguration
+      }
 
-    return {
-      platform: 'telegram',
-      status: 'configured',
-      botUsername: assistant.telegram_bot_username,
-      botLink: `https://t.me/${assistant.telegram_bot_username}`,
-    };
+      return {
+        platform: 'telegram',
+        status: 'configured',
+        botUsername: verified,
+        botLink: `https://t.me/${verified}`,
+      };
+    }
   }
 
   try {
@@ -102,33 +118,48 @@ export async function setupTelegramForAssistant(
       .single();
 
     if (userRow?.telegram_bot_token) {
-      // Use the pre-created bot — configure sidecar and copy to assistant
-      try {
-        await callSidecar(
-          assistant.ip_address,
-          assistant.sidecar_token,
-          'telegram',
-          { botToken: userRow.telegram_bot_token },
-        );
-      } catch {
-        // Best-effort sidecar config
+      // Verify the pre-created bot still exists
+      const verifiedUser = await verifyBotToken(userRow.telegram_bot_token);
+      if (!verifiedUser) {
+        // Stale bot - clear from users table and fall through to create new
+        console.warn(`Stale pre-created Telegram bot @${userRow.telegram_bot_username} - clearing`);
+        await (supabase as any)
+          .from('users')
+          .update({
+            telegram_bot_username: null,
+            telegram_bot_token: null,
+          })
+          .eq('id', userId);
+        // Fall through to BotFather creation below
+      } else {
+        // Use the verified pre-created bot
+        try {
+          await callSidecar(
+            assistant.ip_address,
+            assistant.sidecar_token,
+            'telegram',
+            { botToken: userRow.telegram_bot_token },
+          );
+        } catch {
+          // Best-effort sidecar config
+        }
+
+        await (supabase as any)
+          .from('assistants')
+          .update({
+            telegram_bot_username: verifiedUser,
+            telegram_bot_token: userRow.telegram_bot_token,
+            updated_at: new Date().toISOString(),
+          })
+          .eq('id', assistantId);
+
+        return {
+          platform: 'telegram',
+          status: 'configured',
+          botUsername: verifiedUser,
+          botLink: `https://t.me/${verifiedUser}`,
+        };
       }
-
-      await (supabase as any)
-        .from('assistants')
-        .update({
-          telegram_bot_username: userRow.telegram_bot_username,
-          telegram_bot_token: userRow.telegram_bot_token,
-          updated_at: new Date().toISOString(),
-        })
-        .eq('id', assistantId);
-
-      return {
-        platform: 'telegram',
-        status: 'configured',
-        botUsername: userRow.telegram_bot_username,
-        botLink: `https://t.me/${userRow.telegram_bot_username}`,
-      };
     }
 
     // Check if BotFather automation is configured
