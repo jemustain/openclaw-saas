@@ -39,6 +39,7 @@ const DESTROY_STEPS: { phase: DestroyPhase; label: string; atSec: number }[] = [
  */
 const PROVISION_STEP_LABELS: Record<string, string> = {
   validate: "Validating Azure account...",
+  register_providers: "Registering cloud providers...",
   create_rg: "Creating resource group...",
   create_nsg: "Configuring network security...",
   create_vnet: "Setting up virtual network...",
@@ -51,6 +52,7 @@ const PROVISION_STEP_LABELS: Record<string, string> = {
 
 const PROVISION_STEP_ORDER = [
   "validate",
+  "register_providers",
   "create_rg",
   "create_nsg",
   "create_vnet",
@@ -353,7 +355,7 @@ export function AssistantHero({ assistant }: { assistant: Assistant | null }) {
   const isProgress = destroying || provisioning || status === "provisioning";
   const progressSteps = destroying ? destroySteps : provisionSteps;
   const progressElapsed = destroying ? destroyElapsed : provisionElapsed;
-  const progressHint = destroying ? "Typically takes 30-60 seconds" : "Typically takes 2-4 minutes";
+  const progressHint = destroying ? "Typically takes 30-60 seconds" : "Typically takes 5-10 minutes";
 
   // Calculate progress percentage for provisioning
   const currentStepIdx = current?.provisioning_step
