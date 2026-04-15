@@ -33,6 +33,18 @@ process.env.TELEGRAM_API_ID = '12345';
 process.env.TELEGRAM_API_HASH = 'testhash';
 process.env.TELEGRAM_SESSION_STRING = 'testsession';
 
+// Mock global fetch for verifyBotToken
+const originalFetch = global.fetch;
+global.fetch = vi.fn().mockImplementation((url: string) => {
+  if (typeof url === 'string' && url.includes('api.telegram.org')) {
+    return Promise.resolve({
+      ok: true,
+      json: () => Promise.resolve({ ok: true, result: { username: 'sw_test_bot' } }),
+    });
+  }
+  return originalFetch(url);
+}) as any;
+
 import { createTelegramBot } from '../telegram-bot-factory';
 
 describe('telegram-bot-factory', () => {
