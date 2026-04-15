@@ -121,6 +121,31 @@ export async function advanceProvisioning(assistant: Assistant): Promise<Assista
   const token = await getUserToken(assistant.user_id);
   const rgName = `${RG_PREFIX}${assistant.id.split('-')[0]}`;
 
+  try {
+    return await executeStep(assistant, step, pd, token, rgName);
+  } catch (err) {
+    // If any step fails due to missing resource provider registration,
+    // fall back to the register_providers step to fix it automatically.
+    const errMsg = err instanceof Error ? err.message : String(err);
+    if (errMsg.includes('MissingSubscriptionRegistration') && step !== 'register_providers') {
+      console.warn(`[provisioning] ${step} failed with MissingSubscriptionRegistration, falling back to register_providers`);
+      return await updateAssistant(assistant.id, {
+        provisioning_step: 'register_providers' as ProvisioningStep,
+        provisioning_data: pd as any,
+      });
+    }
+    throw err;
+  }
+}
+
+async function executeStep(
+  assistant: Assistant,
+  step: ProvisioningStep,
+  pd: Record<string, any>,
+  token: string,
+  rgName: string,
+): Promise<Assistant> {
+
   switch (step) {
     case 'validate': {
       // If a subscription was pre-selected during onboarding, use it directly
