@@ -9,7 +9,7 @@ import {
   MessageCircle, Send, Hash, Slack, Shield,
   Mail, Globe, Bell, FileText, Sun, Lock,
   ShoppingCart, Plane, DollarSign, CalendarDays,
-  QrCode, Bot, Smartphone, AlertCircle, ExternalLink, Phone,
+  QrCode, Bot, Smartphone, AlertCircle, AlertTriangle, ExternalLink, Phone,
 } from 'lucide-react';
 import ProgressIndicator from './progress-indicator';
 import { MessengerSetupCard } from './messenger-setup-card';
@@ -512,9 +512,23 @@ export default function OnboardingWizard() {
     sessionStorage.setItem('sw_launch_ts', String(Date.now()));
     const statuses: string[] = [];
     const addStatus = (s: string) => {
+      // Avoid duplicate messages
+      if (statuses.includes(s)) return;
       statuses.push(s);
       setSetupStatus([...statuses]);
+      // Persist in sessionStorage so progress survives page refresh
+      try { sessionStorage.setItem('sw_setup_status', JSON.stringify(statuses)); } catch {}
     };
+
+    // Restore previous status messages if resuming
+    try {
+      const saved = sessionStorage.getItem('sw_setup_status');
+      if (saved) {
+        const parsed = JSON.parse(saved) as string[];
+        parsed.forEach(s => { statuses.push(s); });
+        setSetupStatus([...statuses]);
+      }
+    } catch {}
 
     addStatus('Saving preferences...');
     try {
@@ -553,17 +567,50 @@ export default function OnboardingWizard() {
     let attempts = 0;
     const milestones = [
       { at: 15, msg: `Creating your server on ${hosting === 'azure' ? 'Azure' : hosting === 'oracle' ? 'Oracle Cloud' : 'DigitalOcean'}...` },
-      { at: 30, msg: 'Installing OpenClaw and dependencies...' },
-      { at: 60, msg: 'Configuring your assistant...' },
-      { at: 90, msg: 'Almost there - starting services...' },
-      { at: 180, msg: 'Still working - this is taking longer than usual...' },
-      { at: 300, msg: 'Hang tight - large installs can take up to 10 minutes.' },
+      { at: 45, msg: 'Registering cloud resources...' },
+      { at: 90, msg: 'Setting up networking and security...' },
+      { at: 150, msg: 'Creating virtual machine...' },
+      { at: 240, msg: 'Installing OpenClaw and dependencies...' },
+      { at: 360, msg: 'Configuring your assistant...' },
+      { at: 480, msg: 'Still working - almost there...' },
+      { at: 600, msg: 'This is taking longer than usual. If this persists, check your cloud provider dashboard for errors.' },
     ];
     let nextMilestone = 0;
     const poll = async (): Promise<void> => {
       try {
         const res = await fetch('/api/assistant/status');
         const data = await res.json();
+
+        // Surface provisioning errors to the user
+        if (data.assistant?._provisioningError) {
+          const errMsg = data.assistant._provisioningError;
+          // Only add if it's a new error (avoid duplicates)
+          if (!statuses.some(s => s.includes('Error:'))) {
+            addStatus(`Error: ${errMsg}`);
+          }
+        }
+
+        // Show real provisioning step progress
+        const stepName = data.assistant?.provisioning_step;
+        if (stepName && stepName !== 'done') {
+          const stepLabels: Record<string, string> = {
+            validate: 'Validating Azure account...',
+            register_providers: 'Registering cloud resource providers...',
+            create_rg: 'Creating resource group...',
+            create_nsg: 'Creating network security group...',
+            create_vnet: 'Creating virtual network...',
+            create_ip: 'Allocating public IP address...',
+            create_nic: 'Creating network interface...',
+            create_vm: 'Creating virtual machine...',
+            wait_vm: 'Waiting for VM to be ready...',
+          };
+          const label = stepLabels[stepName] || `Step: ${stepName}`;
+          // Replace the last milestone-style message with the real step
+          if (!statuses.includes(label)) {
+            addStatus(label);
+          }
+        }
+
         if (data.assistant?.status === 'active') {
           // Server is active in Azure but sidecar may still be starting.
           // Poll the messaging status endpoint to confirm sidecar is reachable.
@@ -586,6 +633,7 @@ export default function OnboardingWizard() {
           }
           setServerActive(true);
           setSetupDone(true);
+          try { sessionStorage.removeItem('sw_setup_status'); } catch {}
           // Don't auto-advance — let user set up messengers first
           return;
         }
@@ -1225,7 +1273,7 @@ export default function OnboardingWizard() {
             </h2>
             {!setupDone && (
               <p className="text-sm text-slate-400 text-center">
-                {Math.floor(elapsedSecs / 60)}:{String(elapsedSecs % 60).padStart(2, '0')} elapsed · typically takes 2–4 minutes
+                {Math.floor(elapsedSecs / 60)}:{String(elapsedSecs % 60).padStart(2, '0')} elapsed · typically takes 5–10 minutes
               </p>
             )}
             {setupDone && serverActive && (
@@ -1246,14 +1294,17 @@ export default function OnboardingWizard() {
                   {setupStatus.map((s, i) => {
                     const isLast = i === setupStatus.length - 1;
                     const isActive = isLast && !setupDone;
+                    const isError = s.startsWith('Error:');
                     return (
                       <div key={i} className="flex items-center gap-2 text-sm">
-                        {isActive ? (
+                        {isError ? (
+                          <AlertTriangle className="w-4 h-4 text-amber-400 flex-shrink-0" />
+                        ) : isActive ? (
                           <Loader2 className="w-4 h-4 text-violet-400 flex-shrink-0 animate-spin" />
                         ) : (
                           <Check className="w-4 h-4 text-green-400 flex-shrink-0" />
                         )}
-                        <span className={isActive ? 'text-white font-medium' : 'text-slate-400'}>{s}</span>
+                        <span className={isError ? 'text-amber-400' : isActive ? 'text-white font-medium' : 'text-slate-400'}>{s}</span>
                       </div>
                     );
                   })}
